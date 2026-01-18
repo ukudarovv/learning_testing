@@ -100,6 +100,7 @@ class SMSVerificationCode(models.Model):
         ('registration', 'Registration'),
         ('password_reset', 'Password Reset'),
         ('verification', 'General Verification'),
+        ('profile_update', 'Profile Update'),
     ]
     
     phone = models.CharField(max_length=20, db_index=True)

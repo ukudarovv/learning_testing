@@ -94,6 +94,10 @@ const authService = {
     apiClient.setToken(response.access);
     return response.access;
   },
+
+  async updateProfile(data: Partial<User> & { verification_code?: string }): Promise<User> {
+    return apiClient.patch<User>('/auth/me/', data);
+  },
 };
 
 export { authService };

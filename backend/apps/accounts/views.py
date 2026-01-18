@@ -96,13 +96,27 @@ class LogoutView(APIView):
 
 
 class MeView(APIView):
-    """Get current user endpoint"""
+    """Get and update current user endpoint"""
     permission_classes = [permissions.IsAuthenticated]
     
     def get(self, request):
         """Get current user"""
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
+    
+    def put(self, request):
+        """Update current user profile"""
+        serializer = UserUpdateSerializer(request.user, data=request.data, partial=False)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response(UserSerializer(user).data, status=status.HTTP_200_OK)
+    
+    def patch(self, request):
+        """Partially update current user profile"""
+        serializer = UserUpdateSerializer(request.user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response(UserSerializer(user).data, status=status.HTTP_200_OK)
 
 
 class UserViewSet(viewsets.ModelViewSet):

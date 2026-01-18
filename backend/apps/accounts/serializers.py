@@ -88,10 +88,12 @@ class UserCreateSerializer(serializers.ModelSerializer):
 class UserUpdateSerializer(serializers.ModelSerializer):
     """Serializer for updating user"""
     password = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    phone = serializers.CharField(required=False, max_length=20)
+    verification_code = serializers.CharField(write_only=True, required=False, allow_blank=True)
     
     class Meta:
         model = User
-        fields = ['full_name', 'email', 'iin', 'language', 'city', 'organization', 'role', 'verified', 'is_active', 'password']
+        fields = ['phone', 'full_name', 'email', 'iin', 'language', 'city', 'organization', 'role', 'verified', 'is_active', 'password', 'verification_code']
     
     def validate_password(self, value):
         """Validate password if provided"""
@@ -99,11 +101,58 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Password must be at least 8 characters long.')
         return value
     
+    def validate(self, data):
+        """Validate SMS verification code if phone is being changed"""
+        verification_code = data.get('verification_code')
+        new_phone = data.get('phone')
+        instance = self.instance
+        
+        # If phone is being changed and verification code is provided
+        if new_phone and instance and instance.phone != new_phone:
+            if not verification_code:
+                raise serializers.ValidationError({'verification_code': 'Verification code is required when changing phone number'})
+            
+            # Normalize phone number
+            normalized_phone = ''.join(filter(str.isdigit, str(new_phone)))
+            if normalized_phone.startswith('8'):
+                normalized_phone = '7' + normalized_phone[1:]
+            if not normalized_phone.startswith('7'):
+                normalized_phone = '7' + normalized_phone
+            
+            # Find the most recent unverified code for this phone and verification/profile_update purpose
+            verification_obj = SMSVerificationCode.objects.filter(
+                phone=normalized_phone,
+                purpose__in=['verification', 'profile_update'],
+                is_verified=False
+            ).order_by('-created_at').first()
+            
+            if not verification_obj:
+                raise serializers.ValidationError({'verification_code': 'Verification code not found or already used'})
+            
+            # Verify the code
+            if not verification_obj.verify(verification_code):
+                raise serializers.ValidationError({'verification_code': 'Invalid or expired verification code'})
+        
+        return data
+    
     def update(self, instance, validated_data):
         # Remove password from validated_data if it's empty or not provided
         password = validated_data.pop('password', None)
         if password and password.strip():
             instance.set_password(password)
+        
+        # Remove verification_code, it's not a model field
+        validated_data.pop('verification_code', None)
+        
+        # Normalize phone if it's being changed
+        if 'phone' in validated_data and validated_data['phone']:
+            new_phone = validated_data['phone']
+            normalized_phone = ''.join(filter(str.isdigit, str(new_phone)))
+            if normalized_phone.startswith('8'):
+                normalized_phone = '7' + normalized_phone[1:]
+            if not normalized_phone.startswith('7'):
+                normalized_phone = '7' + normalized_phone
+            validated_data['phone'] = normalized_phone
         
         # Update other fields
         for attr, value in validated_data.items():

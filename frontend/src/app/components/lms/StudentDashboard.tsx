@@ -1,4 +1,4 @@
-import { BookOpen, Award, FileText, TrendingUp, CheckCircle2, AlertCircle, Play, Clock, FileQuestion } from 'lucide-react';
+import { BookOpen, Award, FileText, TrendingUp, CheckCircle2, AlertCircle, Play, Clock, FileQuestion, Edit2, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useMyEnrollments } from '../../hooks/useMyEnrollments';
@@ -8,9 +8,13 @@ import { examsService } from '../../services/exams';
 import { protocolsService } from '../../services/protocols';
 import { useState, useEffect } from 'react';
 import { Certificate, TestAttempt, Protocol } from '../../types/lms';
+import { useUser } from '../../contexts/UserContext';
+import { ProfileEditor } from './ProfileEditor';
+import { toast } from 'sonner';
 
 export function StudentDashboard() {
   const { t } = useTranslation();
+  const { user } = useUser();
   const { courses, loading: coursesLoading } = useMyEnrollments();
   const { notifications, loading: notificationsLoading } = useNotifications({ read: false });
   const [certificates, setCertificates] = useState<Certificate[]>([]);
@@ -18,6 +22,7 @@ export function StudentDashboard() {
   const [testAttempts, setTestAttempts] = useState<TestAttempt[]>([]);
   const [protocols, setProtocols] = useState<Protocol[]>([]);
   const [loadingTests, setLoadingTests] = useState(true);
+  const [showProfileEditor, setShowProfileEditor] = useState(false);
 
   useEffect(() => {
     const fetchCertificates = async () => {
@@ -107,8 +112,22 @@ export function StudentDashboard() {
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">{t('lms.student.dashboard')}</h1>
-          <p className="text-gray-600">{t('lms.student.dashboardWelcome')}</p>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">{t('lms.student.dashboard')}</h1>
+              <p className="text-gray-600">{t('lms.student.dashboardWelcome')}</p>
+            </div>
+            {user && (
+              <button
+                onClick={() => setShowProfileEditor(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md"
+              >
+                <User className="w-4 h-4" />
+                <Edit2 className="w-4 h-4" />
+                <span>{t('lms.student.profile.edit') || 'Редактировать профиль'}</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -371,6 +390,18 @@ export function StudentDashboard() {
           </Link>
         </div>
       </div>
+
+      {/* Profile Editor Modal */}
+      {showProfileEditor && user && (
+        <ProfileEditor
+          user={user}
+          onSave={() => {
+            setShowProfileEditor(false);
+            toast.success(t('lms.student.profile.saveSuccess') || 'Профиль успешно обновлен');
+          }}
+          onCancel={() => setShowProfileEditor(false)}
+        />
+      )}
     </div>
   );
 }

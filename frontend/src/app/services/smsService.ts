@@ -1,6 +1,6 @@
 import { apiClient } from './api';
 
-export type SMSPurpose = 'protocol_sign' | 'registration' | 'password_reset' | 'verification';
+export type SMSPurpose = 'protocol_sign' | 'registration' | 'password_reset' | 'verification' | 'profile_update';
 
 export interface SendSMSResponse {
   message: string;
