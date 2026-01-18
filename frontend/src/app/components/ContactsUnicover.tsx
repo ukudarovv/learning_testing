@@ -101,9 +101,9 @@ export function ContactsUnicover() {
             {/* Google Maps */}
             <GoogleMap 
               address={t('homepage.contacts.info.address.content')}
-              latitude={47.1}
-              longitude={51.9}
-              height="256px"
+              latitude={47.10189431406451}
+              longitude={51.91418497800475}
+              height="400px"
             />
 
             {/* Company Details */}
