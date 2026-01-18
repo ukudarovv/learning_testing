@@ -605,7 +605,8 @@
       }
     },
     "licenses": {
-      "title": "Лицензии"
+      "title": "Лицензии",
+      "categories": "Категории лицензий"
     },
     "vacancies": {
       "title": "Вакансии"

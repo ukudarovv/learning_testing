@@ -5,9 +5,42 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django.http import HttpResponse
 
-from .models import License
-from .serializers import LicenseSerializer, LicenseCreateUpdateSerializer
+from .models import License, LicenseCategory
+from .serializers import (
+    LicenseSerializer, LicenseCreateUpdateSerializer,
+    LicenseCategorySerializer, LicenseCategoryDetailSerializer
+)
 from apps.accounts.permissions import IsAdminOrReadOnly
+
+
+class LicenseCategoryViewSet(viewsets.ModelViewSet):
+    """License Category ViewSet"""
+    queryset = LicenseCategory.objects.all()
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['is_active']
+    search_fields = ['name', 'name_kz', 'name_en', 'description']
+    ordering_fields = ['order', 'name', 'created_at']
+    ordering = ['order', 'name']
+    
+    def get_serializer_class(self):
+        if self.action == 'retrieve':
+            return LicenseCategoryDetailSerializer
+        return LicenseCategorySerializer
+    
+    def get_permissions(self):
+        """Allow read access to all, write access only to admins"""
+        if self.action in ['list', 'retrieve']:
+            return [permissions.AllowAny()]
+        return [IsAdminOrReadOnly()]
+    
+    def get_queryset(self):
+        """Filter categories for public access"""
+        queryset = super().get_queryset()
+        # Для неавторизованных пользователей показываем только активные категории
+        if not hasattr(self.request.user, 'is_authenticated') or not self.request.user.is_authenticated:
+            queryset = queryset.filter(is_active=True)
+        return queryset
 
 
 class LicenseViewSet(viewsets.ModelViewSet):

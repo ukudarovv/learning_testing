@@ -46,13 +46,39 @@ export function ConstructionLicensesPage() {
 
   const filteredLicenses = selectedCategory === 'all' 
     ? licenses 
-    : licenses.filter(license => license.category === selectedCategory);
+    : licenses.filter(license => {
+        // Если category - объект, проверяем slug
+        if (license.category && typeof license.category === 'object' && 'slug' in license.category) {
+          return license.category.slug === selectedCategory;
+        }
+        // Если category - строка (старый формат)
+        if (typeof license.category === 'string') {
+          return license.category === selectedCategory;
+        }
+        return false;
+      });
 
-  const getCategoryLabel = (category: string): string => {
-    if (category === 'all') return t('licenses.categories.all');
-    if (category === 'surveying') return t('licenses.categories.surveying');
-    if (category === 'construction') return t('licenses.categories.construction');
-    return category;
+  const getCategoryLabel = (category: any): string => {
+    // Если категория - объект LicenseCategory
+    if (category && typeof category === 'object' && 'name' in category) {
+      // Используем язык интерфейса
+      if (currentLanguage === 'kz' && category.name_kz) {
+        return category.name_kz;
+      }
+      if (currentLanguage === 'en' && category.name_en) {
+        return category.name_en;
+      }
+      return category.name || '—';
+    }
+    // Если категория - строка (slug или старое значение)
+    if (typeof category === 'string') {
+      if (category === 'all') return t('licenses.categories.all');
+      if (category === 'surveying') return t('licenses.categories.surveying');
+      if (category === 'construction') return t('licenses.categories.construction');
+      return category;
+    }
+    // Если категория - число (ID) или другой тип
+    return '—';
   };
 
   const handleDownload = async (license: License) => {

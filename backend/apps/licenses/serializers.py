@@ -1,20 +1,58 @@
 from rest_framework import serializers
-from .models import License
+from .models import License, LicenseCategory
+
+
+class LicenseCategorySerializer(serializers.ModelSerializer):
+    """License category serializer"""
+    
+    class Meta:
+        model = LicenseCategory
+        fields = [
+            'id', 'name', 'name_kz', 'name_en', 'slug',
+            'description', 'order', 'is_active',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class LicenseCategoryDetailSerializer(serializers.ModelSerializer):
+    """License category detail serializer with licenses count"""
+    licenses_count = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = LicenseCategory
+        fields = [
+            'id', 'name', 'name_kz', 'name_en', 'slug',
+            'description', 'order', 'is_active', 'licenses_count',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'licenses_count']
+    
+    def get_licenses_count(self, obj):
+        """Get count of active licenses in this category"""
+        return obj.licenses.filter(is_active=True).count()
 
 
 class LicenseSerializer(serializers.ModelSerializer):
     """License serializer"""
     file_url = serializers.SerializerMethodField()
-    category_display = serializers.CharField(source='get_category_display', read_only=True)
+    category = LicenseCategorySerializer(read_only=True)
+    category_id = serializers.PrimaryKeyRelatedField(
+        queryset=LicenseCategory.objects.filter(is_active=True),
+        source='category',
+        write_only=True,
+        required=False,
+        allow_null=True
+    )
     
     class Meta:
         model = License
         fields = [
-            'id', 'title', 'number', 'category', 'category_display',
+            'id', 'title', 'number', 'category', 'category_id',
             'description', 'file', 'file_url', 'issued_date', 'valid_until',
             'is_active', 'created_by', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'file_url', 'category_display']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'file_url']
     
     def get_file_url(self, obj):
         """Get file URL"""

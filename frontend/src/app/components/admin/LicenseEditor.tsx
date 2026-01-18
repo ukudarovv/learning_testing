@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Save, Upload, FileText, Trash2 } from 'lucide-react';
-import { License } from '../../services/licenses';
+import { License, licenseCategoriesService, LicenseCategory } from '../../services/licenses';
+import { toast } from 'sonner';
 
 interface LicenseEditorProps {
   license?: License;
@@ -12,7 +13,7 @@ export function LicenseEditor({ license, onSave, onCancel }: LicenseEditorProps)
   const [formData, setFormData] = useState<Partial<License>>({
     title: '',
     number: '',
-    category: 'other',
+    category_id: undefined,
     description: '',
     issued_date: '',
     valid_until: '',
@@ -21,13 +22,45 @@ export function LicenseEditor({ license, onSave, onCancel }: LicenseEditorProps)
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [existingFileUrl, setExistingFileUrl] = useState<string | null>(null);
+  const [categories, setCategories] = useState<LicenseCategory[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setLoadingCategories(true);
+        const data = await licenseCategoriesService.getCategories();
+        setCategories(data.filter(c => c.is_active));
+      } catch (error: any) {
+        console.error('Failed to fetch license categories:', error);
+        toast.error('Ошибка загрузки категорий');
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   useEffect(() => {
     if (license) {
+      // Если category - объект, используем его ID
+      let categoryId: string | number | undefined;
+      if (license.category) {
+        if (typeof license.category === 'object' && 'id' in license.category) {
+          categoryId = license.category.id;
+        } else if (typeof license.category === 'string' || typeof license.category === 'number') {
+          categoryId = license.category;
+        }
+      }
+      // Также проверяем category_id
+      if (license.category_id) {
+        categoryId = license.category_id;
+      }
+
       setFormData({
         title: license.title || '',
         number: license.number || '',
-        category: license.category || 'other',
+        category_id: categoryId,
         description: license.description || '',
         issued_date: license.issued_date ? license.issued_date.split('T')[0] : '',
         valid_until: license.valid_until ? license.valid_until.split('T')[0] : undefined,
@@ -36,8 +69,13 @@ export function LicenseEditor({ license, onSave, onCancel }: LicenseEditorProps)
       if (license.file_url) {
         setExistingFileUrl(license.file_url);
       }
+    } else {
+      // Для новой лицензии устанавливаем первую категорию по умолчанию
+      if (categories.length > 0 && !formData.category_id) {
+        setFormData(prev => ({ ...prev, category_id: categories[0].id }));
+      }
     }
-  }, [license]);
+  }, [license, categories]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,10 +94,17 @@ export function LicenseEditor({ license, onSave, onCancel }: LicenseEditorProps)
     }
 
     // Очищаем valid_until если поле пустое
-    const dataToSave = {
+    // Преобразуем category_id в category для отправки на сервер
+    const dataToSave: any = {
       ...formData,
       valid_until: formData.valid_until || undefined,
     };
+    
+    // Если есть category_id, отправляем его как category
+    if (dataToSave.category_id) {
+      dataToSave.category = dataToSave.category_id;
+      delete dataToSave.category_id;
+    }
 
     onSave(dataToSave, selectedFile || undefined);
   };
@@ -81,12 +126,6 @@ export function LicenseEditor({ license, onSave, onCancel }: LicenseEditorProps)
     setSelectedFile(null);
     setExistingFileUrl(null);
   };
-
-  const categoryOptions = [
-    { value: 'surveying', label: 'Изыскания и проектирование' },
-    { value: 'construction', label: 'Строительство' },
-    { value: 'other', label: 'Прочее' },
-  ];
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4">
@@ -137,18 +176,28 @@ export function LicenseEditor({ license, onSave, onCancel }: LicenseEditorProps)
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Категория <span className="text-red-500">*</span>
             </label>
-            <select
-              value={formData.category || 'other'}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value as any })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              required
-            >
-              {categoryOptions.map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+            {loadingCategories ? (
+              <div className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500">
+                Загрузка категорий...
+              </div>
+            ) : (
+              <select
+                value={formData.category_id || ''}
+                onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
+              >
+                {categories.length === 0 ? (
+                  <option value="">Нет доступных категорий</option>
+                ) : (
+                  categories.map(category => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))
+                )}
+              </select>
+            )}
           </div>
 
           {/* Description */}

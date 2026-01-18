@@ -17,6 +17,7 @@ import { VacancyEditor } from '../admin/VacancyEditor';
 import { ProjectManagement } from '../admin/ProjectManagement';
 import { ProjectEditor } from '../admin/ProjectEditor';
 import { ProjectCategoryManagement } from '../admin/ProjectCategoryManagement';
+import { LicenseCategoryManagement } from '../admin/LicenseCategoryManagement';
 import { PartnerManagement } from '../admin/PartnerManagement';
 import { PartnerEditor } from '../admin/PartnerEditor';
 import { CertificateManagement } from '../admin/CertificateManagement';
@@ -56,7 +57,7 @@ function getStatusText(status: string, t: (key: string) => string): string {
 export function AdminDashboard() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [activeSection, setActiveSection] = useState<'overview' | 'courses' | 'users' | 'tests' | 'reports' | 'categories' | 'licenses' | 'contacts' | 'extra-attempts' | 'vacancies' | 'vacancy-applications' | 'vacancy-statistics' | 'projects' | 'project-categories' | 'partners' | 'certificates' | 'content-pages'>('overview');
+  const [activeSection, setActiveSection] = useState<'overview' | 'courses' | 'users' | 'tests' | 'reports' | 'categories' | 'licenses' | 'license-categories' | 'contacts' | 'extra-attempts' | 'vacancies' | 'vacancy-applications' | 'vacancy-statistics' | 'projects' | 'project-categories' | 'partners' | 'certificates' | 'content-pages'>('overview');
   const [showUserEditor, setShowUserEditor] = useState(false);
   const [showLicenseEditor, setShowLicenseEditor] = useState(false);
   const [showVacancyEditor, setShowVacancyEditor] = useState(false);
@@ -401,6 +402,17 @@ export function AdminDashboard() {
                   <span className="font-medium">{t('admin.dashboard.navigation.licenses')}</span>
                 </button>
                 <button
+                  onClick={() => setActiveSection('license-categories')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                    activeSection === 'license-categories'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <Tag className="w-5 h-5" />
+                  <span className="font-medium">{t('admin.licenses.categories') || 'Категории лицензий'}</span>
+                </button>
+                <button
                   onClick={() => setActiveSection('contacts')}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                     activeSection === 'contacts'
@@ -541,6 +553,9 @@ export function AdminDashboard() {
                 onEdit={handleEditLicense}
                 refreshTrigger={licensesRefreshTrigger}
               />
+            )}
+            {activeSection === 'license-categories' && (
+              <LicenseCategoryManagement refreshTrigger={licensesRefreshTrigger} />
             )}
             {activeSection === 'contacts' && (
               <ContactManagement />

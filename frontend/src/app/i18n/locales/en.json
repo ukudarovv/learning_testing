@@ -598,7 +598,8 @@
       }
     },
     "licenses": {
-      "title": "Licenses"
+      "title": "Licenses",
+      "categories": "License Categories"
     },
     "vacancies": {
       "title": "Vacancies"

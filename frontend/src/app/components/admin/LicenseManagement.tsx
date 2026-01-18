@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { FileText, Plus, Edit, Trash2, Eye, Upload, Download, X, Search, Filter } from 'lucide-react';
-import { licensesService, License } from '../../services/licenses';
+import { licensesService, licenseCategoriesService, License, LicenseCategory } from '../../services/licenses';
 import { toast } from 'sonner';
 
 interface LicenseManagementProps {
@@ -15,19 +15,26 @@ export function LicenseManagement({ onCreate, onEdit, refreshTrigger }: LicenseM
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [filterActive, setFilterActive] = useState<string>('all');
+  const [categories, setCategories] = useState<LicenseCategory[]>([]);
 
-  const categories = [
-    { value: 'all', label: 'Все категории' },
-    { value: 'surveying', label: 'Изыскания и проектирование' },
-    { value: 'construction', label: 'Строительство' },
-    { value: 'other', label: 'Прочее' },
-  ];
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const data = await licenseCategoriesService.getCategories();
+        setCategories(data.filter(c => c.is_active));
+      } catch (error: any) {
+        console.error('Failed to fetch license categories:', error);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   const fetchLicenses = async () => {
     try {
       setLoading(true);
       const params: any = {};
       if (filterCategory !== 'all') {
+        // Если фильтр - ID категории, отправляем как category
         params.category = filterCategory;
       }
       if (filterActive !== 'all') {
@@ -84,12 +91,41 @@ export function LicenseManagement({ onCreate, onEdit, refreshTrigger }: LicenseM
       license.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       license.number.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (license.description && license.description.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    // Фильтр по категории
+    if (filterCategory !== 'all') {
+      const licenseCategoryId = license.category_id || 
+        (license.category && typeof license.category === 'object' && 'id' in license.category ? license.category.id : 
+         (typeof license.category === 'string' || typeof license.category === 'number' ? license.category : null));
+      
+      if (String(licenseCategoryId) !== String(filterCategory)) {
+        return false;
+      }
+    }
+    
     return matchesSearch;
   });
 
-  const getCategoryLabel = (category: string): string => {
-    const cat = categories.find(c => c.value === category);
-    return cat ? cat.label : category;
+  const getCategoryLabel = (category: any): string => {
+    // Если категория - объект LicenseCategory
+    if (category && typeof category === 'object' && 'name' in category) {
+      return category.name || category.name_kz || category.name_en || '—';
+    }
+    // Если категория - строка (slug) или число (ID), пытаемся найти в загруженных категориях
+    if (typeof category === 'string' || typeof category === 'number') {
+      const cat = categories.find(c => c.id === String(category) || c.slug === String(category));
+      if (cat) {
+        return cat.name;
+      }
+      // Fallback для старых значений
+      const oldCategories: Record<string, string> = {
+        'surveying': 'Изыскания и проектирование',
+        'construction': 'Строительство',
+        'other': 'Прочее',
+      };
+      return oldCategories[String(category)] || String(category);
+    }
+    return '—';
   };
 
   if (loading && licenses.length === 0) {
@@ -139,8 +175,9 @@ export function LicenseManagement({ onCreate, onEdit, refreshTrigger }: LicenseM
             onChange={(e) => setFilterCategory(e.target.value)}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
+            <option value="all">Все категории</option>
             {categories.map(cat => (
-              <option key={cat.value} value={cat.value}>{cat.label}</option>
+              <option key={cat.id} value={cat.id}>{cat.name}</option>
             ))}
           </select>
 
@@ -194,7 +231,7 @@ export function LicenseManagement({ onCreate, onEdit, refreshTrigger }: LicenseM
                     <td className="py-4 px-4 text-sm text-gray-700">{license.number}</td>
                     <td className="py-4 px-4">
                       <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded-full">
-                        {license.category_display || getCategoryLabel(license.category)}
+                        {license.category_display || (license.category && typeof license.category === 'object' && 'name' in license.category ? license.category.name : getCategoryLabel(license.category))}
                       </span>
                     </td>
                     <td className="py-4 px-4 text-sm text-gray-700">
