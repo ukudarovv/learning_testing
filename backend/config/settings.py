@@ -19,7 +19,30 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-change-this-in-production'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = [host.strip() for host in os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')]
+ALLOWED_HOSTS = [
+    "api.unicover.kz",
+    "unicover.kz",
+    "www.unicover.kz",
+    "localhost",
+    "127.0.0.1",
+]
+CORS_ALLOWED_ORIGINS = [
+     "https://unicover.kz",
+    "https://www.unicover.kz",
+    "http://localhost:5173",
+    "http://localhost:5175",
+    "http://localhost:3000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5175",
+    "http://127.0.0.1:3000",
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://api.unicover.kz",
+    "https://unicover.kz",
+    "https://www.unicover.kz",
+]
+
 
 # Application definition
 INSTALLED_APPS = [
@@ -178,14 +201,7 @@ SIMPLE_JWT = {
 }
 
 # CORS settings
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://localhost:5175",
-    "http://localhost:3000",
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:5175",
-    "http://127.0.0.1:3000",
-]
+
 
 CORS_ALLOW_CREDENTIALS = True
 
