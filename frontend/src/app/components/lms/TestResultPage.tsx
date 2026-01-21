@@ -40,7 +40,6 @@ export function TestResultPage({
   const [showDetails, setShowDetails] = useState(false);
   const [showSMSVerification, setShowSMSVerification] = useState(false);
   const [loadingOTP, setLoadingOTP] = useState(false);
-  const [currentOTPCode, setCurrentOTPCode] = useState<string | null>(null);
   const [protocolCreated, setProtocolCreated] = useState(false);
   const [protocol, setProtocol] = useState<Protocol | null>(null);
   const [loadingProtocol, setLoadingProtocol] = useState(true);
@@ -98,22 +97,8 @@ export function TestResultPage({
       const response = await testsService.requestCompletionOTP(String(test.id));
       setShowSMSVerification(true);
       
-      // В режиме разработки показываем OTP код в консоли и в toast (если он есть в ответе)
-      if (response.otp_code) {
-        console.log('DEBUG: OTP code for testing:', response.otp_code);
-        setCurrentOTPCode(response.otp_code);
-        
-        if (response.otp_is_new === false) {
-          toast.info(t('lms.test.testCode', { code: response.otp_code }) || `Код для тестирования: ${response.otp_code}`, { duration: 15000 });
-        } else {
-          toast.info(t('lms.test.testCode', { code: response.otp_code }) || `Код для тестирования: ${response.otp_code}`, { duration: 15000 });
-          toast.success(t('lms.test.smsSent') || 'SMS отправлено');
-        }
-      } else {
-        setCurrentOTPCode(null);
-        if (response.otp_is_new !== false) {
-          toast.success(t('lms.test.smsSent') || 'SMS отправлено');
-        }
+      if (response.otp_is_new !== false) {
+        toast.success(t('lms.test.smsSent') || 'SMS отправлено');
       }
     } catch (error: any) {
       toast.error(error.message || t('lms.test.smsRequestError') || 'Ошибка при запросе SMS кода');
@@ -128,11 +113,8 @@ export function TestResultPage({
 
     try {
       setLoadingOTP(true);
-      console.log('Verifying completion OTP for test:', test.id);
       const response = await testsService.verifyCompletionOTP(String(test.id), otp);
-      console.log('OTP verification response:', response);
       setShowSMSVerification(false);
-      setCurrentOTPCode(null);
       setProtocolCreated(true);
       
       // Загружаем созданный протокол
@@ -428,20 +410,14 @@ export function TestResultPage({
           onVerified={handleSMSVerified}
           onCancel={() => {
             setShowSMSVerification(false);
-            setCurrentOTPCode(null);
           }}
           title={t('lms.test.completionTitle') || 'Завершение теста'}
           description={t('lms.test.completionDescription') || 'Введите код подтверждения из SMS для завершения теста'}
-          otpCode={currentOTPCode || undefined}
           purpose="verification"
           onResend={async () => {
             if (test?.id) {
               const response = await testsService.requestCompletionOTP(String(test.id));
-              if (response.otp_code) {
-                setCurrentOTPCode(response.otp_code);
-                toast.info(t('lms.test.testCode', { code: response.otp_code }) || `Код для тестирования: ${response.otp_code}`, { duration: 15000 });
-              } else {
-                setCurrentOTPCode(null);
+              if (response.otp_is_new !== false) {
                 toast.success(t('lms.test.smsSent') || 'SMS отправлено');
               }
             }

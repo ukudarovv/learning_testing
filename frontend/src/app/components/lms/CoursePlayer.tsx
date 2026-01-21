@@ -49,7 +49,6 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
   const [loadingExtraRequest, setLoadingExtraRequest] = useState(false);
   const [showSMSVerification, setShowSMSVerification] = useState(false);
   const [loadingOTP, setLoadingOTP] = useState(false);
-  const [currentOTPCode, setCurrentOTPCode] = useState<string | null>(null);
   const [finalTestPassed, setFinalTestPassed] = useState(false);
   const [loadingFinalTestStatus, setLoadingFinalTestStatus] = useState(false);
   const [finalTestAttempts, setFinalTestAttempts] = useState<TestAttempt[]>([]);
@@ -401,28 +400,9 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
       const response = await coursesService.requestCompletionOTP(course.id);
       setShowSMSVerification(true);
       
-      // В режиме разработки показываем OTP код в консоли и в toast (если он есть в ответе)
-      if (response.otp_code) {
-        console.log('DEBUG: OTP code for testing:', response.otp_code);
-        setCurrentOTPCode(response.otp_code); // Сохраняем код для отображения в модальном окне
-        
-        // Показываем сообщение в зависимости от того, новый это OTP или существующий
-        if (response.otp_is_new === false) {
-          // Существующий OTP, не отправляем сообщение об отправке SMS
-          toast.info(t('lms.coursePlayer.testCode', { code: response.otp_code }), { duration: 15000 });
-        } else {
-          // Новый OTP, показываем сообщение об отправке
-          toast.info(t('lms.coursePlayer.testCode', { code: response.otp_code }), { duration: 15000 });
-          toast.success(t('lms.coursePlayer.smsSent'));
-        }
-      } else {
-        setCurrentOTPCode(null);
-        // Если otp_code нет в ответе, значит это продакшн режим с SMSC.kz
-        // Показываем сообщение только если это новый OTP (otp_is_new === true или undefined для обратной совместимости)
-        if (response.otp_is_new !== false) {
-          toast.success(t('lms.coursePlayer.smsSent'));
-        }
-        // Если otp_is_new === false, значит используется существующий OTP, сообщение не показываем
+      // Показываем сообщение только если это новый OTP
+      if (response.otp_is_new !== false) {
+        toast.success(t('lms.coursePlayer.smsSent'));
       }
     } catch (error: any) {
       toast.error(error.message || t('lms.coursePlayer.smsRequestError'));
@@ -437,20 +417,13 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
 
     try {
       setLoadingOTP(true);
-      console.log('Verifying completion OTP for course:', course.id);
-      const response = await coursesService.verifyCompletionOTP(course.id, otp);
-      console.log('OTP verification response:', response);
+      await coursesService.verifyCompletionOTP(course.id, otp);
       setShowSMSVerification(false);
-      setCurrentOTPCode(null); // Очищаем OTP код после успешной верификации
       toast.success(t('lms.coursePlayer.courseCompletedSuccess'));
-      // Refresh course data to update enrollment status
-      console.log('Calling onCourseComplete to refresh course data...');
       await onCourseComplete();
-      console.log('Course data refreshed');
     } catch (error: any) {
       toast.error(error.message || t('lms.coursePlayer.smsVerifyError'));
       console.error('Failed to verify completion OTP:', error);
-      // Don't close SMS modal on error, let user try again
     } finally {
       setLoadingOTP(false);
     }
@@ -1675,20 +1648,14 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
           onVerified={handleSMSVerified}
           onCancel={() => {
             setShowSMSVerification(false);
-            setCurrentOTPCode(null);
           }}
           title="Завершение курса"
           description="Введите код подтверждения из SMS для завершения курса"
-          otpCode={currentOTPCode || undefined}
           purpose="verification"
           onResend={async () => {
             if (course.id) {
               const response = await coursesService.requestCompletionOTP(course.id);
-              if (response.otp_code) {
-                setCurrentOTPCode(response.otp_code);
-                toast.info(t('lms.coursePlayer.testCode', { code: response.otp_code }), { duration: 15000 });
-              } else {
-                setCurrentOTPCode(null);
+              if (response.otp_is_new !== false) {
                 toast.success(t('lms.coursePlayer.smsSent'));
               }
             }

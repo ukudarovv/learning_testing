@@ -9,7 +9,6 @@ interface SMSVerificationProps {
   onCancel: () => void;
   title?: string;
   description?: string;
-  otpCode?: string; // Для отображения OTP кода в режиме разработки
   purpose?: SMSPurpose; // Purpose of SMS verification
   onResend?: () => Promise<void>; // Optional callback for resend
 }
@@ -20,7 +19,6 @@ export function SMSVerification({
   onCancel,
   title,
   description,
-  otpCode,
   purpose = 'verification',
   onResend
 }: SMSVerificationProps) {
@@ -132,23 +130,6 @@ export function SMSVerification({
             <Phone className="w-4 h-4" />
             <span>{t('lms.coursePlayer.smsVerificationCodeSent', { phone: maskPhone(phone) })}</span>
           </div>
-          
-          {/* Display OTP code in debug mode */}
-          {otpCode && (
-            <div className="mt-4 p-4 bg-blue-50 border-2 border-blue-300 rounded-lg">
-              <p className="text-sm font-semibold text-blue-900 mb-2 text-center">
-                🔑 {t('lms.coursePlayer.smsVerificationTestCode')}
-              </p>
-              <div className="text-center">
-                <div className="inline-block bg-white px-6 py-3 rounded-lg border-2 border-blue-400">
-                  <span className="text-3xl font-bold text-blue-600 tracking-wider">{otpCode}</span>
-                </div>
-              </div>
-              <p className="text-xs text-blue-700 mt-2 text-center">
-                {t('lms.coursePlayer.smsVerificationEnterCode')}
-              </p>
-            </div>
-          )}
         </div>
 
         {error && (

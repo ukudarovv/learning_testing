@@ -15,7 +15,6 @@ export function PDEKDashboard() {
   const [showSMSModal, setShowSMSModal] = useState(false);
   const [protocolToSign, setProtocolToSign] = useState<Protocol | null>(null);
   const [loading, setLoading] = useState(false);
-  const [currentOTPCode, setCurrentOTPCode] = useState<string | null>(null);
 
   const isChairman = currentUser?.role === 'pdek_chairman';
   
@@ -70,20 +69,10 @@ export function PDEKDashboard() {
   const handleSignRequest = async (protocol: Protocol) => {
     try {
       setLoading(true);
-      const response = await protocolsService.requestSignature(protocol.id);
+      await protocolsService.requestSignature(protocol.id);
       setProtocolToSign(protocol);
       setShowSMSModal(true);
-      
-      // В режиме разработки показываем OTP код в консоли и в toast (если он есть в ответе)
-      if ((response as any).otp_code) {
-        const otpCode = (response as any).otp_code;
-        console.log('DEBUG: OTP code for testing:', otpCode);
-        setCurrentOTPCode(otpCode); // Сохраняем код для отображения в модальном окне
-        toast.info(t('lms.pdek.testCode', { code: otpCode }), { duration: 15000 });
-      } else {
-        setCurrentOTPCode(null);
       toast.success(t('lms.pdek.otpSent'));
-      }
     } catch (error: any) {
       toast.error(error.message || t('lms.pdek.signRequestError'));
     } finally {
@@ -96,10 +85,7 @@ export function PDEKDashboard() {
 
     try {
       setLoading(true);
-      const updatedProtocol = await protocolsService.signProtocol(protocolToSign.id, otp);
-      console.log('Protocol signed, updated protocol:', updatedProtocol);
-      console.log('Updated protocol signatures:', updatedProtocol.signatures);
-      setCurrentOTPCode(null); // Очищаем OTP код после успешной верификации
+      await protocolsService.signProtocol(protocolToSign.id, otp);
       toast.success(t('lms.pdek.signSuccess'));
       setShowSMSModal(false);
       setProtocolToSign(null);
@@ -466,22 +452,14 @@ export function PDEKDashboard() {
           onCancel={() => {
             setShowSMSModal(false);
             setProtocolToSign(null);
-            setCurrentOTPCode(null);
           }}
           title={t('lms.pdek.protocolNumber', { number: protocolToSign.number })}
           description={t('lms.pdek.otpDescription')}
-          otpCode={currentOTPCode || undefined}
           purpose="protocol_sign"
           onResend={async () => {
             if (protocolToSign) {
-              const response = await protocolsService.requestSignature(protocolToSign.id);
-              if ((response as any).otp_code) {
-                setCurrentOTPCode((response as any).otp_code);
-                toast.info(t('lms.pdek.testCode', { code: (response as any).otp_code }), { duration: 15000 });
-              } else {
-                setCurrentOTPCode(null);
-                toast.success(t('lms.pdek.otpSent'));
-              }
+              await protocolsService.requestSignature(protocolToSign.id);
+              toast.success(t('lms.pdek.otpSent'));
             }
           }}
         />

@@ -34,7 +34,6 @@ export function ProfileEditor({ user, onSave, onCancel }: ProfileEditorProps) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showSMSVerification, setShowSMSVerification] = useState(false);
-  const [otpCode, setOtpCode] = useState<string>('');
   const [sendingSMS, setSendingSMS] = useState(false);
   const [phoneChanged, setPhoneChanged] = useState(false);
 
@@ -77,10 +76,7 @@ export function ProfileEditor({ user, onSave, onCancel }: ProfileEditorProps) {
     if (phoneChanged) {
       try {
         setSendingSMS(true);
-        const smsResponse = await smsService.sendVerificationCode(formData.phone || '', 'verification');
-        if (smsResponse.otp_code) {
-          setOtpCode(smsResponse.otp_code);
-        }
+        await smsService.sendVerificationCode(formData.phone || '', 'verification');
         setShowSMSVerification(true);
         setError('');
       } catch (err: any) {
@@ -154,10 +150,7 @@ export function ProfileEditor({ user, onSave, onCancel }: ProfileEditorProps) {
   const handleResendSMS = async () => {
     try {
       setSendingSMS(true);
-      const smsResponse = await smsService.sendVerificationCode(formData.phone || '', 'verification');
-      if (smsResponse.otp_code) {
-        setOtpCode(smsResponse.otp_code);
-      }
+      await smsService.sendVerificationCode(formData.phone || '', 'verification');
       setError('');
     } catch (err: any) {
       setError(err.message || 'Ошибка отправки SMS кода.');
@@ -413,7 +406,6 @@ export function ProfileEditor({ user, onSave, onCancel }: ProfileEditorProps) {
           onCancel={() => setShowSMSVerification(false)}
           title={t('lms.student.profile.smsVerificationTitle') || 'Подтверждение изменения телефона'}
           description={t('lms.student.profile.smsVerificationDescription', { phone: formData.phone }) || `На номер ${formData.phone} отправлен SMS код. Введите его для подтверждения изменения телефона.`}
-          otpCode={otpCode}
           purpose="verification"
           onResend={handleResendSMS}
         />
