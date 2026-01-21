@@ -603,6 +603,7 @@
       "isStandalone": "Можно проходить без курса",
       "standaloneTestWarning": "⚠️ Для автономного теста необходимо выбрать категорию. Тест будет отображаться на странице Training Programs.",
       "standaloneTestRequiresCategory": "Для автономного теста необходимо выбрать категорию",
+      "requiresVideoRecording": "Требуется видеозапись",
       "questionTypes": {
         "singleChoice": "Один правильный ответ",
         "multipleChoice": "Несколько правильных ответов",

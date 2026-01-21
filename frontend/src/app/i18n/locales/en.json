@@ -596,6 +596,7 @@
       "isStandalone": "Can be taken without a course",
       "standaloneTestWarning": "⚠️ For a standalone test, you must select a category. The test will be displayed on the Training Programs page.",
       "standaloneTestRequiresCategory": "For a standalone test, you must select a category",
+      "requiresVideoRecording": "Requires video recording",
       "questionTypes": {
         "singleChoice": "Single Choice",
         "multipleChoice": "Multiple Choice",

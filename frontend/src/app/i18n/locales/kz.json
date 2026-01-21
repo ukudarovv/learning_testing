@@ -596,6 +596,7 @@
       "isStandalone": "Курссыз өтуге болады",
       "standaloneTestWarning": "⚠️ Автономды тест үшін категорияны таңдау керек. Тест Training Programs бетінде көрсетіледі.",
       "standaloneTestRequiresCategory": "Автономды тест үшін категорияны таңдау керек",
+      "requiresVideoRecording": "Бейне жазу қажет",
       "questionTypes": {
         "singleChoice": "Бір дұрыс жауап",
         "multipleChoice": "Бірнеше дұрыс жауап",
