@@ -28,6 +28,8 @@
     "view": "View",
     "close": "Close",
     "back": "Back",
+    "refresh": "Refresh",
+    "retry": "Retry",
     "next": "Next",
     "previous": "Previous",
     "submit": "Submit",
@@ -549,8 +551,12 @@
         "text": "Text",
         "video": "Video",
         "pdf": "PDF",
+        "ppt": "PPT",
         "quiz": "Test"
-      }
+      },
+      "pptUrl": "PPT URL",
+      "uploadPpt": "Upload PPT file",
+      "allowDownloadPpt": "Allow download"
     },
     "tests": {
       "title": "Tests",
@@ -627,6 +633,36 @@
     },
     "extraAttempts": {
       "title": "Extra Attempts"
+    },
+    "testAttempts": {
+      "title": "Test Attempts",
+      "subtitle": "View all test attempts with video recordings",
+      "loading": "Loading attempts...",
+      "error": "Error",
+      "searchPlaceholder": "Search by student or test...",
+      "allTests": "All Tests",
+      "allResults": "All Results",
+      "allDates": "All Dates",
+      "today": "Today",
+      "week": "This Week",
+      "month": "This Month",
+      "passed": "Passed",
+      "failed": "Failed",
+      "noAttempts": "No attempts found",
+      "student": "Student",
+      "test": "Test",
+      "score": "Score",
+      "result": "Result",
+      "date": "Date",
+      "video": "Video",
+      "actions": "Actions",
+      "hasVideo": "Yes",
+      "noVideo": "No",
+      "view": "View",
+      "videoRecording": "Test Attempt Video Recording",
+      "download": "Download Video",
+      "videoNotSupported": "Your browser does not support video playback.",
+      "videoNotAvailable": "Video recording not available"
     },
     "dashboard": {
       "title": "Admin Dashboard",
@@ -1149,7 +1185,10 @@
       "saveError": "Save error",
       "recording": "Recording",
       "recordingError": "Recording error",
-      "attempts": "Attempts"
+      "attempts": "Attempts",
+      "videoRequired": "Video Recording Required",
+      "videoRequiredMessage": "Video recording is required to take this test. Please allow camera access to continue.",
+      "requestVideoPermission": "Allow Video Recording"
     }
   },
   "pages": {
@@ -1309,6 +1348,42 @@
       "privacyLink": "privacy policy",
       "important": "Important:",
       "importantMessage": "After registration, you will receive an SMS with a confirmation code to the specified phone number to activate your account."
+    },
+    "passwordReset": {
+      "title": "Password Recovery",
+      "subtitle": "Enter your phone number to receive a recovery code",
+      "verifyTitle": "Verify Code",
+      "verifySubtitle": "Enter the SMS code",
+      "setPasswordTitle": "New Password",
+      "setPasswordSubtitle": "Enter your new password",
+      "phone": "Phone Number",
+      "phonePlaceholder": "+7 (XXX) XXX-XX-XX",
+      "phoneHint": "We will send an SMS code to this number",
+      "code": "Verification Code",
+      "codePlaceholder": "XXXXXX",
+      "newPassword": "New Password",
+      "newPasswordPlaceholder": "Enter new password",
+      "confirmPassword": "Confirm Password",
+      "confirmPasswordPlaceholder": "Repeat new password",
+      "passwordHint": "Minimum 8 characters",
+      "sendCode": "Send Code",
+      "sending": "Sending...",
+      "verifyCode": "Verify Code",
+      "verifying": "Verifying...",
+      "resetPassword": "Reset Password",
+      "resetting": "Resetting...",
+      "back": "Back",
+      "backToLogin": "Back to Login",
+      "codeSent": "Verification code has been sent to your phone number",
+      "codeVerified": "Code verified successfully",
+      "success": "Password has been reset successfully!",
+      "loginWithNewPassword": "You can now login with your new password",
+      "requestError": "Error sending code. Please check your phone number and try again.",
+      "codeVerificationError": "Error verifying code. Please check the code and try again.",
+      "confirmError": "Error resetting password. Please check the data and try again.",
+      "passwordsDoNotMatch": "Passwords do not match",
+      "passwordTooShort": "Password must be at least 8 characters long",
+      "debugCode": "Test Code (Development Only)"
     }
   },
   "messages": {

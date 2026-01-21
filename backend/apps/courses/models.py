@@ -123,6 +123,7 @@ class Lesson(models.Model):
         ('text', 'Text'),
         ('video', 'Video'),
         ('pdf', 'PDF'),
+        ('ppt', 'PPT'),
         ('quiz', 'Quiz'),
     ]
     
@@ -147,6 +148,7 @@ class Lesson(models.Model):
     video_url = models.URLField(blank=True, null=True)
     thumbnail_url = models.URLField(blank=True, null=True)
     pdf_url = models.URLField(blank=True, null=True)
+    ppt_url = models.URLField(blank=True, null=True)
     test_id = models.CharField(max_length=100, blank=True, null=True, help_text='Test ID for quiz type')
     duration = models.IntegerField(default=0, help_text='Duration in minutes')
     order = models.IntegerField(default=0)

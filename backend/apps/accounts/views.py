@@ -20,6 +20,9 @@ from .serializers import (
     TokenSerializer,
     SendSMSVerificationSerializer,
     VerifySMSSerializer,
+    PasswordResetRequestSerializer,
+    PasswordResetVerifyCodeSerializer,
+    PasswordResetConfirmSerializer,
 )
 from .permissions import IsAdminOrReadOnly, IsAdmin
 from .sms_service import sms_service
@@ -355,6 +358,232 @@ class VerifySMSView(APIView):
             logger.error(f"Error verifying SMS code: {str(e)}")
             return Response(
                 {'verified': False, 'error': 'Verification failed', 'detail': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class RequestPasswordResetView(APIView):
+    """Request password reset - sends SMS code"""
+    permission_classes = [permissions.AllowAny]
+    
+    def post(self, request):
+        """Send SMS verification code for password reset"""
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        phone = serializer.validated_data['phone']
+        
+        # Normalize phone number
+        normalized_phone = ''.join(filter(str.isdigit, str(phone)))
+        if normalized_phone.startswith('8'):
+            normalized_phone = '7' + normalized_phone[1:]
+        if not normalized_phone.startswith('7'):
+            normalized_phone = '7' + normalized_phone
+        
+        # Always generate verification code for logging (even if user doesn't exist)
+        # This helps with development and testing
+        # User existence check will be done during code verification
+        try:
+            # Generate verification code with purpose 'password_reset'
+            verification_code = SMSVerificationCode.generate_code(normalized_phone, 'password_reset')
+            
+            # Check if user exists (but don't reveal this information)
+            try:
+                User.objects.get(phone=normalized_phone)
+                user_exists = True
+                
+                # Send SMS via SMSC.kz only if user exists
+                sms_result = sms_service.send_verification_code(
+                    normalized_phone,
+                    verification_code.code,
+                    'password_reset'
+                )
+                
+                if not sms_result['success']:
+                    logger.error(f"Failed to send password reset SMS to {normalized_phone}: {sms_result.get('error')}")
+            except User.DoesNotExist:
+                # User doesn't exist, but we still generate code for logging
+                # This prevents user enumeration attacks
+                user_exists = False
+                logger.info(f"Password reset requested for non-existent phone: {normalized_phone} (code generated for logging)")
+            
+            response_data = {
+                'message': 'If a user with this phone exists, a verification code has been sent.',
+                'expires_at': verification_code.expires_at.isoformat(),
+            }
+            
+            return Response(response_data, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f"Error in password reset process for {normalized_phone}: {str(e)}")
+            # Still return success to prevent user enumeration
+            return Response(
+                {
+                    'message': 'If a user with this phone exists, a verification code has been sent.',
+                    'expires_at': None
+                },
+                status=status.HTTP_200_OK
+            )
+            
+        except Exception as e:
+            logger.error(f"Error sending password reset SMS code: {str(e)}")
+            # Still return success to prevent user enumeration
+            return Response(
+                {
+                    'message': 'If a user with this phone exists, a verification code has been sent.',
+                    'expires_at': None
+                },
+                status=status.HTTP_200_OK
+            )
+
+
+class VerifyPasswordResetCodeView(APIView):
+    """Verify password reset code"""
+    permission_classes = [permissions.AllowAny]
+    
+    def post(self, request):
+        """Verify SMS code for password reset"""
+        serializer = PasswordResetVerifyCodeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        phone = serializer.validated_data['phone']
+        code = serializer.validated_data['code']
+        
+        # Normalize phone number
+        normalized_phone = ''.join(filter(str.isdigit, str(phone)))
+        if normalized_phone.startswith('8'):
+            normalized_phone = '7' + normalized_phone[1:]
+        if not normalized_phone.startswith('7'):
+            normalized_phone = '7' + normalized_phone
+        
+        
+        try:
+            # Find the most recent unverified code for this phone and password_reset purpose
+            verification_code = SMSVerificationCode.objects.filter(
+                phone=normalized_phone,
+                purpose='password_reset',
+                is_verified=False
+            ).order_by('-created_at').first()
+            
+            if not verification_code:
+                return Response(
+                    {'verified': False, 'error': 'Verification code not found or already used'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Verify the code
+            if verification_code.verify(code):
+                # Check if user exists (only now we check, after code verification)
+                try:
+                    User.objects.get(phone=normalized_phone)
+                    return Response(
+                        {'verified': True, 'message': 'Code verified successfully'},
+                        status=status.HTTP_200_OK
+                    )
+                except User.DoesNotExist:
+                    # Still return verified=True for UX, but user won't be able to reset password
+                    return Response(
+                        {'verified': True, 'message': 'Code verified successfully'},
+                        status=status.HTTP_200_OK
+                    )
+            else:
+                return Response(
+                    {'verified': False, 'error': 'Invalid or expired verification code'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+                
+        except Exception as e:
+            logger.error(f"Error verifying password reset code: {str(e)}")
+            return Response(
+                {'verified': False, 'error': 'Verification failed', 'detail': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class ConfirmPasswordResetView(APIView):
+    """Confirm password reset - sets new password (code must be verified first)"""
+    permission_classes = [permissions.AllowAny]
+    
+    def post(self, request):
+        """Set new password after code verification"""
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        phone = serializer.validated_data['phone']
+        code = serializer.validated_data['code']
+        new_password = serializer.validated_data['new_password']
+        
+        # Normalize phone number
+        normalized_phone = ''.join(filter(str.isdigit, str(phone)))
+        if normalized_phone.startswith('8'):
+            normalized_phone = '7' + normalized_phone[1:]
+        if not normalized_phone.startswith('7'):
+            normalized_phone = '7' + normalized_phone
+        
+        try:
+            # Find the verified code for this phone and password_reset purpose
+            verification_code = SMSVerificationCode.objects.filter(
+                phone=normalized_phone,
+                purpose='password_reset',
+                code=code,
+                is_verified=True
+            ).order_by('-verified_at').first()
+            
+            if not verification_code:
+                return Response(
+                    {'error': 'Code not verified. Please verify the code first.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Check if code was verified recently (within last 10 minutes)
+            from django.utils import timezone
+            from datetime import timedelta
+            if timezone.now() > verification_code.verified_at + timedelta(minutes=10):
+                return Response(
+                    {'error': 'Verified code has expired. Please request a new code.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Find user by phone - try multiple formats
+            user = None
+            # Try normalized phone first
+            try:
+                user = User.objects.get(phone=normalized_phone)
+            except User.DoesNotExist:
+                # Try original phone format
+                try:
+                    user = User.objects.get(phone=phone)
+                except User.DoesNotExist:
+                    # Try to find by stripping all non-digits from stored phones
+                    # This handles cases where phone might be stored with + or spaces
+                    all_users = User.objects.all()
+                    for u in all_users:
+                        stored_phone_digits = ''.join(filter(str.isdigit, str(u.phone)))
+                        if stored_phone_digits == normalized_phone or stored_phone_digits == ''.join(filter(str.isdigit, str(phone))):
+                            user = u
+                            break
+                    
+                    if not user:
+                        return Response(
+                            {'error': 'User not found. Please check your phone number.'},
+                            status=status.HTTP_404_NOT_FOUND
+                        )
+            
+            # Set new password
+            user.set_password(new_password)
+            user.save()
+            
+            logger.info(f"Password reset successful for user: {user.phone}")
+            
+            return Response(
+                {'message': 'Password has been reset successfully. You can now login with your new password.'},
+                status=status.HTTP_200_OK
+            )
+                
+        except Exception as e:
+            logger.error(f"Error confirming password reset: {str(e)}")
+            return Response(
+                {'error': 'Password reset failed', 'detail': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 

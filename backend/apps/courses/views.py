@@ -4,6 +4,17 @@ from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django.utils import timezone
+from django.http import FileResponse, Http404
+from django.conf import settings
+import os
+import subprocess
+import logging
+import urllib.parse
+import tempfile
+import requests
+from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 from .models import Category, Course, Module, Lesson, CourseEnrollment, LessonProgress, CourseCompletionVerification
 from .serializers import (
@@ -644,4 +655,185 @@ class LessonViewSet(viewsets.ReadOnlyModelViewSet):
             'progress': enrollment.progress,
             'all_lessons_completed': all_lessons_completed
         }, status=status.HTTP_200_OK)
+    
+    def ppt_to_pdf(self, request, pk=None):
+        """Convert PPT/PPTX file to PDF"""
+        logger.info(f'ppt_to_pdf called with pk={pk}, user={request.user.id if request.user.is_authenticated else "anonymous"}')
+        
+        try:
+            lesson = self.get_object()
+            logger.info(f'Lesson found: id={lesson.id}, ppt_url={lesson.ppt_url}')
+        except Exception as e:
+            logger.error(f'Error getting lesson with pk={pk}: {str(e)}')
+            return Response(
+                {'error': f'Lesson not found: {str(e)}'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        ppt_url = lesson.ppt_url or ''
+        if not ppt_url:
+            logger.warning(f'PPT URL not found for lesson {lesson.id}')
+            return Response(
+                {'error': 'PPT URL not found for this lesson'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Build full URL
+        if ppt_url.startswith('/'):
+            # Relative URL - build absolute URL
+            api_base_url = request.build_absolute_uri('/').rstrip('/')
+            full_ppt_url = f"{api_base_url}{ppt_url}"
+        elif ppt_url.startswith('http'):
+            # Absolute URL
+            full_ppt_url = ppt_url
+        else:
+            return Response(
+                {'error': 'Invalid PPT URL format'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check file extension
+        parsed_url = urllib.parse.urlparse(ppt_url)
+        file_ext = os.path.splitext(parsed_url.path)[1].lower()
+        if file_ext not in ['.ppt', '.pptx']:
+            return Response(
+                {'error': 'File must be PPT or PPTX format'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Create cache directory for converted PDFs
+        cache_dir = os.path.join(settings.MEDIA_ROOT, 'ppt_cache')
+        os.makedirs(cache_dir, exist_ok=True)
+        
+        # Generate cache filename
+        cache_filename = f"lesson_{lesson.id}_{os.path.basename(parsed_url.path)}.pdf"
+        cache_path = os.path.join(cache_dir, cache_filename)
+        
+        # Check if PDF already exists in cache
+        if os.path.exists(cache_path):
+            logger.info(f'PDF cache hit: {cache_path}')
+            return FileResponse(
+                open(cache_path, 'rb'),
+                content_type='application/pdf',
+                filename=os.path.basename(cache_path),
+                as_attachment=False  # Display inline
+            )
+        
+        # Download PPT file temporarily
+        try:
+            # Prepare headers for authenticated request
+            headers = {}
+            if request.user.is_authenticated:
+                # Try to get authorization token from request
+                auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+                if auth_header:
+                    headers['Authorization'] = auth_header
+            
+            # Download file
+            response = requests.get(full_ppt_url, headers=headers, timeout=30)
+            response.raise_for_status()
+            
+            # Save to temporary file
+            with tempfile.NamedTemporaryFile(delete=False, suffix=file_ext) as tmp_file:
+                tmp_file.write(response.content)
+                tmp_ppt_path = tmp_file.name
+            
+            # Convert to PDF
+            if self._convert_with_libreoffice(tmp_ppt_path, cache_path):
+                # Clean up temp file
+                os.unlink(tmp_ppt_path)
+                
+                logger.info(f'Successfully converted PPT to PDF: {cache_path}')
+                return FileResponse(
+                    open(cache_path, 'rb'),
+                    content_type='application/pdf',
+                    filename=os.path.basename(cache_path),
+                    as_attachment=False
+                )
+            else:
+                # Clean up temp file
+                os.unlink(tmp_ppt_path)
+                return Response(
+                    {'error': 'LibreOffice not available. Please install LibreOffice for PPT/PPTX conversion.'},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE
+                )
+                
+        except requests.RequestException as e:
+            logger.error(f'Error downloading PPT file: {str(e)}')
+            return Response(
+                {'error': f'Failed to download PPT file: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        except Exception as e:
+            logger.error(f'Error converting PPT to PDF: {str(e)}')
+            return Response(
+                {'error': f'Conversion failed: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    def _convert_with_libreoffice(self, input_path, output_path):
+        """Convert PPT/PPTX to PDF using LibreOffice headless"""
+        try:
+            # Create output directory if it doesn't exist
+            output_dir = os.path.dirname(output_path)
+            os.makedirs(output_dir, exist_ok=True)
+            
+            # Try different LibreOffice command names
+            libreoffice_cmd = None
+            for cmd in ['libreoffice', 'soffice', '/usr/bin/libreoffice', 'C:\\Program Files\\LibreOffice\\program\\soffice.exe']:
+                try:
+                    result = subprocess.run(
+                        [cmd, '--version'],
+                        capture_output=True,
+                        timeout=5
+                    )
+                    if result.returncode == 0:
+                        libreoffice_cmd = cmd
+                        break
+                except (FileNotFoundError, subprocess.TimeoutExpired):
+                    continue
+            
+            if not libreoffice_cmd:
+                logger.warning('LibreOffice not found')
+                return False
+            
+            # Convert file
+            result = subprocess.run(
+                [
+                    libreoffice_cmd,
+                    '--headless',
+                    '--convert-to', 'pdf',
+                    '--outdir', output_dir,
+                    input_path
+                ],
+                capture_output=True,
+                timeout=60,  # 60 seconds timeout
+                cwd=output_dir
+            )
+            
+            if result.returncode == 0:
+                # LibreOffice outputs PDF with same name but .pdf extension
+                expected_pdf = os.path.join(
+                    output_dir,
+                    os.path.basename(input_path).replace(os.path.splitext(input_path)[1], '.pdf')
+                )
+                
+                if os.path.exists(expected_pdf):
+                    # Rename to match expected output path if different
+                    if expected_pdf != output_path:
+                        os.rename(expected_pdf, output_path)
+                    return True
+                else:
+                    logger.warning(f'PDF file not found after conversion: {expected_pdf}')
+                    return False
+            else:
+                logger.error(f'LibreOffice conversion failed: {result.stderr.decode()}')
+                return False
+                
+        except subprocess.TimeoutExpired:
+            logger.error('LibreOffice conversion timeout')
+            return False
+        except Exception as e:
+            logger.error(f'Error in LibreOffice conversion: {str(e)}')
+            return False
 

@@ -53,6 +53,32 @@ const examsService = {
     return [];
   },
 
+  async getAllAttempts(): Promise<TestAttempt[]> {
+    // Для администратора используем стандартный list endpoint
+    // Backend вернет все попытки для админа через get_queryset()
+    const data = await apiClient.get<any>('/exams/');
+    
+    if (Array.isArray(data)) {
+      return data;
+    }
+    
+    // Проверяем пагинированный ответ Django REST Framework
+    if (data && typeof data === 'object') {
+      if (Array.isArray(data.results)) {
+        return data.results;
+      }
+      if (Array.isArray(data.data)) {
+        return data.data;
+      }
+      if (Array.isArray(data.attempts)) {
+        return data.attempts;
+      }
+    }
+    
+    console.warn('Unexpected response format for all test attempts, returning empty array:', data);
+    return [];
+  },
+
   async getTestAttempts(testId: string): Promise<TestAttempt[]> {
     const data = await apiClient.get<any>(`/exams/test_attempts/?test_id=${testId}`);
     

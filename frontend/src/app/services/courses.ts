@@ -81,6 +81,7 @@ const coursesService = {
                 videoUrl: lesson.video_url || lesson.videoUrl,
                 thumbnailUrl: lesson.thumbnail_url || lesson.thumbnailUrl,
                 pdfUrl: lesson.pdf_url || lesson.pdfUrl,
+                pptUrl: lesson.ppt_url || lesson.pptUrl,
                 testId: lesson.test_id || lesson.testId,
                 passingScore: lesson.passing_score || lesson.passingScore,
                 maxAttempts: lesson.max_attempts || lesson.maxAttempts,
@@ -206,6 +207,9 @@ const coursesService = {
             } else if (lesson.type === 'pdf') {
               backendLesson.pdf_url = lesson.pdfUrl || lesson.pdf_url || '';
               backendLesson.allow_download = lesson.allowDownload || lesson.allow_download || false;
+            } else if (lesson.type === 'ppt') {
+              backendLesson.ppt_url = lesson.pptUrl || lesson.ppt_url || '';
+              backendLesson.allow_download = lesson.allowDownload || lesson.allow_download || false;
             } else if (lesson.type === 'quiz') {
               backendLesson.test_id = lesson.testId || lesson.test_id || null;
               backendLesson.passing_score = lesson.passingScore || lesson.passing_score || 80;
@@ -292,6 +296,9 @@ const coursesService = {
               backendLesson.track_progress = lesson.trackProgress || lesson.track_progress || false;
             } else if (lesson.type === 'pdf') {
               backendLesson.pdf_url = lesson.pdfUrl || lesson.pdf_url || '';
+              backendLesson.allow_download = lesson.allowDownload || lesson.allow_download || false;
+            } else if (lesson.type === 'ppt') {
+              backendLesson.ppt_url = lesson.pptUrl || lesson.ppt_url || '';
               backendLesson.allow_download = lesson.allowDownload || lesson.allow_download || false;
             } else if (lesson.type === 'quiz') {
               backendLesson.test_id = lesson.testId || lesson.test_id || null;

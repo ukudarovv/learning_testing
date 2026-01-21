@@ -267,3 +267,71 @@ class VerifySMSSerializer(serializers.Serializer):
             raise serializers.ValidationError('Code must contain only digits.')
         return value
 
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    """Serializer for requesting password reset"""
+    phone = serializers.CharField(required=True, max_length=20)
+    
+    def validate_phone(self, value):
+        """Validate phone number format"""
+        # Remove all non-digit characters for validation
+        digits_only = ''.join(filter(str.isdigit, str(value)))
+        
+        # Check if phone has reasonable length (7-15 digits)
+        if len(digits_only) < 7 or len(digits_only) > 15:
+            raise serializers.ValidationError('Invalid phone number format.')
+        
+        return value
+
+
+class PasswordResetVerifyCodeSerializer(serializers.Serializer):
+    """Serializer for verifying password reset code"""
+    phone = serializers.CharField(required=True, max_length=20)
+    code = serializers.CharField(required=True, max_length=6, min_length=6)
+    
+    def validate_phone(self, value):
+        """Validate phone number format"""
+        digits_only = ''.join(filter(str.isdigit, str(value)))
+        if len(digits_only) < 7 or len(digits_only) > 15:
+            raise serializers.ValidationError('Invalid phone number format.')
+        return value
+    
+    def validate_code(self, value):
+        """Validate code format"""
+        if not value.isdigit():
+            raise serializers.ValidationError('Code must contain only digits.')
+        return value
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    """Serializer for confirming password reset - setting new password"""
+    phone = serializers.CharField(required=True, max_length=20)
+    code = serializers.CharField(required=True, max_length=6, min_length=6)
+    new_password = serializers.CharField(required=True, write_only=True, min_length=8)
+    new_password_confirm = serializers.CharField(required=True, write_only=True, min_length=8)
+    
+    def validate_phone(self, value):
+        """Validate phone number format"""
+        digits_only = ''.join(filter(str.isdigit, str(value)))
+        if len(digits_only) < 7 or len(digits_only) > 15:
+            raise serializers.ValidationError('Invalid phone number format.')
+        return value
+    
+    def validate_code(self, value):
+        """Validate code format"""
+        if not value.isdigit():
+            raise serializers.ValidationError('Code must contain only digits.')
+        return value
+    
+    def validate(self, data):
+        """Validate that passwords match and code is verified"""
+        new_password = data.get('new_password')
+        new_password_confirm = data.get('new_password_confirm')
+        
+        if new_password != new_password_confirm:
+            raise serializers.ValidationError({
+                'new_password_confirm': 'Passwords do not match.'
+            })
+        
+        return data
+

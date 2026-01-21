@@ -28,6 +28,8 @@
     "view": "Көру",
     "close": "Жабу",
     "back": "Артқа",
+    "refresh": "Жаңарту",
+    "retry": "Қайталау",
     "next": "Келесі",
     "previous": "Алдыңғы",
     "submit": "Жіберу",
@@ -549,8 +551,12 @@
         "text": "Мәтін",
         "video": "Бейне",
         "pdf": "PDF",
+        "ppt": "PPT",
         "quiz": "Тест"
-      }
+      },
+      "pptUrl": "PPT URL",
+      "uploadPpt": "PPT файлын жүктеу",
+      "allowDownloadPpt": "Жүктеп алуға рұқсат беру"
     },
     "tests": {
       "title": "Тесттер",
@@ -627,6 +633,36 @@
     },
     "extraAttempts": {
       "title": "Қосымша әрекеттер"
+    },
+    "testAttempts": {
+      "title": "Тест әрекеттері",
+      "subtitle": "Бейнежазулармен тест өту әрекеттерін көру",
+      "loading": "Әрекеттер жүктелуде...",
+      "error": "Қате",
+      "searchPlaceholder": "Студент немесе тест бойынша іздеу...",
+      "allTests": "Барлық тесттер",
+      "allResults": "Барлық нәтижелер",
+      "allDates": "Барлық күндер",
+      "today": "Бүгін",
+      "week": "Апта бойы",
+      "month": "Ай бойы",
+      "passed": "Өтті",
+      "failed": "Өтпеді",
+      "noAttempts": "Әрекеттер табылмады",
+      "student": "Студент",
+      "test": "Тест",
+      "score": "Балл",
+      "result": "Нәтиже",
+      "date": "Күні",
+      "video": "Бейне",
+      "actions": "Әрекеттер",
+      "hasVideo": "Бар",
+      "noVideo": "Жоқ",
+      "view": "Көру",
+      "videoRecording": "Әрекет бейнежазуы",
+      "download": "Бейнені жүктеп алу",
+      "videoNotSupported": "Сіздің браузеріңіз бейнені ойнатуды қолдамайды.",
+      "videoNotAvailable": "Бейнежазу қолжетімсіз"
     },
     "dashboard": {
       "title": "Әкімші панелі",
@@ -1198,7 +1234,10 @@
       "saveError": "Сақтау қатесі",
       "recording": "Жазу жүріп жатыр",
       "recordingError": "Жазу қатесі",
-      "attempts": "Әрекеттер"
+      "attempts": "Әрекеттер",
+      "videoRequired": "Бейнежазу қажет",
+      "videoRequiredMessage": "Бұл тестті өту үшін бейнежазу қажет. Жалғастыру үшін камераға рұқсат беріңіз.",
+      "requestVideoPermission": "Бейнежазуды рұқсат ету"
     }
   },
   "pages": {
@@ -1358,6 +1397,42 @@
       "privacyLink": "құпиялылық саясатымен",
       "important": "Маңызды:",
       "importantMessage": "Тіркелгеннен кейін сіз аккаунтты іске қосу үшін көрсетілген телефон нөміріне растау коды бар SMS аласыз."
+    },
+    "passwordReset": {
+      "title": "Құпия сөзді қалпына келтіру",
+      "subtitle": "Қалпына келтіру кодын алу үшін телефон нөміріңізді енгізіңіз",
+      "verifyTitle": "Кодты тексеру",
+      "verifySubtitle": "SMS кодын енгізіңіз",
+      "setPasswordTitle": "Жаңа құпия сөз",
+      "setPasswordSubtitle": "Жаңа құпия сөзді енгізіңіз",
+      "phone": "Телефон нөмірі",
+      "phonePlaceholder": "+7 (XXX) XXX-XX-XX",
+      "phoneHint": "Біз осы нөмірге SMS код жібереміз",
+      "code": "Растау коды",
+      "codePlaceholder": "XXXXXX",
+      "newPassword": "Жаңа құпия сөз",
+      "newPasswordPlaceholder": "Жаңа құпия сөзді енгізіңіз",
+      "confirmPassword": "Құпия сөзді растау",
+      "confirmPasswordPlaceholder": "Жаңа құпия сөзді қайталаңыз",
+      "passwordHint": "Кемінде 8 таңба",
+      "sendCode": "Код жіберу",
+      "sending": "Жіберілуде...",
+      "verifyCode": "Кодты тексеру",
+      "verifying": "Тексерілуде...",
+      "resetPassword": "Құпия сөзді қалпына келтіру",
+      "resetting": "Қалпына келтіруде...",
+      "back": "Артқа",
+      "backToLogin": "Кіруге оралу",
+      "codeSent": "Растау коды телефон нөміріңізге жіберілді",
+      "codeVerified": "Код сәтті расталды",
+      "success": "Құпия сөз сәтті қалпына келтірілді!",
+      "loginWithNewPassword": "Енді сіз жаңа құпия сөзбен кіре аласыз",
+      "requestError": "Код жіберу қатесі. Телефон нөміріңізді тексеріп, қайталап көріңіз.",
+      "codeVerificationError": "Кодты тексеру қатесі. Кодты тексеріп, қайталап көріңіз.",
+      "confirmError": "Құпия сөзді қалпына келтіру қатесі. Деректерді тексеріп, қайталап көріңіз.",
+      "passwordsDoNotMatch": "Құпия сөздер сәйкес келмейді",
+      "passwordTooShort": "Құпия сөз кемінде 8 таңбадан тұруы керек",
+      "debugCode": "Тест коды (тек дамыту үшін)"
     }
   },
   "messages": {

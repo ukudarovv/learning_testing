@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, BookOpen, FileQuestion, Award, Settings, TrendingUp, Plus, Search, Filter, Download, Edit, Trash2, Eye, X, CheckCircle, XCircle, UserPlus, Tag, FileText, Mail, RotateCcw, Ban, Building2, Handshake } from 'lucide-react';
+import { Users, BookOpen, FileQuestion, Award, Settings, TrendingUp, Plus, Search, Filter, Download, Edit, Trash2, Eye, X, CheckCircle, XCircle, UserPlus, Tag, FileText, Mail, RotateCcw, Ban, Building2, Handshake, Video } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useTranslation } from 'react-i18next';
 import { UserEditor } from '../admin/UserEditor';
@@ -9,6 +9,7 @@ import { LicenseManagement } from '../admin/LicenseManagement';
 import { LicenseEditor } from '../admin/LicenseEditor';
 import { ContactManagement } from '../admin/ContactManagement';
 import { ExtraAttemptRequests } from '../admin/ExtraAttemptRequests';
+import { TestAttemptsManagement } from '../admin/TestAttemptsManagement';
 import { AddStudentsToCourseModal } from '../admin/AddStudentsToCourseModal';
 import { VacancyManagement } from '../admin/VacancyManagement';
 import { VacancyApplications } from '../admin/VacancyApplications';
@@ -57,7 +58,7 @@ function getStatusText(status: string, t: (key: string) => string): string {
 export function AdminDashboard() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [activeSection, setActiveSection] = useState<'overview' | 'courses' | 'users' | 'tests' | 'reports' | 'categories' | 'licenses' | 'license-categories' | 'contacts' | 'extra-attempts' | 'vacancies' | 'vacancy-applications' | 'vacancy-statistics' | 'projects' | 'project-categories' | 'partners' | 'certificates' | 'content-pages'>('overview');
+  const [activeSection, setActiveSection] = useState<'overview' | 'courses' | 'users' | 'tests' | 'reports' | 'categories' | 'licenses' | 'license-categories' | 'contacts' | 'extra-attempts' | 'test-attempts' | 'vacancies' | 'vacancy-applications' | 'vacancy-statistics' | 'projects' | 'project-categories' | 'partners' | 'certificates' | 'content-pages'>('overview');
   const [showUserEditor, setShowUserEditor] = useState(false);
   const [showLicenseEditor, setShowLicenseEditor] = useState(false);
   const [showVacancyEditor, setShowVacancyEditor] = useState(false);
@@ -435,6 +436,17 @@ export function AdminDashboard() {
                   <span className="font-medium text-sm leading-tight">{t('admin.extraAttempts.title')}</span>
                 </button>
                 <button
+                  onClick={() => setActiveSection('test-attempts')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                    activeSection === 'test-attempts'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <Video className="w-5 h-5 flex-shrink-0" />
+                  <span className="font-medium text-sm leading-tight">{t('admin.testAttempts.title') || 'Попытки тестов'}</span>
+                </button>
+                <button
                   onClick={() => setActiveSection('vacancies')}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                     activeSection === 'vacancies'
@@ -565,6 +577,9 @@ export function AdminDashboard() {
             )}
             {activeSection === 'extra-attempts' && (
               <ExtraAttemptRequests />
+            )}
+            {activeSection === 'test-attempts' && (
+              <TestAttemptsManagement />
             )}
             {activeSection === 'vacancies' && (
               <VacancyManagement

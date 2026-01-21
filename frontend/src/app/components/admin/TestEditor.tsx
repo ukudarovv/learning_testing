@@ -62,6 +62,8 @@ export function TestEditor({ test, onSave, onCancel }: TestEditorProps) {
     categoryId: typeof test?.category === 'object' ? test?.category?.id : test?.categoryId,
     isStandalone: test?.is_standalone || test?.isStandalone || false,
     is_standalone: test?.is_standalone || test?.isStandalone || false,
+    requiresVideoRecording: test?.requiresVideoRecording || test?.requires_video_recording || false,
+    requires_video_recording: test?.requires_video_recording || test?.requiresVideoRecording || false,
   });
 
   const [questions, setQuestions] = useState<Question[]>(test?.questions || []);
@@ -128,9 +130,11 @@ export function TestEditor({ test, onSave, onCancel }: TestEditorProps) {
         categoryId: categoryId,
         isStandalone: test.is_standalone || test.isStandalone || false,
         is_standalone: test.is_standalone || test.isStandalone || false,
+        requiresVideoRecording: test.requiresVideoRecording || test.requires_video_recording || false,
+        requires_video_recording: test.requires_video_recording || test.requiresVideoRecording || false,
       }));
     }
-  }, [test?.id, test?.title, test?.description, test?.timeLimit, test?.time_limit, test?.passingScore, test?.passing_score, test?.maxAttempts, test?.max_attempts, test?.category, test?.is_standalone, test?.isStandalone]);
+  }, [test?.id, test?.title, test?.description, test?.timeLimit, test?.time_limit, test?.passingScore, test?.passing_score, test?.maxAttempts, test?.max_attempts, test?.category, test?.is_standalone, test?.isStandalone, test?.requires_video_recording, test?.requiresVideoRecording]);
 
   const questionTypes = [
     { value: 'single_choice', label: t('admin.tests.questionTypes.singleChoice') },
@@ -263,6 +267,11 @@ export function TestEditor({ test, onSave, onCancel }: TestEditorProps) {
     // Преобразуем isStandalone в is_standalone для backend
     if (cleanFormData.isStandalone !== undefined) {
       cleanFormData.is_standalone = cleanFormData.isStandalone;
+    }
+
+    // Преобразуем requiresVideoRecording в requires_video_recording для backend
+    if (cleanFormData.requiresVideoRecording !== undefined) {
+      cleanFormData.requires_video_recording = cleanFormData.requiresVideoRecording;
     }
 
     // Убеждаемся, что categoryId передается правильно
@@ -444,6 +453,20 @@ export function TestEditor({ test, onSave, onCancel }: TestEditorProps) {
                     className="rounded"
                   />
                   <span className="text-sm text-gray-700">{t('admin.tests.showResults')}</span>
+                </label>
+
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.requiresVideoRecording || formData.requires_video_recording || false}
+                    onChange={(e) => setFormData({ 
+                      ...formData, 
+                      requiresVideoRecording: e.target.checked,
+                      requires_video_recording: e.target.checked
+                    })}
+                    className="rounded"
+                  />
+                  <span className="text-sm text-gray-700">{t('admin.tests.requiresVideoRecording') || 'Требуется видеозапись'}</span>
                 </label>
               </div>
 

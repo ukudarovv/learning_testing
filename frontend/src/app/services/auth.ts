@@ -98,6 +98,34 @@ const authService = {
   async updateProfile(data: Partial<User> & { verification_code?: string }): Promise<User> {
     return apiClient.patch<User>('/auth/me/', data);
   },
+
+  async requestPasswordReset(phone: string): Promise<{ message: string; expires_at?: string }> {
+    const response = await apiClient.post<{ message: string; expires_at?: string }>('/auth/password-reset/request/', {
+      phone,
+    });
+    
+    return response;
+  },
+
+  async verifyPasswordResetCode(phone: string, code: string): Promise<{ verified: boolean; message?: string; error?: string }> {
+    const response = await apiClient.post<{ verified: boolean; message?: string; error?: string }>('/auth/password-reset/verify-code/', {
+      phone,
+      code,
+    });
+    
+    return response;
+  },
+
+  async confirmPasswordReset(phone: string, code: string, newPassword: string): Promise<{ message: string }> {
+    const response = await apiClient.post<{ message: string }>('/auth/password-reset/confirm/', {
+      phone,
+      code,
+      new_password: newPassword,
+      new_password_confirm: newPassword,
+    });
+    
+    return response;
+  },
 };
 
 export { authService };

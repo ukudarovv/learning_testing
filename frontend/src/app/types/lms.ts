@@ -160,7 +160,7 @@ export interface Lesson {
   descriptionKz?: string; // Frontend format (for compatibility)
   description_en?: string; // Backend format (legacy, for backward compatibility)
   descriptionEn?: string; // Frontend format (for compatibility)
-  type: 'text' | 'video' | 'pdf' | 'quiz';
+  type: 'text' | 'video' | 'pdf' | 'ppt' | 'quiz';
   content?: string;
   content_kz?: string; // Backend format (legacy, for backward compatibility)
   contentKz?: string; // Frontend format (for compatibility)
@@ -173,6 +173,8 @@ export interface Lesson {
   thumbnail_url?: string; // Backend format
   pdfUrl?: string;
   pdf_url?: string; // Backend format
+  pptUrl?: string;
+  ppt_url?: string; // Backend format
   testId?: string;
   test_id?: string; // Backend format
   duration?: number; // минуты

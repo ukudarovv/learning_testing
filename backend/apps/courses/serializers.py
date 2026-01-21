@@ -25,7 +25,7 @@ class LessonSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'title', 'title_kz', 'title_en', 'description', 'description_kz', 'description_en',
             'type', 'content', 'content_kz', 'content_en',
-            'video_url', 'thumbnail_url', 'pdf_url', 'test_id',
+            'video_url', 'thumbnail_url', 'pdf_url', 'ppt_url', 'test_id',
             'duration', 'order', 'required', 'allow_download',
             'track_progress', 'passing_score', 'max_attempts',
             'language', 'completed', 'created_at', 'updated_at'

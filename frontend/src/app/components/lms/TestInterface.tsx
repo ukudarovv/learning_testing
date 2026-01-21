@@ -5,6 +5,7 @@ import { examsService } from '../../services/exams';
 import { VideoPermissionModal } from './VideoPermissionModal';
 import { useVideoRecorder } from '../../hooks/useVideoRecorder';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 
 interface TestInterfaceProps {
   testId: string;
@@ -100,8 +101,16 @@ export function TestInterface({
 
   // Handle video permission denied
   const handleVideoPermissionDenied = () => {
+    // If video recording is required, don't allow test to proceed
+    if (requiresVideoRecording) {
+      // Show error and don't start test
+      toast.error(t('lms.test.videoRequired') || 'Для прохождения этого теста требуется видеозапись. Без видеозаписи тест не может быть пройден.');
+      setShowVideoModal(false);
+      // Don't set testStarted to true - user must grant permission
+      return;
+    }
+    // If video is not required, allow proceeding without video
     setShowVideoModal(false);
-    // User can still proceed, but video won't be recorded
     setTestStarted(true);
   };
 
@@ -296,15 +305,32 @@ export function TestInterface({
       <>
         <VideoPermissionModal
           isOpen={showVideoModal}
-          onClose={handleVideoPermissionDenied}
+          onClose={() => {
+            // If user closes modal without granting permission, don't allow test to proceed
+            handleVideoPermissionDenied();
+          }}
           onPermissionGranted={handleVideoPermissionGranted}
           onPermissionDenied={handleVideoPermissionDenied}
         />
-        <div className={inModal ? "bg-gray-50" : "min-h-screen bg-gray-50 pt-20 flex items-center justify-center"}>
-          <div className="text-center">
-            <p className="text-gray-600">Ожидание разрешения на видеозапись...</p>
+        {!showVideoModal && (
+          <div className={inModal ? "bg-gray-50" : "min-h-screen bg-gray-50 pt-20 flex items-center justify-center"}>
+            <div className="text-center max-w-md p-6 bg-white rounded-lg shadow-lg">
+              <AlertTriangle className="w-12 h-12 text-red-600 mx-auto mb-4" />
+              <h3 className="text-lg font-bold text-gray-900 mb-2">
+                {t('lms.test.videoRequired') || 'Требуется видеозапись'}
+              </h3>
+              <p className="text-gray-600 mb-4">
+                {t('lms.test.videoRequiredMessage') || 'Для прохождения этого теста требуется видеозапись. Пожалуйста, разрешите доступ к камере для продолжения.'}
+              </p>
+              <button
+                onClick={() => setShowVideoModal(true)}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                {t('lms.test.requestVideoPermission') || 'Разрешить видеозапись'}
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </>
     );
   }

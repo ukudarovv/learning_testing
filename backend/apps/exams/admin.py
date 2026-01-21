@@ -4,11 +4,17 @@ from .models import TestAttempt, ExtraAttemptRequest
 
 @admin.register(TestAttempt)
 class TestAttemptAdmin(admin.ModelAdmin):
-    list_display = ('user', 'test', 'score', 'passed', 'started_at', 'completed_at')
+    list_display = ('user', 'test', 'score', 'passed', 'started_at', 'completed_at', 'has_video_recording')
     list_filter = ('passed', 'started_at', 'completed_at')
     search_fields = ('user__phone', 'user__full_name', 'test__title')
     ordering = ('-started_at',)
-    readonly_fields = ('started_at', 'completed_at', 'score', 'passed')
+    readonly_fields = ('started_at', 'completed_at', 'score', 'passed', 'video_recording', 'has_video_recording')
+    
+    def has_video_recording(self, obj):
+        """Check if test attempt has video recording"""
+        return bool(obj.video_recording)
+    has_video_recording.boolean = True
+    has_video_recording.short_description = 'Видеозапись'
 
 
 @admin.register(ExtraAttemptRequest)
