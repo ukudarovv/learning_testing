@@ -1338,6 +1338,8 @@
       "fullName": "Full Name",
       "fullNamePlaceholder": "Enter your full name",
       "phone": "Phone",
+      "phonePlaceholder": "+77081234567",
+      "phoneHint": "SMS verification code will be sent to this number",
       "password": "Password",
       "confirmPassword": "Confirm Password",
       "iin": "IIN",

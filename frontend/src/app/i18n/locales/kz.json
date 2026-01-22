@@ -1387,6 +1387,8 @@
       "fullName": "Аты-жөні",
       "fullNamePlaceholder": "Аты-жөніңізді енгізіңіз",
       "phone": "Телефон",
+      "phonePlaceholder": "+77081234567",
+      "phoneHint": "Растау коды осы нөмірге жіберіледі",
       "password": "Құпия сөз",
       "confirmPassword": "Құпия сөзді растау",
       "iin": "ЖСН",

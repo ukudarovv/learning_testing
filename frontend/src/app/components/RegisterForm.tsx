@@ -160,7 +160,7 @@ export function RegisterForm() {
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <label htmlFor="reg-name" className="block text-sm font-medium text-gray-700 mb-2">
-                  ФИО *
+                  {t('forms.register.fullName')} *
                 </label>
                 <div className="relative">
                   <User className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -172,7 +172,7 @@ export function RegisterForm() {
                     onChange={handleChange}
                     required
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none"
-                    placeholder="Введите ваше ФИО"
+                    placeholder={t('forms.register.fullNamePlaceholder')}
                   />
                 </div>
               </div>
@@ -219,7 +219,7 @@ export function RegisterForm() {
 
               <div>
                 <label htmlFor="reg-phone" className="block text-sm font-medium text-gray-700 mb-2">
-                  Телефон *
+                  {t('forms.register.phone')} *
                 </label>
                 <div className="relative">
                   <Phone className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -231,17 +231,17 @@ export function RegisterForm() {
                     onChange={handleChange}
                     required
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none"
-                    placeholder="+77081234567"
+                    placeholder={t('forms.register.phonePlaceholder')}
                   />
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  На этот номер будет отправлен SMS-код подтверждения
+                  {t('forms.register.phoneHint')}
                 </p>
               </div>
 
               <div>
                 <label htmlFor="reg-company" className="block text-sm font-medium text-gray-700 mb-2">
-                  Компания
+                  {t('forms.register.organization')}
                 </label>
                 <input
                   type="text"
@@ -250,7 +250,7 @@ export function RegisterForm() {
                   value={formData.organization || ''}
                   onChange={handleChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none"
-                  placeholder="Название вашей компании (опционально)"
+                  placeholder={t('forms.register.organizationPlaceholder')}
                 />
               </div>
 

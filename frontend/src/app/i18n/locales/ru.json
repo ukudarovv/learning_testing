@@ -1392,6 +1392,8 @@
       "fullName": "ФИО",
       "fullNamePlaceholder": "Введите ваше ФИО",
       "phone": "Телефон",
+      "phonePlaceholder": "+77081234567",
+      "phoneHint": "На этот номер будет отправлен SMS-код подтверждения",
       "password": "Пароль",
       "confirmPassword": "Подтвердите пароль",
       "iin": "ИИН",
