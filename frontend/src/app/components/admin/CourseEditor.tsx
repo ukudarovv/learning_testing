@@ -202,15 +202,6 @@ export function CourseEditor({ course, onSave, onCancel }: CourseEditorProps) {
   };
 
   const handleSave = () => {
-    // Валидация: если курс-тест, должен быть указан финальный тест
-    if (formData.isStandaloneTest || formData.is_standalone_test) {
-      const finalTestId = formData.final_test_id || formData.finalTestId;
-      if (!finalTestId) {
-        alert(t('admin.courses.standaloneTestRequiresFinalTest') || 'Для курса-теста необходимо указать финальный тест');
-        return;
-      }
-    }
-    
     // Преобразуем isStandaloneTest в is_standalone_test для backend
     const saveData: any = {
       ...formData,
@@ -371,28 +362,6 @@ export function CourseEditor({ course, onSave, onCancel }: CourseEditorProps) {
                     )}
                   </select>
                 </div>
-              </div>
-
-              {/* Standalone Test Checkbox */}
-              <div className="mt-4">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.isStandaloneTest || formData.is_standalone_test || false}
-                    onChange={(e) => setFormData({ ...formData, isStandaloneTest: e.target.checked, is_standalone_test: e.target.checked })}
-                    className="rounded"
-                  />
-                  <span className="text-sm text-gray-700">
-                    {t('admin.courses.isStandaloneTest') || 'Отображать как автономный тест (только тест без курса)'}
-                  </span>
-                </label>
-                {(formData.isStandaloneTest || formData.is_standalone_test) && (
-                  <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <p className="text-sm text-yellow-800">
-                      {t('admin.courses.standaloneTestWarning') || '⚠️ Для курса-теста необходимо указать финальный тест. Курс будет отображаться на странице Training Programs как тест.'}
-                    </p>
-                  </div>
-                )}
               </div>
             </div>
           </div>
