@@ -1093,7 +1093,9 @@
       "testResultQuestion": "Сұрақ {{number}}",
       "testResultYourAnswer": "Сіздің жауабыңыз",
       "testResultNotAnswered": "Жауап берілмеді",
-      "testResultCorrectAnswer": "Дұрыс жауап"
+      "testResultCorrectAnswer": "Дұрыс жауап",
+      "excellentPassBlocked": "Тест ертең (90%+) өтті. Қосымша әрекеттер қолжетімсіз.",
+      "cannotRequestExcellent": "Қосымша әрекеттерді сұрау мүмкін емес: тест ертең өтті."
     },
     "documents": {
       "title": "Менің құжаттарым",
@@ -1242,7 +1244,8 @@
       "attempts": "Әрекеттер",
       "videoRequired": "Бейнежазу қажет",
       "videoRequiredMessage": "Бұл тестті өту үшін бейнежазу қажет. Жалғастыру үшін камераға рұқсат беріңіз.",
-      "requestVideoPermission": "Бейнежазуды рұқсат ету"
+      "requestVideoPermission": "Бейнежазуды рұқсат ету",
+      "excellentPassMessage": "Құттықтаймыз! Сіз тестті ертең тапсырдыңыз. Бұл тест қайталап тапсыруға қолжетімсіз болады."
     }
   },
   "pages": {

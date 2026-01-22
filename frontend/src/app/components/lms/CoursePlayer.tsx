@@ -165,6 +165,22 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
         return;
       }
 
+      // Проверяем, есть ли отличная попытка (score >= 90)
+      const excellentAttempt = testAttempts.find(
+        attempt => {
+          const completedAt = attempt.completed_at || attempt.completedAt;
+          const score = attempt.score;
+          const passed = attempt.passed;
+          return completedAt && score !== null && score !== undefined && score >= 90 && passed;
+        }
+      );
+      
+      if (excellentAttempt) {
+        toast.error(t('lms.coursePlayer.excellentPassBlocked') || 'Тест уже пройден на отлично (90%+). Дополнительные попытки недоступны.');
+        setLoadingTest(false);
+        return;
+      }
+
       // Загружаем тест
       const loadedTest = await testsService.getTest(String(testId));
       
@@ -1406,7 +1422,34 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
                             const maxAllowed = maxAttempts + approvedCount;
                             const allAttemptsUsed = testAttempts.length >= maxAllowed;
                             
-                            if (allAttemptsUsed) {
+                            // Проверяем, есть ли отличная попытка (score >= 90)
+                            const hasExcellentPass = testAttempts.some(
+                              attempt => {
+                                const completedAt = attempt.completed_at || attempt.completedAt;
+                                const score = attempt.score;
+                                const passed = attempt.passed;
+                                return completedAt && score !== null && score !== undefined && score >= 90 && passed;
+                              }
+                            );
+                            
+                            // Проверяем, есть ли хотя бы одна неудачная попытка
+                            const hasFailedAttempt = testAttempts.some(
+                              attempt => {
+                                const completedAt = attempt.completed_at || attempt.completedAt;
+                                const passed = attempt.passed;
+                                return completedAt && passed === false;
+                              }
+                            );
+                            
+                            // Проверяем, все ли попытки завершены
+                            const allAttemptsCompleted = testAttempts.length > 0 && testAttempts.every(
+                              attempt => {
+                                const completedAt = attempt.completed_at || attempt.completedAt;
+                                return completedAt !== null && completedAt !== undefined;
+                              }
+                            );
+                            
+                            if (allAttemptsUsed && !hasExcellentPass && hasFailedAttempt && allAttemptsCompleted) {
                               // Находим последний pending запрос
                               const lastPendingRequest = extraAttemptRequests
                                 .filter(r => r.status === 'pending')
@@ -1507,6 +1550,17 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
                           loadingAttempts ||
                           (!selectedLesson.testId && !selectedLesson.test_id) ||
                           (() => {
+                            // Проверяем, есть ли отличная попытка (score >= 90)
+                            const hasExcellentPass = testAttempts.some(
+                              attempt => {
+                                const completedAt = attempt.completed_at || attempt.completedAt;
+                                const score = attempt.score;
+                                const passed = attempt.passed;
+                                return completedAt && score !== null && score !== undefined && score >= 90 && passed;
+                              }
+                            );
+                            if (hasExcellentPass) return true;
+                            
                             const maxAttempts = test?.maxAttempts || test?.max_attempts || selectedLesson.maxAttempts || selectedLesson.max_attempts || course.maxAttempts || course.max_attempts || 3;
                             const approvedCount = extraAttemptRequests.filter(r => r.status === 'approved').length;
                             const maxAllowed = maxAttempts + approvedCount;
@@ -1517,6 +1571,30 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
                       >
                         {loadingTest ? t('lms.coursePlayer.loadingTest') : t('lms.coursePlayer.startTest')}
                       </button>
+                      {(() => {
+                        // Показываем сообщение, если есть отличная попытка
+                        const hasExcellentPass = testAttempts.some(
+                          attempt => {
+                            const completedAt = attempt.completed_at || attempt.completedAt;
+                            const score = attempt.score;
+                            const passed = attempt.passed;
+                            return completedAt && score !== null && score !== undefined && score >= 90 && passed;
+                          }
+                        );
+                        if (hasExcellentPass) {
+                          return (
+                            <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                              <div className="flex items-start gap-2">
+                                <AlertCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                                <p className="text-sm text-green-800">
+                                  {t('lms.coursePlayer.excellentPassBlocked') || 'Тест уже пройден на отлично (90%+). Дополнительные попытки недоступны.'}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
                       {!selectedLesson.testId && !selectedLesson.test_id && (
                         <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
                           <div className="flex items-start gap-2">

@@ -208,6 +208,8 @@ export function TestPage() {
           // Проверяем незавершенные попытки через API
           try {
             const attempts = await examsService.getTestAttempts(test.id);
+            setTestAttempts(attempts);
+            
             const incompleteAttempt = attempts.find(
               attempt => !attempt.completed_at && !attempt.completedAt
             );
@@ -229,6 +231,22 @@ export function TestPage() {
                 answers: savedAnswersData,
                 startedAt: startedAtDate
               }));
+              return;
+            }
+            
+            // Проверяем, есть ли отличная попытка (score >= 90)
+            const excellentAttempt = attempts.find(
+              attempt => {
+                const completedAt = attempt.completed_at || attempt.completedAt;
+                const score = attempt.score;
+                const passed = attempt.passed;
+                return completedAt && score !== null && score !== undefined && score >= 90 && passed;
+              }
+            );
+            
+            if (excellentAttempt) {
+              toast.error(t('lms.coursePlayer.excellentPassBlocked') || 'Тест уже пройден на отлично (90%+). Дополнительные попытки недоступны.');
+              navigate('/student/dashboard');
               return;
             }
           } catch (error: any) {

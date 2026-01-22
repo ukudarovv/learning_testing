@@ -1093,7 +1093,9 @@
       "testResultQuestion": "Question {{number}}",
       "testResultYourAnswer": "Your Answer",
       "testResultNotAnswered": "Not Answered",
-      "testResultCorrectAnswer": "Correct Answer"
+      "testResultCorrectAnswer": "Correct Answer",
+      "excellentPassBlocked": "Test already passed excellently (90%+). No additional attempts allowed.",
+      "cannotRequestExcellent": "Cannot request extra attempts: test already passed excellently (90%+)."
     },
     "documents": {
       "title": "My Documents",
@@ -1193,7 +1195,8 @@
       "attempts": "Attempts",
       "videoRequired": "Video Recording Required",
       "videoRequiredMessage": "Video recording is required to take this test. Please allow camera access to continue.",
-      "requestVideoPermission": "Allow Video Recording"
+      "requestVideoPermission": "Allow Video Recording",
+      "excellentPassMessage": "Congratulations! You passed the test excellently. This test will no longer be available for retakes."
     }
   },
   "pages": {

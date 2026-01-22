@@ -31,6 +31,15 @@ class TestAttemptViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(user=self.request.user)
         return queryset
     
+    def _has_excellent_pass(self, user, test):
+        """Check if user has passed test with 90% or higher"""
+        return TestAttempt.objects.filter(
+            user=user,
+            test=test,
+            completed_at__isnull=False,
+            score__gte=90.0
+        ).exists()
+    
     @action(detail=False, methods=['post'])
     def start(self, request):
         """Start a new test attempt"""
@@ -44,6 +53,13 @@ class TestAttemptViewSet(viewsets.ModelViewSet):
             return Response(
                 {'error': 'Test not found'},
                 status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Check if user has already passed excellently (90%+)
+        if self._has_excellent_pass(request.user, test):
+            return Response(
+                {'error': 'Test already passed excellently (90%+). No additional attempts allowed.'},
+                status=status.HTTP_400_BAD_REQUEST
             )
         
         # Check max attempts (including approved extra attempts)
@@ -446,6 +462,20 @@ class ExtraAttemptRequestViewSet(viewsets.ModelViewSet):
         if user_attempts < max_allowed:
             return Response(
                 {'error': f'У вас еще есть доступные попытки ({user_attempts} из {max_allowed} использовано)'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check if user has already passed excellently (90%+)
+        excellent_pass_exists = TestAttempt.objects.filter(
+            user=request.user,
+            test=test,
+            completed_at__isnull=False,
+            score__gte=90.0
+        ).exists()
+        
+        if excellent_pass_exists:
+            return Response(
+                {'error': 'Cannot request extra attempts: test already passed excellently (90%+)'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         

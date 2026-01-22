@@ -253,36 +253,46 @@ export function TestResultPage({
 
             {/* Messages */}
             {passed ? (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                {isStandalone && protocol ? (
-                  <div className="space-y-2">
-                    <p className="text-sm font-semibold text-blue-900">
-                      {t('lms.test.protocolCreated') || 'Протокол экзамена создан и отправлен на подписание комиссией ПДЭК. После подписания протокола вы получите сертификат.'}
-                    </p>
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className="text-xs text-blue-700">
-                        {t('lms.student.protocolStatus') || 'Статус протокола'}:
-                      </span>
-                      <span className={`text-xs font-semibold px-2 py-1 rounded ${getProtocolStatusColor(protocol.status)}`}>
-                        {getProtocolStatusText(protocol.status, t)}
-                      </span>
-                      {protocol.number && (
-                        <span className="text-xs text-blue-600">
-                          ({t('lms.documents.protocolNumber', { number: protocol.number }) || `Номер: ${protocol.number}`})
+              <>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                  {isStandalone && protocol ? (
+                    <div className="space-y-2">
+                      <p className="text-sm font-semibold text-blue-900">
+                        {t('lms.test.protocolCreated') || 'Протокол экзамена создан и отправлен на подписание комиссией ПДЭК. После подписания протокола вы получите сертификат.'}
+                      </p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className="text-xs text-blue-700">
+                          {t('lms.student.protocolStatus') || 'Статус протокола'}:
                         </span>
-                      )}
+                        <span className={`text-xs font-semibold px-2 py-1 rounded ${getProtocolStatusColor(protocol.status)}`}>
+                          {getProtocolStatusText(protocol.status, t)}
+                        </span>
+                        {protocol.number && (
+                          <span className="text-xs text-blue-600">
+                            ({t('lms.documents.protocolNumber', { number: protocol.number }) || `Номер: ${protocol.number}`})
+                          </span>
+                        )}
+                      </div>
                     </div>
+                  ) : isStandalone ? (
+                    <p className="text-sm text-blue-800">
+                      {t('lms.test.standaloneTestCompleted') || 'Тест успешно завершен. Для завершения необходимо подтвердить SMS кодом.'}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-blue-800">
+                      {t('lms.coursePlayer.testResultLessonCompleted') || 'Урок будет автоматически отмечен как завершенный. Вы можете продолжить изучение курса.'}
+                    </p>
+                  )}
+                </div>
+                {/* Excellent pass message */}
+                {score >= 90 && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                    <p className="text-sm font-semibold text-green-900">
+                      {t('lms.test.excellentPassMessage') || 'Поздравляем! Вы сдали тест на отлично. Этот тест больше не будет доступен для повторных попыток.'}
+                    </p>
                   </div>
-                ) : isStandalone ? (
-                  <p className="text-sm text-blue-800">
-                    {t('lms.test.standaloneTestCompleted') || 'Тест успешно завершен. Для завершения необходимо подтвердить SMS кодом.'}
-                  </p>
-                ) : (
-                  <p className="text-sm text-blue-800">
-                    {t('lms.coursePlayer.testResultLessonCompleted') || 'Урок будет автоматически отмечен как завершенный. Вы можете продолжить изучение курса.'}
-                  </p>
                 )}
-              </div>
+              </>
             ) : (
               <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
                 <p className="text-sm text-orange-800">

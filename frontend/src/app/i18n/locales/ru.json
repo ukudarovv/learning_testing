@@ -1100,7 +1100,9 @@
       "testResultQuestion": "Вопрос {{number}}",
       "testResultYourAnswer": "Ваш ответ",
       "testResultNotAnswered": "Не отвечено",
-      "testResultCorrectAnswer": "Правильный ответ"
+      "testResultCorrectAnswer": "Правильный ответ",
+      "excellentPassBlocked": "Тест уже пройден на отлично (90%+). Дополнительные попытки недоступны.",
+      "cannotRequestExcellent": "Невозможно запросить дополнительные попытки: тест уже пройден на отлично."
     },
     "documents": {
       "title": "Мои документы",
@@ -1247,7 +1249,8 @@
       "attempts": "Попытки",
       "videoRequired": "Требуется видеозапись",
       "videoRequiredMessage": "Для прохождения этого теста требуется видеозапись. Пожалуйста, разрешите доступ к камере для продолжения.",
-      "requestVideoPermission": "Разрешить видеозапись"
+      "requestVideoPermission": "Разрешить видеозапись",
+      "excellentPassMessage": "Поздравляем! Вы сдали тест на отлично. Этот тест больше не будет доступен для повторных попыток."
     }
   },
   "pages": {
