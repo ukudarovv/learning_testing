@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Filter, Download, Upload, Plus, Edit, Trash2, Eye, Mail, Phone, BookOpen, CheckCircle, XCircle, MoreVertical, UserPlus, Users as UsersIcon } from 'lucide-react';
+import { Search, Filter, Download, Plus, Edit, Trash2, Eye, Mail, Phone, BookOpen, CheckCircle, XCircle, MoreVertical, UserPlus, Users as UsersIcon } from 'lucide-react';
 import { User } from '../../types/lms';
 import { AssignCoursesModal } from './AssignCoursesModal';
 import { usersService } from '../../services/users';
@@ -235,34 +235,6 @@ export function UserManagement({ onCreate, onEdit, refreshTrigger }: UserManagem
                 <Download className="w-4 h-4" />
                 {t('admin.users.export')}
               </button>
-              <label className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
-                <Upload className="w-4 h-4" />
-                {t('admin.users.import')}
-                <input
-                  type="file"
-                  accept=".xlsx,.xls"
-                  className="hidden"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    try {
-                      const result = await usersService.importUsers(file);
-                      toast.success(t('admin.users.importSuccess', { count: result.imported }));
-                      if (result.errors && result.errors.length > 0) {
-                        console.warn('Import errors:', result.errors);
-                        toast.warning(t('admin.users.importErrors', { count: result.errors.length }));
-                      }
-                      fetchUsers();
-                    } catch (error: any) {
-                      const message = error instanceof ApiError ? error.message : t('admin.users.importError');
-                      toast.error(message);
-                      console.error('Failed to import users:', error);
-                    } finally {
-                      e.target.value = '';
-                    }
-                  }}
-                />
-              </label>
               <button 
                 onClick={onCreate}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
