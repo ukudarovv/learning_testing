@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Clock, CheckCircle, Circle, AlertTriangle, ArrowLeft, ArrowRight, Flag } from 'lucide-react';
+import { Clock, CheckCircle, Circle, AlertTriangle, ArrowLeft, ArrowRight, Flag, X } from 'lucide-react';
 import { Question, Answer } from '../../types/lms';
 import { examsService } from '../../services/exams';
 import { VideoPermissionModal } from './VideoPermissionModal';
@@ -37,6 +37,7 @@ export function TestInterface({
   const { t } = useTranslation();
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [showVideoModal, setShowVideoModal] = useState(false);
+  const [videoModalClosed, setVideoModalClosed] = useState(false); // Флаг, что пользователь закрыл модальное окно
   const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
   const [videoPermissionGranted, setVideoPermissionGranted] = useState(false);
   const { isRecording, startRecording, stopRecording, error: videoError, recordingTime } = useVideoRecorder();
@@ -73,22 +74,40 @@ export function TestInterface({
   const [startTime] = useState(startedAt ? new Date(startedAt).getTime() : Date.now());
   const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
   const [autoSaveStatus, setAutoSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
-  const [testStarted, setTestStarted] = useState(false);
+  // Инициализация testStarted: если требуется видеозапись, тест не должен начинаться без разрешения камеры
+  // Даже если тест был начат ранее (есть startedAt), при продолжении нужно проверить камеру заново
+  const [testStarted, setTestStarted] = useState(() => {
+    // Если не требуется видеозапись, тест может начаться сразу
+    if (!requiresVideoRecording) {
+      return true;
+    }
+    // Если требуется видеозапись, тест не должен начинаться до разрешения камеры
+    // Даже если тест был начат ранее, при продолжении нужно запросить камеру заново
+    // Это важно для безопасности - нужно убедиться, что камера доступна при продолжении
+    return false;
+  });
+  
+  // Автоматически показываем модальное окно с запросом разрешения, если требуется видеозапись и тест не начат
+  // Но только если пользователь еще не закрывал его вручную
+  useEffect(() => {
+    if (requiresVideoRecording && !testStarted && !showVideoModal && !videoModalClosed) {
+      setShowVideoModal(true);
+    }
+  }, [requiresVideoRecording, testStarted, showVideoModal, videoModalClosed]);
 
   // Check if video recording is required on mount
   useEffect(() => {
-    if (requiresVideoRecording && !videoPermissionGranted && !testStarted) {
-      setShowVideoModal(true);
-    } else if (!requiresVideoRecording) {
+    if (!requiresVideoRecording) {
       setTestStarted(true);
     }
-  }, [requiresVideoRecording, videoPermissionGranted, testStarted]);
+  }, [requiresVideoRecording]);
 
   // Handle video permission granted
   const handleVideoPermissionGranted = async (stream: MediaStream) => {
     setVideoStream(stream);
     setVideoPermissionGranted(true);
     setShowVideoModal(false);
+    setVideoModalClosed(false); // Сбрасываем флаг при успешном разрешении
     setTestStarted(true);
     
     // Start recording
@@ -101,16 +120,30 @@ export function TestInterface({
 
   // Handle video permission denied
   const handleVideoPermissionDenied = () => {
+    setShowVideoModal(false);
     // If video recording is required, don't allow test to proceed
     if (requiresVideoRecording) {
       // Show error and don't start test
       toast.error(t('lms.test.videoRequired') || 'Для прохождения этого теста требуется видеозапись. Без видеозаписи тест не может быть пройден.');
-      setShowVideoModal(false);
       // Don't set testStarted to true - user must grant permission
+      // Модальное окно снова откроется через useEffect
       return;
     }
     // If video is not required, allow proceeding without video
+    setTestStarted(true);
+  };
+
+  // Handle modal close (just close, don't show error)
+  const handleModalClose = () => {
     setShowVideoModal(false);
+    setVideoModalClosed(true); // Помечаем, что пользователь закрыл модальное окно
+    if (requiresVideoRecording) {
+      // Don't start test if video is required
+      // Показываем сообщение об ошибке
+      toast.error(t('lms.test.videoRequired') || 'Для прохождения этого теста требуется видеозапись. Без видеозаписи тест не может быть пройден.');
+      return;
+    }
+    // If video is not required, allow proceeding without video
     setTestStarted(true);
   };
 
@@ -119,7 +152,7 @@ export function TestInterface({
 
   // Таймер
   useEffect(() => {
-    if (timeLeft === null) return;
+    if (timeLeft === null || !testStarted) return; // Добавить проверку testStarted
     
     if (timeLeft <= 0) {
       handleSubmit().catch(console.error);
@@ -131,10 +164,12 @@ export function TestInterface({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [timeLeft]);
+  }, [timeLeft, testStarted]); // Добавить testStarted в зависимости
 
   // Автосохранение
   useEffect(() => {
+    if (!testStarted) return; // Не сохранять до начала теста
+    
     const saveAnswer = async () => {
       if (answers[currentQuestionIndex]?.questionId) {
         setAutoSaveStatus('saving');
@@ -202,7 +237,7 @@ export function TestInterface({
 
     const saveTimer = setTimeout(saveAnswer, 1000);
     return () => clearTimeout(saveTimer);
-  }, [answers, currentQuestionIndex, testId]);
+  }, [answers, currentQuestionIndex, testId, testStarted]); // Добавить testStarted
 
   // Предотвращение случайного закрытия
   useEffect(() => {
@@ -237,6 +272,15 @@ export function TestInterface({
   };
 
   const handleSubmit = async () => {
+    // Проверка: если требуется видео, оно должно быть записано
+    if (requiresVideoRecording && !isRecording && !videoStream) {
+      toast.error(
+        t('lms.test.videoRequiredForSubmission') || 
+        'Для завершения этого теста требуется видеозапись. Пожалуйста, убедитесь, что запись активна.'
+      );
+      return; // Не позволяем завершить тест без видео
+    }
+    
     // Stop video recording if active
     let videoBlob: Blob | null = null;
     if (isRecording) {
@@ -244,7 +288,24 @@ export function TestInterface({
         videoBlob = await stopRecording();
       } catch (error) {
         console.error('Error stopping video recording:', error);
+        // Если требуется видео, но не удалось остановить запись, не позволяем завершить
+        if (requiresVideoRecording) {
+          toast.error(
+            t('lms.test.videoRecordingError') || 
+            'Ошибка при остановке видеозаписи. Тест не может быть завершен.'
+          );
+          return;
+        }
       }
+    }
+
+    // Если требуется видео, но его нет, не позволяем завершить
+    if (requiresVideoRecording && !videoBlob && !isRecording) {
+      toast.error(
+        t('lms.test.videoRequiredForSubmission') || 
+        'Для завершения этого теста требуется видеозапись.'
+      );
+      return;
     }
 
     // Stop video stream if active
@@ -299,50 +360,20 @@ export function TestInterface({
 
   const answeredCount = answers.filter((_, i) => isAnswered(i)).length;
 
-  // Don't render test interface until video permission is handled (if required)
-  if (requiresVideoRecording && !testStarted) {
-    return (
-      <>
-        <VideoPermissionModal
-          isOpen={showVideoModal}
-          onClose={() => {
-            // If user closes modal without granting permission, don't allow test to proceed
-            handleVideoPermissionDenied();
-          }}
-          onPermissionGranted={handleVideoPermissionGranted}
-          onPermissionDenied={handleVideoPermissionDenied}
-        />
-        {!showVideoModal && (
-          <div className={inModal ? "bg-gray-50" : "min-h-screen bg-gray-50 pt-20 flex items-center justify-center"}>
-            <div className="text-center max-w-md p-6 bg-white rounded-lg shadow-lg">
-              <AlertTriangle className="w-12 h-12 text-red-600 mx-auto mb-4" />
-              <h3 className="text-lg font-bold text-gray-900 mb-2">
-                {t('lms.test.videoRequired') || 'Требуется видеозапись'}
-              </h3>
-              <p className="text-gray-600 mb-4">
-                {t('lms.test.videoRequiredMessage') || 'Для прохождения этого теста требуется видеозапись. Пожалуйста, разрешите доступ к камере для продолжения.'}
-              </p>
-              <button
-                onClick={() => setShowVideoModal(true)}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                {t('lms.test.requestVideoPermission') || 'Разрешить видеозапись'}
-              </button>
-            </div>
-          </div>
-        )}
-      </>
-    );
-  }
 
   return (
     <>
-      <VideoPermissionModal
-        isOpen={showVideoModal}
-        onClose={handleVideoPermissionDenied}
-        onPermissionGranted={handleVideoPermissionGranted}
-        onPermissionDenied={handleVideoPermissionDenied}
-      />
+      {/* Модальное окно с запросом разрешения на камеру */}
+      {requiresVideoRecording && !testStarted && (
+        <VideoPermissionModal
+          isOpen={showVideoModal}
+          onClose={handleModalClose}
+          onPermissionGranted={handleVideoPermissionGranted}
+          onPermissionDenied={handleVideoPermissionDenied}
+        />
+      )}
+      {/* Показываем интерфейс теста только если тест начат или видеозапись не требуется */}
+      {(testStarted || !requiresVideoRecording) && (
       <div className={inModal ? "bg-gray-50" : "min-h-screen bg-gray-50 pt-20"}>
       <div className={inModal ? "px-4 py-4 max-w-6xl" : "container mx-auto px-4 py-8 max-w-6xl"}>
         {/* Header */}
@@ -364,6 +395,26 @@ export function TestInterface({
               </div>
             )}
           </div>
+
+          {/* Video Recording Notification */}
+          {requiresVideoRecording && isRecording && (
+            <div className="mb-4 bg-red-50 border-2 border-red-200 rounded-lg p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse"></div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-red-800">
+                    {t('lms.test.videoRecordingActive') || 'Идет видеозапись'}
+                  </p>
+                  <p className="text-xs text-red-700 mt-1">
+                    {t('lms.test.videoRecordingNotice') || 'Ваше прохождение теста записывается на видео. Пожалуйста, не закрывайте вкладку браузера.'}
+                  </p>
+                </div>
+                <div className="text-sm font-bold text-red-600">
+                  {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Progress Bar */}
           <div className="mb-4">
@@ -715,6 +766,7 @@ export function TestInterface({
         </div>
       )}
       </div>
+      )}
     </>
   );
 }

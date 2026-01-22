@@ -42,6 +42,12 @@ export function EditTestPage() {
     if (!testId) return;
 
     try {
+      console.log('EditTestPage.handleSave - testData:', {
+        requiresVideoRecording: testData.requiresVideoRecording,
+        requires_video_recording: testData.requires_video_recording,
+        allKeys: Object.keys(testData)
+      });
+      
       await testsService.updateTest(testId, testData);
       toast.success('Тест успешно обновлен');
       // Перезагружаем тест и остаемся на странице

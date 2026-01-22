@@ -1034,6 +1034,7 @@
     "coursePlayer": {
       "finalTest": "Final Test",
       "finalTestDesc": "All lessons completed. To complete the course, you must pass the final test.",
+      "finalTestNotAvailable": "To access the final test, you must complete all course lessons.",
       "continueTest": "Continue Test",
       "takeFinalTest": "Take Final Test",
       "loading": "Loading...",
@@ -1100,6 +1101,11 @@
       "testResultYourAnswer": "Your Answer",
       "testResultNotAnswered": "Not Answered",
       "testResultCorrectAnswer": "Correct Answer",
+      "testResultVideoRecording": "Test attempt video recording",
+      "testResultDownloadVideo": "Download video recording",
+      "testResultVideoNotSupported": "Your browser does not support video playback.",
+      "requestExtraAttempts": "Request Extra Attempts",
+      "extraAttemptRequestPending": "Your request for additional attempts is pending administrator review.",
       "excellentPassBlocked": "Test already passed excellently (90%+). No additional attempts allowed.",
       "cannotRequestExcellent": "Cannot request extra attempts: test already passed excellently (90%+)."
     },
@@ -1198,10 +1204,14 @@
       "saveError": "Save error",
       "recording": "Recording",
       "recordingError": "Recording error",
+      "videoRecordingActive": "Video Recording Active",
+      "videoRecordingNotice": "Your test session is being recorded on video. Please do not close the browser tab.",
       "attempts": "Attempts",
       "videoRequired": "Video Recording Required",
       "videoRequiredMessage": "Video recording is required to take this test. Please allow camera access to continue.",
       "requestVideoPermission": "Allow Video Recording",
+      "videoRequiredForSubmission": "Video recording is required to complete this test.",
+      "videoRecordingError": "Error stopping video recording. The test cannot be completed.",
       "excellentPassMessage": "Congratulations! You passed the test excellently. This test will no longer be available for retakes."
     }
   },

@@ -1034,6 +1034,7 @@
     "coursePlayer": {
       "finalTest": "Соңғы тест",
       "finalTestDesc": "Барлық сабақтар аяқталды. Курсты аяқтау үшін соңғы тестті тапсыру керек.",
+      "finalTestNotAvailable": "Қорытынды тестке қол жеткізу үшін барлық сабақтарды аяқтау керек.",
       "continueTest": "Тестті жалғастыру",
       "takeFinalTest": "Соңғы тестті тапсыру",
       "loading": "Жүктелуде...",
@@ -1100,6 +1101,11 @@
       "testResultYourAnswer": "Сіздің жауабыңыз",
       "testResultNotAnswered": "Жауап берілмеді",
       "testResultCorrectAnswer": "Дұрыс жауап",
+      "testResultVideoRecording": "Әрекет бейнежазуы",
+      "testResultDownloadVideo": "Бейнежазуды жүктеп алу",
+      "testResultVideoNotSupported": "Сіздің браузеріңіз бейнені ойнатуды қолдамайды.",
+      "requestExtraAttempts": "Қосымша әрекеттерді сұрау",
+      "extraAttemptRequestPending": "Қосымша әрекеттерге арналған сұрауыңыз әкімшінің қарауында.",
       "excellentPassBlocked": "Тест ертең (90%+) өтті. Қосымша әрекеттер қолжетімсіз.",
       "cannotRequestExcellent": "Қосымша әрекеттерді сұрау мүмкін емес: тест ертең өтті."
     },
@@ -1247,10 +1253,14 @@
       "saveError": "Сақтау қатесі",
       "recording": "Жазу жүріп жатыр",
       "recordingError": "Жазу қатесі",
+      "videoRecordingActive": "Бейнежазу жүріп жатыр",
+      "videoRecordingNotice": "Сіздің тест сеансыңыз бейнеге жазылуда. Браузер қойындысын жаппаңыз.",
       "attempts": "Әрекеттер",
       "videoRequired": "Бейнежазу қажет",
       "videoRequiredMessage": "Бұл тестті өту үшін бейнежазу қажет. Жалғастыру үшін камераға рұқсат беріңіз.",
       "requestVideoPermission": "Бейнежазуды рұқсат ету",
+      "videoRequiredForSubmission": "Бұл тестті аяқтау үшін бейнежазу қажет.",
+      "videoRecordingError": "Бейнежазуды тоқтату қатесі. Тестті аяқтау мүмкін емес.",
       "excellentPassMessage": "Құттықтаймыз! Сіз тестті ертең тапсырдыңыз. Бұл тест қайталап тапсыруға қолжетімсіз болады."
     }
   },

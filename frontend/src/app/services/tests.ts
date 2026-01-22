@@ -171,6 +171,11 @@ const testsService = {
         }
       }
       
+      // Конвертируем backend поля в frontend формат
+      test.shuffleQuestions = test.shuffle_questions !== undefined ? test.shuffle_questions : true;
+      test.showResults = test.show_results !== undefined ? test.show_results : true;
+      test.requiresVideoRecording = test.requires_video_recording !== undefined ? test.requires_video_recording : false;
+      
       return test;
     });
     
@@ -184,6 +189,15 @@ const testsService = {
 
   async getTest(id: string): Promise<Test> {
     const data = await apiClient.get<any>(`/tests/${id}/`);
+    
+    // Отладочное логирование для проверки данных с бэкенда
+    console.log(`testsService.getTest(${id}) - Raw data from backend:`, {
+      id: data.id,
+      title: data.title,
+      requires_video_recording: data.requires_video_recording,
+      requires_video_recording_type: typeof data.requires_video_recording,
+      allFields: Object.keys(data)
+    });
     
     // Конвертируем вопросы из backend формата в frontend формат
     if (data.questions && Array.isArray(data.questions)) {
@@ -205,7 +219,17 @@ const testsService = {
         data.categoryId = data.category;
       }
     }
-    
+
+    // Конвертируем backend поля в frontend формат
+    data.shuffleQuestions = data.shuffle_questions !== undefined ? data.shuffle_questions : true;
+    data.showResults = data.show_results !== undefined ? data.show_results : true;
+    data.requiresVideoRecording = data.requires_video_recording !== undefined ? data.requires_video_recording : false;
+
+    console.log(`testsService.getTest(${id}) - After conversion:`, {
+      requiresVideoRecording: data.requiresVideoRecording,
+      requires_video_recording: data.requires_video_recording
+    });
+
     return data as Test;
   },
 
@@ -259,8 +283,21 @@ const testsService = {
     delete backendTest.attemptsUsed;
     delete backendTest.attemptsTotal;
     delete backendTest.questions; // Удаляем вопросы, они будут созданы отдельно
-    delete backendTest.shuffleQuestions; // Frontend-only field
-    delete backendTest.showResults; // Frontend-only field
+    // Удаляем frontend поля и старое значение requires_video_recording перед установкой нового
+    delete backendTest.requiresVideoRecording; // Удаляем frontend поле
+    delete backendTest.requires_video_recording; // Удаляем старое значение, если оно есть из ...test
+    
+    // Конвертируем frontend поля в backend формат
+    backendTest.shuffle_questions = test.shuffleQuestions !== undefined ? test.shuffleQuestions : true;
+    backendTest.show_results = test.showResults !== undefined ? test.showResults : true;
+    // Устанавливаем requires_video_recording из frontend поля, если оно есть
+    backendTest.requires_video_recording = test.requiresVideoRecording !== undefined 
+      ? test.requiresVideoRecording 
+      : (test.requires_video_recording !== undefined ? test.requires_video_recording : false);
+    
+    // Удаляем остальные frontend поля
+    delete backendTest.shuffleQuestions; // Удаляем frontend поле
+    delete backendTest.showResults; // Удаляем frontend поле
     
     // Создаем тест без вопросов
     const createdTest = await apiClient.post<any>('/tests/', backendTest);
@@ -335,11 +372,37 @@ const testsService = {
     delete backendTest.attemptsUsed;
     delete backendTest.attemptsTotal;
     delete backendTest.questions; // Удаляем вопросы, они будут обновлены отдельно
-    delete backendTest.shuffleQuestions; // Frontend-only field
-    delete backendTest.showResults; // Frontend-only field
+    // Удаляем frontend поля и старое значение requires_video_recording перед установкой нового
+    delete backendTest.requiresVideoRecording; // Удаляем frontend поле
+    delete backendTest.requires_video_recording; // Удаляем старое значение, если оно есть из ...test
+    
+    // Конвертируем frontend поля в backend формат
+    backendTest.shuffle_questions = test.shuffleQuestions !== undefined ? test.shuffleQuestions : true;
+    backendTest.show_results = test.showResults !== undefined ? test.showResults : true;
+    // Устанавливаем requires_video_recording из frontend поля, если оно есть
+    backendTest.requires_video_recording = test.requiresVideoRecording !== undefined 
+      ? test.requiresVideoRecording 
+      : (test.requires_video_recording !== undefined ? test.requires_video_recording : false);
+    
+    // Отладочное логирование для проверки отправляемых данных
+    console.log(`testsService.updateTest(${id}) - Sending to backend:`, {
+      requires_video_recording: backendTest.requires_video_recording,
+      test_requiresVideoRecording: test.requiresVideoRecording,
+      test_requires_video_recording: test.requires_video_recording,
+      backendTest_keys: Object.keys(backendTest)
+    });
+    
+    // Удаляем остальные frontend поля
+    delete backendTest.shuffleQuestions; // Удаляем frontend поле
+    delete backendTest.showResults; // Удаляем frontend поле
     
     // Обновляем тест
-    await apiClient.put(`/tests/${id}/`, backendTest);
+    const response = await apiClient.put(`/tests/${id}/`, backendTest);
+    
+    console.log(`testsService.updateTest(${id}) - Response from backend:`, {
+      requires_video_recording: response?.requires_video_recording,
+      response_keys: response ? Object.keys(response) : null
+    });
     
     // Получаем существующие вопросы
     const existingQuestions = await this.getTestQuestions(id);

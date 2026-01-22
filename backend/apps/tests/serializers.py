@@ -34,7 +34,8 @@ class TestSerializer(serializers.ModelSerializer):
         model = Test
         fields = [
             'id', 'title', 'title_kz', 'title_en', 'passing_score',
-            'time_limit', 'max_attempts', 'is_active', 'requires_video_recording', 'language',
+            'time_limit', 'max_attempts', 'is_active', 'requires_video_recording', 
+            'shuffle_questions', 'show_results', 'language',
             'category', 'category_id', 'is_standalone', 'questions', 'questions_count', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'questions_count', 'created_at', 'updated_at']

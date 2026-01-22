@@ -335,8 +335,11 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
       // Удаляем сохраненный прогресс
       localStorage.removeItem(`test_${test.id}_progress`);
 
+      // Перезагружаем попытку, чтобы получить полные данные с видео
+      const fullResult = await examsService.getTestAttempt(String(testAttemptId));
+
       // Сохраняем результат и время
-      setTestResult(result);
+      setTestResult(fullResult);
       setTestTimeSpent(timeSpent);
 
       // Обновляем список попыток
@@ -348,8 +351,18 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
       setTest(null);
       setTestAttemptId(null);
 
-      // Показываем модальное окно результатов
-      setShowResultModal(true);
+      // Показываем модальное окно результатов только если showResults = true
+      const showResults = test.showResults !== undefined ? test.showResults : (test.show_results !== undefined ? test.show_results : true);
+      if (showResults) {
+        setShowResultModal(true);
+      } else {
+        // Если результаты не показываются, просто показываем сообщение о завершении
+        toast.success(
+          passed 
+            ? t('lms.coursePlayer.testCompletedNoResults') || 'Тест завершен. Результаты будут доступны после проверки.'
+            : t('lms.coursePlayer.testFailedNoResults') || 'Тест завершен. Результаты будут доступны после проверки.'
+        );
+      }
 
       // Автоматически отмечаем урок как завершенный, если тест пройден
       if (result.passed) {
@@ -387,6 +400,9 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
       // Удаляем сохраненный прогресс
       localStorage.removeItem(`test_${test.id}_progress`);
 
+      // Перезагружаем попытку, чтобы получить полные данные с видео
+      const fullResult = await examsService.getTestAttempt(String(testAttemptId));
+
       // Обновляем список попыток для финального теста
       const updatedAttempts = await examsService.getTestAttempts(test.id);
       setFinalTestAttempts(updatedAttempts);
@@ -398,10 +414,20 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
       setTest(null);
       setTestAttemptId(null);
 
-      // Показываем результаты теста
-      setTestResult(result);
+      // Показываем результаты теста только если showResults = true
+      const showResults = test.showResults !== undefined ? test.showResults : (test.show_results !== undefined ? test.show_results : true);
+      setTestResult(fullResult);
       setTestTimeSpent(timeSpent);
-      setShowResultModal(true);
+      if (showResults) {
+        setShowResultModal(true);
+      } else {
+        // Если результаты не показываются, просто показываем сообщение о завершении
+        toast.success(
+          passed 
+            ? t('lms.coursePlayer.testCompletedNoResults') || 'Тест завершен. Результаты будут доступны после проверки.'
+            : t('lms.coursePlayer.testFailedNoResults') || 'Тест завершен. Результаты будут доступны после проверки.'
+        );
+      }
     } catch (error: any) {
       toast.error(error.message || t('lms.coursePlayer.finalTestCompleteError'));
       console.error('Failed to complete final test:', error);
@@ -463,6 +489,14 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
       }
       
       const loadedTest = await testsService.getTest(String(course.final_test_id));
+      
+      console.log('handleStartFinalTest - loadedTest:', {
+        id: loadedTest.id,
+        title: loadedTest.title,
+        requiresVideoRecording: loadedTest.requiresVideoRecording,
+        requires_video_recording: loadedTest.requires_video_recording,
+        testData: loadedTest
+      });
 
       if (!loadedTest.questions || loadedTest.questions.length === 0) {
         toast.error(t('lms.coursePlayer.noQuestions'));
@@ -513,6 +547,14 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
         examsService.getTestAttempt(attemptId),
         testsService.getTest(String(course.final_test_id))
       ]);
+      
+      console.log('handleContinueFinalTest - loadedTest:', {
+        id: loadedTest.id,
+        title: loadedTest.title,
+        requiresVideoRecording: loadedTest.requiresVideoRecording,
+        requires_video_recording: loadedTest.requires_video_recording,
+        testData: loadedTest
+      });
       
       if (!loadedTest.questions || loadedTest.questions.length === 0) {
         toast.error(t('lms.coursePlayer.noQuestions'));
@@ -823,7 +865,15 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
               
               <div className="space-y-3">
                 {courseModules.map(module => {
-                  const moduleLessons = module.lessons && Array.isArray(module.lessons) ? module.lessons : [];
+                  // Фильтруем уроки: исключаем урок с финальным тестом
+                  const allModuleLessons = module.lessons && Array.isArray(module.lessons) ? module.lessons : [];
+                  const finalTestId = course.final_test_id || course.finalTestId;
+                  const moduleLessons = allModuleLessons.filter(lesson => {
+                    const lessonTestId = lesson.test_id || lesson.testId;
+                    // Исключаем урок, если его test_id совпадает с final_test_id
+                    return !finalTestId || !lessonTestId || String(lessonTestId) !== String(finalTestId);
+                  });
+                  
                   // Модуль считается завершенным, если все его уроки завершены
                   const isModuleCompleted = moduleLessons.length > 0 && 
                     moduleLessons.every(lesson => lesson.completed === true);
@@ -954,7 +1004,7 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
               )}
 
               {/* Final Test Block */}
-              {isExamAvailable && course.final_test_id && (
+              {course.final_test_id && (
                 <div className="mt-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-lg p-6">
                   <div className="flex items-start gap-4">
                     <div className="flex-shrink-0">
@@ -965,7 +1015,10 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
                     <div className="flex-1">
                       <h3 className="text-lg font-bold text-gray-900 mb-2">{t('lms.coursePlayer.finalTest')}</h3>
                       <p className="text-gray-700 mb-4">
-                        {t('lms.coursePlayer.finalTestDesc')}
+                        {isExamAvailable 
+                          ? t('lms.coursePlayer.finalTestDesc')
+                          : (t('lms.coursePlayer.finalTestNotAvailable') || 'Для доступа к финальному тесту необходимо завершить все уроки курса.')
+                        }
                       </p>
                       
                       {loadingFinalTestStatus ? (
@@ -1011,16 +1064,21 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
                             {!finalTestPassed && (
                               <button
                                 onClick={handleStartFinalTest}
-                                disabled={loadingTest}
+                                disabled={loadingTest || !isExamAvailable}
                                 className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 <PlayCircle className="w-5 h-5" />
                                 {loadingTest ? t('lms.coursePlayer.loading') : t('lms.coursePlayer.takeFinalTest')}
                               </button>
                             )}
+                            {!isExamAvailable && !finalTestPassed && (
+                              <p className="text-sm text-gray-600 mt-2">
+                                {t('lms.coursePlayer.finalTestNotAvailable') || 'Для доступа к финальному тесту необходимо завершить все уроки курса.'}
+                              </p>
+                            )}
 
                             {/* Запрос дополнительной попытки */}
-                            {!finalTestPassed && (
+                            {!finalTestPassed && isExamAvailable && (
                               <button
                                 onClick={() => setShowFinalTestExtraAttemptModal(true)}
                                 className="inline-flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
@@ -1089,18 +1147,6 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
                 // status - это статус самого курса (published, draft и т.д.)
                 const enrollmentStatus = course.enrollment_status || course.enrollmentStatus || course.status;
                 const allCompleted = allLessonsCompleted && (course.final_test_id ? finalTestPassed : true);
-                
-                console.log('Course completion status check:', {
-                  enrollmentStatus,
-                  enrollment_status: course.enrollment_status,
-                  enrollmentStatus_field: course.enrollmentStatus,
-                  course_status: course.status,
-                  allCompleted,
-                  allLessonsCompleted,
-                  finalTestPassed,
-                  courseId: course.id,
-                  course: course
-                });
                 
                 // Если курс в статусе pending_pdek - показываем статус ожидания (кнопка НЕ показывается)
                 if (enrollmentStatus === 'pending_pdek') {
@@ -1706,7 +1752,9 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
                 title={test.title}
                 timeLimit={test.timeLimit || test.time_limit || 30}
                 questions={test.questions || []}
-                requiresVideoRecording={test.requiresVideoRecording || test.requires_video_recording || false}
+                requiresVideoRecording={test.requiresVideoRecording !== undefined 
+                  ? test.requiresVideoRecording 
+                  : (test.requires_video_recording !== undefined ? test.requires_video_recording : false)}
                 onComplete={handleTestComplete}
                 onCancel={handleTestCancel}
                 inModal={true}

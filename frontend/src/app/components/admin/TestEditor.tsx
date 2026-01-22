@@ -62,8 +62,8 @@ export function TestEditor({ test, onSave, onCancel }: TestEditorProps) {
     categoryId: typeof test?.category === 'object' ? test?.category?.id : test?.categoryId,
     isStandalone: test?.is_standalone || test?.isStandalone || false,
     is_standalone: test?.is_standalone || test?.isStandalone || false,
-    requiresVideoRecording: test?.requiresVideoRecording || test?.requires_video_recording || false,
-    requires_video_recording: test?.requires_video_recording || test?.requiresVideoRecording || false,
+    requiresVideoRecording: test?.requiresVideoRecording !== undefined ? test.requiresVideoRecording : (test?.requires_video_recording !== undefined ? test.requires_video_recording : false),
+    requires_video_recording: test?.requires_video_recording !== undefined ? test.requires_video_recording : (test?.requiresVideoRecording !== undefined ? test.requiresVideoRecording : false),
   });
 
   const [questions, setQuestions] = useState<Question[]>(test?.questions || []);
@@ -128,10 +128,12 @@ export function TestEditor({ test, onSave, onCancel }: TestEditorProps) {
         language: test.language || prev.language || 'ru',
         category: test.category,
         categoryId: categoryId,
-        isStandalone: test.is_standalone || test.isStandalone || false,
-        is_standalone: test.is_standalone || test.isStandalone || false,
-        requiresVideoRecording: test.requiresVideoRecording || test.requires_video_recording || false,
-        requires_video_recording: test.requires_video_recording || test.requiresVideoRecording || false,
+        isStandalone: test.is_standalone !== undefined ? test.is_standalone : (test.isStandalone !== undefined ? test.isStandalone : false),
+        is_standalone: test.is_standalone !== undefined ? test.is_standalone : (test.isStandalone !== undefined ? test.isStandalone : false),
+        requiresVideoRecording: test.requiresVideoRecording !== undefined ? test.requiresVideoRecording : (test.requires_video_recording !== undefined ? test.requires_video_recording : false),
+        requires_video_recording: test.requires_video_recording !== undefined ? test.requires_video_recording : (test.requiresVideoRecording !== undefined ? test.requiresVideoRecording : false),
+        shuffleQuestions: test.shuffleQuestions !== undefined ? test.shuffleQuestions : (test.shuffle_questions !== undefined ? test.shuffle_questions : prev.shuffleQuestions),
+        showResults: test.showResults !== undefined ? test.showResults : (test.show_results !== undefined ? test.show_results : prev.showResults),
       }));
     }
   }, [test?.id, test?.title, test?.description, test?.timeLimit, test?.time_limit, test?.passingScore, test?.passing_score, test?.maxAttempts, test?.max_attempts, test?.category, test?.is_standalone, test?.isStandalone, test?.requires_video_recording, test?.requiresVideoRecording]);
@@ -270,8 +272,15 @@ export function TestEditor({ test, onSave, onCancel }: TestEditorProps) {
     }
 
     // Преобразуем requiresVideoRecording в requires_video_recording для backend
+    // Важно: проверяем оба варианта имени поля и явно устанавливаем значение
     if (cleanFormData.requiresVideoRecording !== undefined) {
       cleanFormData.requires_video_recording = cleanFormData.requiresVideoRecording;
+    } else if (cleanFormData.requires_video_recording !== undefined) {
+      // Если requiresVideoRecording не определен, но requires_video_recording есть, используем его
+      cleanFormData.requires_video_recording = cleanFormData.requires_video_recording;
+    } else {
+      // Если ни одно значение не определено, устанавливаем false явно
+      cleanFormData.requires_video_recording = false;
     }
 
     // Убеждаемся, что categoryId передается правильно
@@ -279,6 +288,13 @@ export function TestEditor({ test, onSave, onCancel }: TestEditorProps) {
     if (categoryId) {
       cleanFormData.categoryId = categoryId;
     }
+
+    console.log('TestEditor.handleSave - Before onSave:', {
+      requiresVideoRecording: cleanFormData.requiresVideoRecording,
+      requires_video_recording: cleanFormData.requires_video_recording,
+      formData_requiresVideoRecording: formData.requiresVideoRecording,
+      formData_requires_video_recording: formData.requires_video_recording,
+    });
 
     onSave({
       ...cleanFormData,
