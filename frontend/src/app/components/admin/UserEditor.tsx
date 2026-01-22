@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { X, Save, Upload, Eye, EyeOff, RefreshCw } from 'lucide-react';
 import { User } from '../../types/lms';
 import { useTranslation } from 'react-i18next';
+import { smsService } from '../../services/smsService';
+import { SMSVerification } from '../lms/SMSVerification';
 
 interface UserEditorProps {
   user?: User;
@@ -25,6 +27,11 @@ export function UserEditor({ user, onSave, onCancel }: UserEditorProps) {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
+  const [phoneChanged, setPhoneChanged] = useState(false);
+  const [showSMSVerification, setShowSMSVerification] = useState(false);
+  const [sendingSMS, setSendingSMS] = useState(false);
+  const [error, setError] = useState('');
+  const [verificationCode, setVerificationCode] = useState<string | null>(null);
 
   // Обновляем formData при изменении user (для редактирования)
   useEffect(() => {
@@ -43,6 +50,17 @@ export function UserEditor({ user, onSave, onCancel }: UserEditorProps) {
       });
     }
   }, [user?.id]);
+
+  // Отслеживаем изменение номера телефона
+  useEffect(() => {
+    if (user) {
+      const originalPhone = user.phone || '';
+      const newPhone = formData.phone || '';
+      setPhoneChanged(originalPhone !== newPhone && newPhone !== '');
+    } else {
+      setPhoneChanged(false);
+    }
+  }, [formData.phone, user?.phone]);
 
   const roles = [
     { value: 'student', label: t('forms.login.studentRole') },
@@ -71,9 +89,51 @@ export function UserEditor({ user, onSave, onCancel }: UserEditorProps) {
     setShowPassword(true);
   };
 
-  const handleSave = () => {
-    // Пароль не обязателен - если не указан, backend сгенерирует его автоматически
+  const handleSave = async () => {
+    setError('');
+    
+    // Если редактируем существующего пользователя и номер изменился, требуется SMS верификация
+    if (user && phoneChanged) {
+      try {
+        setSendingSMS(true);
+        await smsService.sendVerificationCode(formData.phone || '', 'verification');
+        setShowSMSVerification(true);
+        setError('');
+      } catch (err: any) {
+        setError(err.message || 'Ошибка отправки SMS кода. Попробуйте снова.');
+      } finally {
+        setSendingSMS(false);
+      }
+      return;
+    }
+
+    // Если номер не изменился или создаем нового пользователя, сохраняем напрямую
     onSave(formData);
+  };
+
+  const handleSMSVerified = async (code: string) => {
+    setVerificationCode(code);
+    setError('');
+    // Сохраняем с кодом верификации
+    const userDataWithCode = {
+      ...formData,
+      verification_code: code,
+    };
+    onSave(userDataWithCode);
+    // Модальное окно SMS закроется автоматически при закрытии UserEditor
+    // Если будет ошибка, UserEditor останется открытым, и SMSVerification тоже
+  };
+
+  const handleResendSMS = async () => {
+    try {
+      setSendingSMS(true);
+      setError('');
+      await smsService.sendVerificationCode(formData.phone || '', 'verification');
+    } catch (err: any) {
+      setError(err.message || 'Ошибка отправки SMS кода.');
+    } finally {
+      setSendingSMS(false);
+    }
   };
 
   return (
@@ -90,6 +150,11 @@ export function UserEditor({ user, onSave, onCancel }: UserEditorProps) {
         </div>
 
         <div className="p-6 max-h-[calc(100vh-12rem)] overflow-y-auto">
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              {error}
+            </div>
+          )}
           <div className="space-y-6">
             {/* Personal Info */}
             <div>
@@ -130,11 +195,19 @@ export function UserEditor({ user, onSave, onCancel }: UserEditorProps) {
                   <input
                     type="tel"
                     value={formData.phone || ''}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, phone: e.target.value });
+                      setError('');
+                    }}
                     placeholder="+7 (XXX) XXX-XX-XX"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
                   />
+                  {phoneChanged && user && (
+                    <p className="text-xs text-blue-600 mt-1">
+                      {t('admin.users.phoneChangeWarning') || 'При изменении телефона потребуется подтверждение SMS кодом'}
+                    </p>
+                  )}
                 </div>
 
                 {/* Поле пароля - только при создании нового пользователя */}
@@ -306,13 +379,29 @@ export function UserEditor({ user, onSave, onCancel }: UserEditorProps) {
           </button>
           <button
             onClick={handleSave}
-            className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            disabled={sendingSMS}
+            className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Save className="w-4 h-4" />
-            {t('common.save')}
+            {sendingSMS ? (t('admin.users.sendingSMS') || 'Отправка SMS...') : t('common.save')}
           </button>
         </div>
       </div>
+
+      {showSMSVerification && (
+        <SMSVerification
+          phone={formData.phone || ''}
+          onVerified={handleSMSVerified}
+          onCancel={() => {
+            setShowSMSVerification(false);
+            setVerificationCode(null);
+          }}
+          title={t('admin.users.smsVerificationTitle') || 'Подтверждение изменения телефона'}
+          description={t('admin.users.smsVerificationDescription', { phone: formData.phone }) || `На номер ${formData.phone} отправлен SMS код. Введите его для подтверждения изменения телефона.`}
+          purpose="verification"
+          onResend={handleResendSMS}
+        />
+      )}
     </div>
   );
 }

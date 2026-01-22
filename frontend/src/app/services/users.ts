@@ -73,7 +73,7 @@ const usersService = {
     return response;
   },
 
-  async updateUser(id: string, user: Partial<User>): Promise<User> {
+  async updateUser(id: string, user: Partial<User & { verification_code?: string }>): Promise<User> {
     // Convert frontend format to backend format
     const backendUser: any = {
       ...user,
@@ -88,6 +88,10 @@ const usersService = {
     // Remove password if it's empty or not provided (don't send empty password)
     if (!backendUser.password || backendUser.password.trim() === '') {
       delete backendUser.password;
+    }
+    // Keep verification_code if provided (for phone number change)
+    if (user.verification_code) {
+      backendUser.verification_code = user.verification_code;
     }
     return apiClient.put<User>(`/users/${id}/`, backendUser);
   },
