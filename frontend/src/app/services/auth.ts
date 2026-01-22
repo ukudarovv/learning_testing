@@ -99,11 +99,18 @@ const authService = {
     return apiClient.patch<User>('/auth/me/', data);
   },
 
-  async requestPasswordReset(phone: string): Promise<{ message: string; expires_at?: string }> {
-    const response = await apiClient.post<{ message: string; expires_at?: string }>('/auth/password-reset/request/', {
-      phone,
-    });
-    
+  async requestPasswordReset(phone: string): Promise<{
+    message: string;
+    expires_at?: string;
+    otp_code?: string;
+    debug?: boolean;
+  }> {
+    const response = await apiClient.post<{
+      message: string;
+      expires_at?: string;
+      otp_code?: string;
+      debug?: boolean;
+    }>('/auth/password-reset/request/', { phone });
     return response;
   },
 

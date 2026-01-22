@@ -1399,7 +1399,9 @@
       "confirmError": "Error resetting password. Please check the data and try again.",
       "passwordsDoNotMatch": "Passwords do not match",
       "passwordTooShort": "Password must be at least 8 characters long",
-      "debugCode": "Test Code (Development Only)"
+      "debugCode": "Test Code (Development Only)",
+      "codeNotReceived": "Code not received?",
+      "codeNotReceivedHint": "Go back and request the code again."
     }
   },
   "messages": {

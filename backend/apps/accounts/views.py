@@ -389,15 +389,15 @@ class RequestPasswordResetView(APIView):
             normalized_phone = '7' + normalized_phone[1:]
         if not normalized_phone.startswith('7'):
             normalized_phone = '7' + normalized_phone
-        
-        # Always generate verification code for logging (even if user doesn't exist)
-        # This helps with development and testing
-        # User existence check will be done during code verification
+
+        is_smsc_configured = (
+            hasattr(settings, 'SMSC_LOGIN') and settings.SMSC_LOGIN and
+            hasattr(settings, 'SMSC_PASSWORD') and settings.SMSC_PASSWORD
+        )
+
         try:
-            # Generate verification code with purpose 'password_reset'
             verification_code = SMSVerificationCode.generate_code(normalized_phone, 'password_reset')
-            
-            # Log the SMS code
+
             logger.warning(f"[SMS CODE] Password Reset - Phone: {normalized_phone}, Code: {verification_code.code}")
             print(f"\n{'='*60}")
             print(f"⚠️  PASSWORD RESET SMS CODE")
@@ -405,48 +405,42 @@ class RequestPasswordResetView(APIView):
             print(f"Code: {verification_code.code}")
             print(f"Expires at: {verification_code.expires_at}")
             print(f"{'='*60}\n")
-            
-            # Check if user exists (but don't reveal this information)
-            try:
-                User.objects.get(phone=normalized_phone)
-                user_exists = True
-                
-                # Send SMS via SMSC.kz only if user exists
-                sms_result = sms_service.send_verification_code(
-                    normalized_phone,
-                    verification_code.code,
-                    'password_reset'
+
+            candidates = [normalized_phone]
+            if normalized_phone.startswith('7') and len(normalized_phone) == 11:
+                candidates.append('8' + normalized_phone[1:])
+            user_exists = User.objects.filter(phone__in=candidates).exists()
+            if not user_exists:
+                logger.info(
+                    f"Password reset requested for non-existent phone: {normalized_phone} "
+                    "(code generated for logging)"
                 )
-                
-                if not sms_result['success']:
-                    logger.error(f"Failed to send password reset SMS to {normalized_phone}: {sms_result.get('error')}")
-            except User.DoesNotExist:
-                # User doesn't exist, but we still generate code for logging
-                # This prevents user enumeration attacks
-                user_exists = False
-                logger.info(f"Password reset requested for non-existent phone: {normalized_phone} (code generated for logging)")
-            
+
+            # Всегда отправляем SMS через SMSC (как при удалении видео), независимо от user_exists
+            sms_result = sms_service.send_verification_code(
+                normalized_phone,
+                verification_code.code,
+                'password_reset'
+            )
+            if not sms_result['success']:
+                logger.error(
+                    f"Failed to send password reset SMS to {normalized_phone}: {sms_result.get('error')}"
+                )
+            if not is_smsc_configured:
+                logger.info("SMSC not configured; returning OTP for debug.")
+
             response_data = {
                 'message': 'If a user with this phone exists, a verification code has been sent.',
                 'expires_at': verification_code.expires_at.isoformat(),
             }
-            
+            if not is_smsc_configured:
+                response_data['otp_code'] = verification_code.code
+                response_data['debug'] = True
+
             return Response(response_data, status=status.HTTP_200_OK)
-            
+
         except Exception as e:
             logger.error(f"Error in password reset process for {normalized_phone}: {str(e)}")
-            # Still return success to prevent user enumeration
-            return Response(
-                {
-                    'message': 'If a user with this phone exists, a verification code has been sent.',
-                    'expires_at': None
-                },
-                status=status.HTTP_200_OK
-            )
-            
-        except Exception as e:
-            logger.error(f"Error sending password reset SMS code: {str(e)}")
-            # Still return success to prevent user enumeration
             return Response(
                 {
                     'message': 'If a user with this phone exists, a verification code has been sent.',

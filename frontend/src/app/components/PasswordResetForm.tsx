@@ -20,18 +20,20 @@ export function PasswordResetForm() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [debugCode, setDebugCode] = useState<string | null>(null);
 
   const handleRequestCode = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
+    setDebugCode(null);
     setLoading(true);
 
     try {
-      await authService.requestPasswordReset(phone);
+      const res = await authService.requestPasswordReset(phone);
+      setDebugCode(res.otp_code ?? null);
       setSuccess(t('forms.passwordReset.codeSent'));
-      
-      // Move to verify code step
+
       setStep('verify');
     } catch (err) {
       if (err instanceof ApiError) {
@@ -119,7 +121,11 @@ export function PasswordResetForm() {
   };
 
   const normalizePhone = (phoneValue: string) => {
-    return phoneValue.replace(/\D/g, '');
+    let s = phoneValue.replace(/[^\d+]/g, '');
+    const plusCount = (s.match(/\+/g) || []).length;
+    if (plusCount > 1) s = s.replace(/\+/g, '');
+    else if (plusCount === 1 && !s.startsWith('+')) s = s.replace(/\+/g, '');
+    return s.slice(0, 12);
   };
 
   return (
@@ -223,6 +229,21 @@ export function PasswordResetForm() {
                 {loading ? t('forms.passwordReset.verifying') : t('forms.passwordReset.verifyCode')}
               </button>
 
+              {debugCode && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-center">
+                  <p className="text-sm font-medium text-amber-800 mb-1">
+                    {t('forms.passwordReset.debugCode')}
+                  </p>
+                  <p className="text-lg font-mono font-bold text-amber-900">{debugCode}</p>
+                  <p className="text-xs text-amber-700 mt-1">
+                    {t('lms.coursePlayer.smsVerificationEnterCode')}
+                  </p>
+                </div>
+              )}
+              <p className="text-center text-sm text-gray-600">
+                {t('forms.passwordReset.codeNotReceived')}{' '}
+                <span className="text-gray-500">{t('forms.passwordReset.codeNotReceivedHint')}</span>
+              </p>
               <div className="text-center">
                 <button
                   type="button"
@@ -231,6 +252,7 @@ export function PasswordResetForm() {
                     setCode('');
                     setError('');
                     setSuccess('');
+                    setDebugCode(null);
                   }}
                   className="text-blue-600 hover:text-blue-700 text-sm font-medium inline-flex items-center gap-1"
                 >
