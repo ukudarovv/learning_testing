@@ -33,12 +33,20 @@ def notify_protocol_ready(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender=Certificate)
 def notify_certificate_issued(sender, instance, created, **kwargs):
-    """Notify user when certificate is issued"""
-    if created:
-        Notification.objects.create(
-            user=instance.student,
-            type='certificate_issued',
-            title='Сертификат выдан',
-            message=f'Вам выдан сертификат № {instance.number} по курсу "{instance.course.title}"'
-        )
+    """Notify user when certificate is issued (course or standalone test)"""
+    if not created:
+        return
+    if instance.course_id:
+        subject = f'по курсу "{instance.course.title}"'
+    elif instance.test_id:
+        subject = f'по тесту "{instance.test.title}"'
+    else:
+        subject = ''
+    message = f'Вам выдан сертификат № {instance.number} {subject}'.strip()
+    Notification.objects.create(
+        user=instance.student,
+        type='certificate_issued',
+        title='Сертификат выдан',
+        message=message,
+    )
 

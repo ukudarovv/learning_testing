@@ -3,6 +3,7 @@ from .models import Certificate, CertificateTemplate
 from apps.courses.serializers import CourseSerializer
 from apps.accounts.serializers import UserSerializer
 from apps.protocols.serializers import ProtocolSerializer
+from apps.tests.serializers import TestSerializer
 
 
 class CertificateTemplateSerializer(serializers.ModelSerializer):
@@ -18,6 +19,7 @@ class CertificateSerializer(serializers.ModelSerializer):
     """Certificate serializer"""
     student = UserSerializer(read_only=True)
     course = CourseSerializer(read_only=True)
+    test = TestSerializer(read_only=True)
     protocol = ProtocolSerializer(read_only=True)
     template = CertificateTemplateSerializer(read_only=True)
     uploaded_by = UserSerializer(read_only=True)
@@ -26,7 +28,7 @@ class CertificateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Certificate
         fields = [
-            'id', 'number', 'student', 'course', 'protocol', 'template',
+            'id', 'number', 'student', 'course', 'test', 'protocol', 'template',
             'file', 'uploaded_by', 'uploaded_at',
             'issued_at', 'valid_until', 'qr_code', 'pdf_url'
         ]
@@ -38,7 +40,7 @@ class CertificateCreateSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Certificate
-        fields = ['student', 'course', 'protocol', 'template', 'valid_until', 'file']
+        fields = ['student', 'course', 'test', 'protocol', 'template', 'valid_until', 'file']
     
     def create(self, validated_data):
         request = self.context.get('request')

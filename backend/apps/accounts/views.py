@@ -264,6 +264,16 @@ class SendSMSVerificationView(APIView):
             # Generate verification code
             verification_code = SMSVerificationCode.generate_code(normalized_phone, purpose)
             
+            # Log the SMS code
+            logger.warning(f"[SMS CODE] Purpose: {purpose}, Phone: {normalized_phone}, Code: {verification_code.code}")
+            print(f"\n{'='*60}")
+            print(f"⚠️  SMS VERIFICATION CODE")
+            print(f"Purpose: {purpose}")
+            print(f"Phone: {normalized_phone}")
+            print(f"Code: {verification_code.code}")
+            print(f"Expires at: {verification_code.expires_at}")
+            print(f"{'='*60}\n")
+            
             # Send SMS via SMSC.kz
             sms_result = sms_service.send_verification_code(
                 normalized_phone,
@@ -386,6 +396,15 @@ class RequestPasswordResetView(APIView):
         try:
             # Generate verification code with purpose 'password_reset'
             verification_code = SMSVerificationCode.generate_code(normalized_phone, 'password_reset')
+            
+            # Log the SMS code
+            logger.warning(f"[SMS CODE] Password Reset - Phone: {normalized_phone}, Code: {verification_code.code}")
+            print(f"\n{'='*60}")
+            print(f"⚠️  PASSWORD RESET SMS CODE")
+            print(f"Phone: {normalized_phone}")
+            print(f"Code: {verification_code.code}")
+            print(f"Expires at: {verification_code.expires_at}")
+            print(f"{'='*60}\n")
             
             # Check if user exists (but don't reveal this information)
             try:

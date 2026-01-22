@@ -361,6 +361,9 @@ export interface Certificate {
   course?: { id: string; title: string }; // Backend format
   courseId?: string; // Frontend format (computed)
   courseName?: string; // Frontend format (computed)
+  test?: { id: string; title: string }; // Backend format (for standalone tests)
+  testId?: string; // Frontend format (computed)
+  testName?: string; // Frontend format (computed)
   protocol?: { id: string }; // Backend format
   protocolId?: string; // Frontend format (computed)
   template?: CertificateTemplate; // Backend format

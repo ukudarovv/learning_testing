@@ -408,6 +408,15 @@ class CourseViewSet(viewsets.ModelViewSet):
                     logger.error(f"User {request.user.id} has no phone number")
                     sms_error = "User phone number is missing"
                 else:
+                    # Log the SMS code
+                    logger.warning(f"[SMS CODE] Course Completion - Phone: {user_phone}, Code: {otp_code}, Course: {course.id}")
+                    print(f"\n{'='*60}")
+                    print(f"⚠️  COURSE COMPLETION SMS CODE")
+                    print(f"Phone: {user_phone}")
+                    print(f"Code: {otp_code}")
+                    print(f"Course ID: {course.id}")
+                    print(f"{'='*60}\n")
+                    
                     logger.info(f"Attempting to send SMS to {user_phone} for course completion {course.id}")
                     logger.info(f"OTP code generated: {otp_code}")
                     logger.info(f"SMSC.kz configured: login={settings.SMSC_LOGIN}, password={'***' if settings.SMSC_PASSWORD else 'Not set'}")

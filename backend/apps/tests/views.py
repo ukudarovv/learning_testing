@@ -151,6 +151,15 @@ class TestViewSet(viewsets.ModelViewSet):
                     logger.error(f"User {request.user.id} has no phone number")
                     sms_error = "User phone number is missing"
                 else:
+                    # Log the SMS code
+                    logger.warning(f"[SMS CODE] Test Completion - Phone: {user_phone}, Code: {otp_code}, Test: {test.id}")
+                    print(f"\n{'='*60}")
+                    print(f"⚠️  TEST COMPLETION SMS CODE")
+                    print(f"Phone: {user_phone}")
+                    print(f"Code: {otp_code}")
+                    print(f"Test ID: {test.id}")
+                    print(f"{'='*60}\n")
+                    
                     logger.info(f"Attempting to send SMS to {user_phone} for test completion {test.id}")
                     logger.info(f"OTP code generated: {otp_code}")
                     logger.info(f"SMSC.kz configured: login={settings.SMSC_LOGIN}, password={'***' if settings.SMSC_PASSWORD else 'Not set'}")

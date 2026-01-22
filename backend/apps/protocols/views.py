@@ -122,6 +122,15 @@ class ProtocolViewSet(viewsets.ModelViewSet):
         # This allows re-requesting OTP if it expired or was not received
         otp_code = signature.generate_otp()
         
+        # Log the SMS code
+        logger.warning(f"[SMS CODE] Protocol Sign - Phone: {request.user.phone}, Code: {otp_code}, Protocol: {protocol.number}")
+        print(f"\n{'='*60}")
+        print(f"⚠️  PROTOCOL SIGN SMS CODE")
+        print(f"Phone: {request.user.phone}")
+        print(f"Code: {otp_code}")
+        print(f"Protocol: {protocol.number}")
+        print(f"{'='*60}\n")
+        
         # Send SMS via SMSC.kz
         sms_sent = False
         sms_error = None
@@ -225,32 +234,63 @@ class ProtocolViewSet(viewsets.ModelViewSet):
         
         protocol.save()
         
-        # If all PDEK members signed and protocol is for course completion, create certificate
-        if all_signed == total_signatures and protocol.enrollment:
+        # If all PDEK members signed and protocol is for course or test completion, create certificate
+        if all_signed == total_signatures and (protocol.enrollment or protocol.test):
             from apps.certificates.models import Certificate
             from apps.notifications.models import Notification
             from django.utils import timezone
             
+            # Determine if this is for a course or test
+            is_course = protocol.course is not None
+            is_test = protocol.test is not None
+            
             # Check if certificate already exists
-            if not Certificate.objects.filter(protocol=protocol, student=protocol.student, course=protocol.course).exists():
+            certificate_exists = False
+            if is_course:
+                certificate_exists = Certificate.objects.filter(
+                    protocol=protocol, 
+                    student=protocol.student, 
+                    course=protocol.course
+                ).exists()
+            elif is_test:
+                certificate_exists = Certificate.objects.filter(
+                    protocol=protocol, 
+                    student=protocol.student, 
+                    test=protocol.test
+                ).exists()
+            
+            if not certificate_exists:
                 # Create certificate
-                certificate = Certificate.objects.create(
-                    student=protocol.student,
-                    course=protocol.course,
-                    protocol=protocol
-                )
+                certificate_data = {
+                    'student': protocol.student,
+                    'protocol': protocol
+                }
+                if is_course:
+                    certificate_data['course'] = protocol.course
+                elif is_test:
+                    certificate_data['test'] = protocol.test
                 
-                # Update enrollment status to completed
-                protocol.enrollment.status = 'completed'
-                protocol.enrollment.completed_at = timezone.now()
-                protocol.enrollment.save()
+                certificate = Certificate.objects.create(**certificate_data)
+                
+                # Update enrollment status to completed if it's a course
+                if protocol.enrollment:
+                    protocol.enrollment.status = 'completed'
+                    protocol.enrollment.completed_at = timezone.now()
+                    protocol.enrollment.save()
                 
                 # Notify student
+                if is_course:
+                    message = f'Ваш сертификат по курсу "{protocol.course.title}" готов. Номер сертификата: {certificate.number}'
+                elif is_test:
+                    message = f'Ваш сертификат по тесту "{protocol.test.title}" готов. Номер сертификата: {certificate.number}'
+                else:
+                    message = f'Ваш сертификат готов. Номер сертификата: {certificate.number}'
+                
                 Notification.objects.create(
                     user=protocol.student,
                     type='certificate_issued',
                     title='Сертификат выдан',
-                    message=f'Ваш сертификат по курсу "{protocol.course.title}" готов. Номер сертификата: {certificate.number}'
+                    message=message
                 )
         
         return Response(

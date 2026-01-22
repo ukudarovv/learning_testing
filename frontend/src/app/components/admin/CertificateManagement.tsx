@@ -75,12 +75,12 @@ export function CertificateManagement() {
 
   const filteredCertificates = certificates.filter(cert => {
     const studentName = cert.student?.full_name || cert.userName || '';
-    const courseName = cert.course?.title || cert.courseName || '';
+    const courseOrTestName = cert.course?.title || cert.courseName || cert.test?.title || cert.testName || '';
     const number = cert.number || '';
     const query = searchQuery.toLowerCase();
     return (
       studentName.toLowerCase().includes(query) ||
-      courseName.toLowerCase().includes(query) ||
+      courseOrTestName.toLowerCase().includes(query) ||
       number.toLowerCase().includes(query)
     );
   });
@@ -211,7 +211,7 @@ export function CertificateManagement() {
                             <div className="flex items-center">
                               <BookOpen className="w-4 h-4 text-gray-400 mr-2" />
                               <span className="text-sm text-gray-900">
-                                {cert.course?.title || cert.courseName || 'Неизвестно'}
+                                {cert.course?.title || cert.courseName || cert.test?.title || cert.testName || 'Неизвестно'}
                               </span>
                             </div>
                           </td>
@@ -467,7 +467,7 @@ function UploadCertificateModal({ pending, certificate, onClose, onSuccess }: Up
   };
 
   const studentName = pending?.student?.full_name || pending?.student?.fullName || certificate?.student?.full_name || certificate?.userName || 'Неизвестно';
-  const courseName = pending?.course?.title || certificate?.course?.title || certificate?.courseName || 'Неизвестно';
+  const courseOrTestName = pending?.course?.title || certificate?.course?.title || certificate?.courseName || certificate?.test?.title || certificate?.testName || 'Неизвестно';
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 z-50">
@@ -483,7 +483,7 @@ function UploadCertificateModal({ pending, certificate, onClose, onSuccess }: Up
                 Студент: <span className="font-semibold">{studentName}</span>
               </p>
               <p className="text-gray-600">
-                Курс: <span className="font-semibold">{courseName}</span>
+                {certificate?.test || pending?.course ? 'Тест' : 'Курс'}: <span className="font-semibold">{courseOrTestName}</span>
               </p>
             </div>
             <button

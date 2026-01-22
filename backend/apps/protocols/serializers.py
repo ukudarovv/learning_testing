@@ -23,13 +23,14 @@ class ProtocolSerializer(serializers.ModelSerializer):
     """Protocol serializer"""
     student = UserSerializer(read_only=True)
     course = CourseSerializer(read_only=True)
+    test = TestSerializer(read_only=True)
     attempt = TestAttemptSerializer(read_only=True, allow_null=True)
     signatures = ProtocolSignatureSerializer(many=True, read_only=True)
     
     class Meta:
         model = Protocol
         fields = [
-            'id', 'number', 'student', 'course', 'attempt', 'enrollment',
+            'id', 'number', 'student', 'course', 'test', 'attempt', 'enrollment',
             'exam_date', 'score', 'passing_score', 'result',
             'status', 'rejection_reason', 'signatures',
             'created_at', 'updated_at'

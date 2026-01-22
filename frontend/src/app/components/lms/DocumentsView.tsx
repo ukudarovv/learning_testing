@@ -37,10 +37,10 @@ export function DocumentsView() {
   }, []);
 
   const filteredCertificates = certificates.filter(cert => {
-    const courseName = cert.courseName || cert.course?.title || '';
+    const courseOrTestName = cert.courseName || cert.course?.title || cert.test?.title || cert.testName || '';
     const number = cert.number || '';
     const query = searchQuery.toLowerCase();
-    return courseName.toLowerCase().includes(query) || number.toLowerCase().includes(query);
+    return courseOrTestName.toLowerCase().includes(query) || number.toLowerCase().includes(query);
   });
 
   const filteredProtocols = protocols.filter(protocol => {
@@ -234,7 +234,7 @@ function CertificateCard({ certificate }: { certificate: Certificate }) {
             </div>
             <div>
               <h3 className="text-lg font-bold text-gray-900 mb-1">
-                {certificate.course?.title || certificate.courseName}
+                {certificate.course?.title || certificate.courseName || certificate.test?.title || certificate.testName || ''}
               </h3>
               <p className="text-sm text-gray-600 mb-2">{t('lms.documents.certificateNumber', { number: certificate.number })}</p>
               <div className="flex flex-wrap gap-3 text-sm">

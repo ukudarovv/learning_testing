@@ -1,30 +1,45 @@
 import { Facebook, Instagram, Youtube, MapPin, Phone, Mail, Building2, GraduationCap } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { scrollToSection } from '../utils/scrollToSection';
 
 export function FooterUnicover() {
   const { t } = useTranslation();
+  const location = useLocation();
+  const navigate = useNavigate();
   const currentYear = new Date().getFullYear();
+  const isHomePage = location.pathname === '/';
+
+  const handleHashLink = (e: React.MouseEvent<HTMLAnchorElement>, hash: string) => {
+    e.preventDefault();
+    if (isHomePage) {
+      // If on home page, scroll to section
+      scrollToSection(hash.replace('#', ''));
+    } else {
+      // If on another page, navigate to home with hash
+      navigate(`/${hash}`, { replace: false });
+    }
+  };
 
   const constructionLinks = [
     { name: t('construction.about'), href: '/construction/about', isLink: true },
     { name: t('construction.licenses'), href: '/construction/licenses', isLink: true },
     { name: t('construction.completedWorks'), href: '/projects', isLink: true },
-    { name: t('construction.partners'), href: '#partners', isLink: false },
+    { name: t('construction.partners'), href: '#partners', isLink: false, isHash: true },
   ];
 
   const educationLinks = [
-    { name: t('education.about'), href: '#education-about' },
-    { name: t('education.programs'), href: '#courses' },
-    { name: t('education.online'), href: '#elearning' },
+    { name: t('education.about'), href: '#education', isHash: true },
+    { name: t('education.programs'), href: '/education#courses', isLink: true, hasHash: true },
+    { name: t('education.online.title'), href: '/education#elearning', isLink: true, hasHash: true },
     { name: t('education.certificateVerification'), href: '/verify', isLink: true },
-    { name: t('education.cabinet'), href: '#login' },
+    { name: t('education.cabinet'), href: '/login', isLink: true },
   ];
 
   const quickLinks = [
-    { name: t('common.home'), href: '#home' },
-    { name: t('common.about'), href: '#about' },
-    { name: t('common.contacts'), href: '#contacts' },
+    { name: t('common.home'), href: '#home', isHash: true },
+    { name: t('common.about'), href: '#about', isHash: true },
+    { name: t('common.contacts'), href: '#contacts', isHash: true },
   ];
 
   const socialLinks = [
@@ -79,6 +94,14 @@ export function FooterUnicover() {
                     <Link to={link.href} className="text-sm hover:text-blue-400 transition-colors">
                       {link.name}
                     </Link>
+                  ) : link.isHash ? (
+                    <a 
+                      href={link.href} 
+                      onClick={(e) => handleHashLink(e, link.href)}
+                      className="text-sm hover:text-blue-400 transition-colors cursor-pointer"
+                    >
+                      {link.name}
+                    </a>
                   ) : (
                     <a href={link.href} className="text-sm hover:text-blue-400 transition-colors">
                       {link.name}
@@ -98,10 +121,25 @@ export function FooterUnicover() {
             <ul className="space-y-3">
               {educationLinks.map((link, index) => (
                 <li key={index}>
-                  {link.isLink ? (
+                  {link.isLink && !link.hasHash ? (
                     <Link to={link.href} className="text-sm hover:text-blue-400 transition-colors">
                       {link.name}
                     </Link>
+                  ) : link.isLink && link.hasHash ? (
+                    <a 
+                      href={link.href} 
+                      className="text-sm hover:text-blue-400 transition-colors"
+                    >
+                      {link.name}
+                    </a>
+                  ) : link.isHash ? (
+                    <a 
+                      href={link.href} 
+                      onClick={(e) => handleHashLink(e, link.href)}
+                      className="text-sm hover:text-blue-400 transition-colors cursor-pointer"
+                    >
+                      {link.name}
+                    </a>
                   ) : (
                     <a href={link.href} className="text-sm hover:text-blue-400 transition-colors">
                       {link.name}
@@ -149,7 +187,12 @@ export function FooterUnicover() {
             </p>
             <div className="flex gap-6 text-sm">
               {quickLinks.map((link, index) => (
-                <a key={index} href={link.href} className="text-gray-400 hover:text-blue-400 transition-colors">
+                <a 
+                  key={index} 
+                  href={link.href} 
+                  onClick={(e) => handleHashLink(e, link.href)}
+                  className="text-gray-400 hover:text-blue-400 transition-colors cursor-pointer"
+                >
                   {link.name}
                 </a>
               ))}

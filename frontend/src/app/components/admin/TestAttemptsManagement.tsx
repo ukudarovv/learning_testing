@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Video, Download, Eye, Search, Filter, Calendar, User, FileQuestion, CheckCircle, XCircle, Clock, RefreshCw, X } from 'lucide-react';
+import { Video, Download, Eye, Search, Filter, Calendar, User, FileQuestion, CheckCircle, XCircle, Clock, RefreshCw, X, Trash2 } from 'lucide-react';
 import { TestAttempt, Test } from '../../types/lms';
 import { examsService } from '../../services/exams';
 import { testsService } from '../../services/tests';
 import { toast } from 'sonner';
 import { ApiError } from '../../services/api';
 import { useTranslation } from 'react-i18next';
+import { SMSVerification } from '../lms/SMSVerification';
+import { useUser } from '../../contexts/UserContext';
 
 export function TestAttemptsManagement() {
   const { t } = useTranslation();
@@ -19,6 +21,9 @@ export function TestAttemptsManagement() {
   const [dateFilter, setDateFilter] = useState<string>('all'); // 'all', 'today', 'week', 'month'
   const [selectedAttempt, setSelectedAttempt] = useState<TestAttempt | null>(null);
   const [showVideoModal, setShowVideoModal] = useState(false);
+  const [showDeleteSMSModal, setShowDeleteSMSModal] = useState(false);
+  const [deletingVideo, setDeletingVideo] = useState(false);
+  const { user } = useUser();
 
   const fetchAttempts = async () => {
     try {
@@ -53,6 +58,41 @@ export function TestAttemptsManagement() {
     fetchAttempts();
     fetchTests();
   }, []);
+
+  const handleRequestDeleteVideo = async () => {
+    if (!selectedAttempt) return;
+
+    try {
+      setDeletingVideo(true);
+      await examsService.requestDeleteVideoOTP(String(selectedAttempt.id));
+      setShowDeleteSMSModal(true);
+      toast.success(t('admin.testAttempts.smsSent') || 'SMS код отправлен');
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'Ошибка запроса SMS кода';
+      toast.error(message);
+    } finally {
+      setDeletingVideo(false);
+    }
+  };
+
+  const handleDeleteVideoConfirmed = async (smsCode: string) => {
+    if (!selectedAttempt) return;
+
+    try {
+      setDeletingVideo(true);
+      await examsService.deleteVideoRecording(String(selectedAttempt.id), smsCode);
+      toast.success(t('admin.testAttempts.videoDeleted') || 'Видеозапись успешно удалена');
+      setShowDeleteSMSModal(false);
+      setShowVideoModal(false);
+      setSelectedAttempt(null);
+      fetchAttempts(); // Обновить список
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'Ошибка удаления видеозаписи';
+      toast.error(message);
+    } finally {
+      setDeletingVideo(false);
+    }
+  };
 
   const filteredAttempts = attempts.filter(attempt => {
     // Поиск по имени пользователя, телефону или названию теста
@@ -192,10 +232,10 @@ export function TestAttemptsManagement() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">
-            {t('admin.testAttempts.title') || 'Попытки тестов'}
+            {t('admin.testAttempts.title') || 'Видеозаписи'}
           </h2>
           <p className="text-sm text-gray-600 mt-1">
-            {t('admin.testAttempts.subtitle') || 'Просмотр всех попыток прохождения тестов с видеозаписями'}
+            {t('admin.testAttempts.subtitle') || 'Просмотр всех видеозаписей прохождения тестов'}
           </p>
         </div>
         <button
@@ -421,7 +461,7 @@ export function TestAttemptsManagement() {
                       {t('admin.testAttempts.videoNotSupported') || 'Ваш браузер не поддерживает воспроизведение видео.'}
                     </video>
                   </div>
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-4 flex-wrap">
                     <a
                       href={getVideoUrl(selectedAttempt)!}
                       download
@@ -430,6 +470,14 @@ export function TestAttemptsManagement() {
                       <Download className="w-4 h-4" />
                       {t('admin.testAttempts.download') || 'Скачать видео'}
                     </a>
+                    <button
+                      onClick={handleRequestDeleteVideo}
+                      disabled={deletingVideo}
+                      className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      {t('admin.testAttempts.deleteVideo') || 'Удалить видеозапись'}
+                    </button>
                     <div className="text-sm text-gray-600">
                       <span className="font-medium">{t('admin.testAttempts.score') || 'Балл'}:</span>{' '}
                       {selectedAttempt.score !== null && selectedAttempt.score !== undefined 
@@ -455,6 +503,26 @@ export function TestAttemptsManagement() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* SMS Verification Modal for Video Deletion */}
+      {showDeleteSMSModal && user && selectedAttempt && (
+        <SMSVerification
+          phone={user.phone}
+          onVerified={handleDeleteVideoConfirmed}
+          onCancel={() => {
+            setShowDeleteSMSModal(false);
+          }}
+          title={t('admin.testAttempts.deleteVideoTitle') || 'Подтверждение удаления видеозаписи'}
+          description={t('admin.testAttempts.deleteVideoDescription') || 'Введите SMS код для подтверждения удаления видеозаписи'}
+          purpose="verification"
+          onResend={async () => {
+            if (selectedAttempt) {
+              await examsService.requestDeleteVideoOTP(String(selectedAttempt.id));
+              toast.success(t('admin.testAttempts.smsSent') || 'SMS код отправлен');
+            }
+          }}
+        />
       )}
     </div>
   );

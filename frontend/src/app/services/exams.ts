@@ -155,6 +155,17 @@ const examsService = {
       admin_response: adminResponse,
     });
   },
+
+  // Video deletion
+  async requestDeleteVideoOTP(attemptId: string): Promise<{ message: string; expires_at: string }> {
+    return apiClient.post<{ message: string; expires_at: string }>(`/exams/${attemptId}/request_delete_video_otp/`);
+  },
+
+  async deleteVideoRecording(attemptId: string, smsCode: string): Promise<{ message: string }> {
+    return apiClient.post<{ message: string }>(`/exams/${attemptId}/delete_video/`, {
+      sms_code: smsCode,
+    });
+  },
 };
 
 export { examsService };

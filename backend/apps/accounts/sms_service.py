@@ -307,6 +307,15 @@ class SMSCService:
         Returns:
             Dict with 'success', 'message', 'error' keys
         """
+        # Log the SMS code
+        logger.warning(f"[SMS CODE] Sending via SMSC - Purpose: {purpose}, Phone: {phone}, Code: {code}")
+        print(f"\n{'='*60}")
+        print(f"⚠️  SMS CODE SENT")
+        print(f"Purpose: {purpose}")
+        print(f"Phone: {phone}")
+        print(f"Code: {code}")
+        print(f"{'='*60}\n")
+        
         # Create message based on purpose
         purpose_messages = {
             'protocol_sign': f'Ваш код для подписания протокола: {code}. Код действителен 10 минут.',

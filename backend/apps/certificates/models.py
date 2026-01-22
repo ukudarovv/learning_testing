@@ -33,7 +33,8 @@ class Certificate(models.Model):
     
     number = models.CharField(max_length=50, unique=True, db_index=True)
     student = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='certificates', on_delete=models.CASCADE)
-    course = models.ForeignKey(Course, related_name='certificates', on_delete=models.CASCADE)
+    course = models.ForeignKey(Course, related_name='certificates', on_delete=models.CASCADE, null=True, blank=True, help_text='Course for course completion certificates')
+    test = models.ForeignKey('tests.Test', related_name='certificates', on_delete=models.CASCADE, null=True, blank=True, help_text='Test for standalone test completion certificates')
     protocol = models.ForeignKey(Protocol, related_name='certificates', on_delete=models.SET_NULL, null=True, blank=True)
     template = models.ForeignKey('CertificateTemplate', related_name='certificates', on_delete=models.SET_NULL, null=True, blank=True, help_text='Certificate template used')
     file = models.FileField(upload_to='certificates/files/', null=True, blank=True, help_text='Uploaded certificate file')
@@ -49,7 +50,8 @@ class Certificate(models.Model):
         ordering = ['-issued_at']
     
     def __str__(self):
-        return f"Certificate {self.number} - {self.student.full_name or self.student.phone}"
+        course_or_test = self.course.title if self.course else (self.test.title if self.test else 'Unknown')
+        return f"Certificate {self.number} - {self.student.full_name or self.student.phone} - {course_or_test}"
     
     def generate_number(self):
         """Generate unique certificate number"""

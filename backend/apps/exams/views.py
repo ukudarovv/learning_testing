@@ -216,6 +216,163 @@ class TestAttemptViewSet(viewsets.ModelViewSet):
         serializer = TestAttemptSerializer(attempts, many=True, context={'request': request})
         return Response(serializer.data)
     
+    @action(detail=True, methods=['post'])
+    def request_delete_video_otp(self, request, pk=None):
+        """Request SMS code for video deletion confirmation"""
+        if not request.user.is_admin:
+            return Response(
+                {'error': 'Permission denied. Admin access required.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        attempt = self.get_object()
+        
+        if not attempt.video_recording:
+            return Response(
+                {'error': 'No video recording to delete'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            from apps.accounts.sms_service import sms_service
+            from apps.accounts.models import SMSVerificationCode
+            import logging
+            
+            logger = logging.getLogger(__name__)
+            
+            # Normalize phone number
+            phone = request.user.phone
+            normalized_phone = ''.join(filter(str.isdigit, str(phone)))
+            if normalized_phone.startswith('8'):
+                normalized_phone = '7' + normalized_phone[1:]
+            if not normalized_phone.startswith('7'):
+                normalized_phone = '7' + normalized_phone
+            
+            # Generate verification code
+            verification_code = SMSVerificationCode.generate_code(normalized_phone, 'verification')
+            
+            # Log the code
+            logger.warning(f"[VIDEO DELETION] SMS code for {normalized_phone}: {verification_code.code}")
+            print(f"\n{'='*60}")
+            print(f"⚠️  VIDEO DELETION SMS CODE")
+            print(f"Phone: {normalized_phone}")
+            print(f"Code: {verification_code.code}")
+            print(f"Attempt ID: {attempt.id}")
+            print(f"Expires at: {verification_code.expires_at}")
+            print(f"{'='*60}\n")
+            
+            # Send SMS via SMSC.kz
+            sms_result = sms_service.send_verification_code(
+                normalized_phone,
+                verification_code.code,
+                'verification'
+            )
+            
+            if not sms_result['success']:
+                logger.error(f"Failed to send SMS to {normalized_phone}: {sms_result.get('error')}")
+            
+            return Response({
+                'message': 'SMS verification code sent successfully',
+                'expires_at': verification_code.expires_at.isoformat(),
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f"Error requesting video deletion OTP: {str(e)}")
+            return Response(
+                {'error': 'Failed to send verification code', 'detail': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=True, methods=['post'])
+    def delete_video(self, request, pk=None):
+        """Delete video recording after SMS verification"""
+        if not request.user.is_admin:
+            return Response(
+                {'error': 'Permission denied. Admin access required.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        attempt = self.get_object()
+        
+        if not attempt.video_recording:
+            return Response(
+                {'error': 'No video recording to delete'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Get SMS code from request
+        sms_code = request.data.get('sms_code')
+        if not sms_code:
+            return Response(
+                {'error': 'SMS verification code is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            from apps.accounts.models import SMSVerificationCode
+            import logging
+            import os
+            
+            logger = logging.getLogger(__name__)
+            
+            # Normalize phone number
+            phone = request.user.phone
+            normalized_phone = ''.join(filter(str.isdigit, str(phone)))
+            if normalized_phone.startswith('8'):
+                normalized_phone = '7' + normalized_phone[1:]
+            if not normalized_phone.startswith('7'):
+                normalized_phone = '7' + normalized_phone
+            
+            # Find and verify the code
+            verification_code = SMSVerificationCode.objects.filter(
+                phone=normalized_phone,
+                purpose='verification',
+                is_verified=False
+            ).order_by('-created_at').first()
+            
+            if not verification_code:
+                return Response(
+                    {'error': 'Verification code not found or already used'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Verify the code
+            if not verification_code.verify(sms_code):
+                return Response(
+                    {'error': 'Invalid or expired verification code'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Delete video file
+            if attempt.video_recording:
+                video_path = attempt.video_recording.path
+                if os.path.exists(video_path):
+                    os.remove(video_path)
+                    logger.info(f"Video file deleted: {video_path}")
+                
+                # Clear the field
+                attempt.video_recording.delete(save=False)
+                attempt.video_recording = None
+                attempt.save()
+                
+                logger.info(f"Video recording deleted for attempt {attempt.id} by admin {request.user.phone}")
+                
+                return Response({
+                    'message': 'Video recording deleted successfully'
+                }, status=status.HTTP_200_OK)
+            else:
+                return Response(
+                    {'error': 'Video recording not found'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+                
+        except Exception as e:
+            logger.error(f"Error deleting video recording: {str(e)}")
+            return Response(
+                {'error': 'Failed to delete video recording', 'detail': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
     def _get_client_ip(self, request):
         """Get client IP address"""
         x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')

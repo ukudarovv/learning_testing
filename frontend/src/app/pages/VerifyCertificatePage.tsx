@@ -166,7 +166,7 @@ export function VerifyCertificatePage() {
                             <span className="text-sm font-medium">{t('pages.verifyCertificate.course')}</span>
                           </div>
                           <p className="text-lg font-semibold text-gray-900">
-                            {result.certificate.course?.title || result.certificate.courseName || t('common.error')}
+                            {result.certificate.course?.title || result.certificate.courseName || result.certificate.test?.title || result.certificate.testName || t('common.error')}
                           </p>
                         </div>
 
