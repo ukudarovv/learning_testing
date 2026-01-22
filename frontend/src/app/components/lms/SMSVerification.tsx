@@ -11,6 +11,7 @@ interface SMSVerificationProps {
   description?: string;
   purpose?: SMSPurpose; // Purpose of SMS verification
   onResend?: () => Promise<void>; // Optional callback for resend
+  debugCode?: string | null; // OTP in debug mode (SMSC not configured)
 }
 
 export function SMSVerification({ 
@@ -20,7 +21,8 @@ export function SMSVerification({
   title,
   description,
   purpose = 'verification',
-  onResend
+  onResend,
+  debugCode
 }: SMSVerificationProps) {
   const { t } = useTranslation();
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
@@ -130,6 +132,17 @@ export function SMSVerification({
             <Phone className="w-4 h-4" />
             <span>{t('lms.coursePlayer.smsVerificationCodeSent', { phone: maskPhone(phone) })}</span>
           </div>
+          {debugCode && (
+            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-center">
+              <p className="text-sm font-medium text-amber-800 mb-1">
+                {t('lms.coursePlayer.smsVerificationTestCode')}
+              </p>
+              <p className="text-lg font-mono font-bold text-amber-900">{debugCode}</p>
+              <p className="text-xs text-amber-700 mt-1">
+                {t('lms.coursePlayer.smsVerificationEnterCode')}
+              </p>
+            </div>
+          )}
         </div>
 
         {error && (
@@ -156,6 +169,12 @@ export function SMSVerification({
               />
             ))}
           </div>
+
+          {/* "Код не пришёл?" hint */}
+          <p className="text-center text-sm text-gray-600 mb-2">
+            {t('lms.coursePlayer.codeNotReceived')}{' '}
+            <span className="text-gray-500">{t('lms.coursePlayer.codeNotReceivedHint')}</span>
+          </p>
 
           {/* Timer */}
           <div className="text-center">

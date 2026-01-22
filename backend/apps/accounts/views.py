@@ -273,41 +273,41 @@ class SendSMSVerificationView(APIView):
             print(f"Code: {verification_code.code}")
             print(f"Expires at: {verification_code.expires_at}")
             print(f"{'='*60}\n")
-            
-            # Send SMS via SMSC.kz
-            sms_result = sms_service.send_verification_code(
-                normalized_phone,
-                verification_code.code,
-                purpose
+
+            is_smsc_configured = (
+                hasattr(settings, 'SMSC_LOGIN') and
+                settings.SMSC_LOGIN and
+                hasattr(settings, 'SMSC_PASSWORD') and
+                settings.SMSC_PASSWORD
             )
-            
-            if not sms_result['success']:
-                logger.error(f"Failed to send SMS to {normalized_phone}: {sms_result.get('error')}")
-                return Response(
-                    {
-                        'error': sms_result.get('error', 'Failed to send SMS'),
-                        'message': sms_result.get('message', 'SMS sending failed')
-                    },
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+
+            if is_smsc_configured:
+                # Send SMS via SMSC.kz
+                sms_result = sms_service.send_verification_code(
+                    normalized_phone,
+                    verification_code.code,
+                    purpose
                 )
-            
+                if not sms_result['success']:
+                    logger.error(f"Failed to send SMS to {normalized_phone}: {sms_result.get('error')}")
+                    return Response(
+                        {
+                            'error': sms_result.get('error', 'Failed to send SMS'),
+                            'message': sms_result.get('message', 'SMS sending failed')
+                        },
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                    )
+            else:
+                logger.info("SMSC not configured; skipping actual SMS send, returning OTP for debug.")
+
             response_data = {
                 'message': 'SMS verification code sent successfully',
                 'expires_at': verification_code.expires_at.isoformat(),
             }
-            
-            # In development mode (when SMSC credentials not configured), return OTP code
-            is_smsc_configured = (
-                hasattr(settings, 'SMSC_LOGIN') and 
-                settings.SMSC_LOGIN and 
-                hasattr(settings, 'SMSC_PASSWORD') and 
-                settings.SMSC_PASSWORD
-            )
-            
             if not is_smsc_configured:
                 response_data['otp_code'] = verification_code.code
                 response_data['debug'] = True
-            
+
             return Response(response_data, status=status.HTTP_200_OK)
             
         except Exception as e:

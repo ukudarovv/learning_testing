@@ -1072,6 +1072,8 @@
       "smsVerificationVerify": "Подтвердить",
       "smsVerificationSecurityNotice": "Код подтверждения действителен в течение 2 минут. Не сообщайте код третьим лицам.",
       "smsVerificationCodeError": "Код должен состоять из 6 цифр",
+      "codeNotReceived": "Код не пришёл?",
+      "codeNotReceivedHint": "Проверьте номер и нажмите «Отправить повторно» ниже.",
       "testContinueSuccess": "Продолжение теста",
       "testCompleteError": "Ошибка при завершении теста",
       "testLoadError": "Ошибка при загрузке теста",

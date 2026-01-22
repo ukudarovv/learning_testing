@@ -1065,6 +1065,8 @@
       "smsVerificationVerify": "Verify",
       "smsVerificationSecurityNotice": "Verification code is valid for 2 minutes. Do not share the code with third parties.",
       "smsVerificationCodeError": "Code must consist of 6 digits",
+      "codeNotReceived": "Code not received?",
+      "codeNotReceivedHint": "Check the number and tap «Resend» below.",
       "testContinueSuccess": "Test continued",
       "testCompleteError": "Error completing test",
       "testLoadError": "Error loading test",

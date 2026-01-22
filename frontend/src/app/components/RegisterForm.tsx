@@ -27,6 +27,7 @@ export function RegisterForm() {
   const [loading, setLoading] = useState(false);
   const [showSMSVerification, setShowSMSVerification] = useState(false);
   const [sendingSMS, setSendingSMS] = useState(false);
+  const [debugCode, setDebugCode] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -61,8 +62,8 @@ export function RegisterForm() {
 
     try {
       setSendingSMS(true);
-      // Send SMS verification code
-      await smsService.sendVerificationCode(formData.phone, 'registration');
+      const res = await smsService.sendVerificationCode(formData.phone, 'registration');
+      setDebugCode(res.otp_code ?? null);
       setShowSMSVerification(true);
       setError('');
     } catch (err: any) {
@@ -123,7 +124,8 @@ export function RegisterForm() {
   const handleResendSMS = async () => {
     try {
       setSendingSMS(true);
-      await smsService.sendVerificationCode(formData.phone, 'registration');
+      const res = await smsService.sendVerificationCode(formData.phone, 'registration');
+      setDebugCode(res.otp_code ?? null);
       setError('');
     } catch (err: any) {
       setError(err.message || 'Ошибка отправки SMS кода.');
@@ -341,11 +343,12 @@ export function RegisterForm() {
               <SMSVerification
                 phone={formData.phone}
                 onVerified={handleSMSVerified}
-                onCancel={() => setShowSMSVerification(false)}
+                onCancel={() => { setShowSMSVerification(false); setDebugCode(null); }}
                 title="Подтверждение регистрации"
                 description={`На номер ${formData.phone} отправлен SMS код. Введите его для завершения регистрации.`}
                 purpose="registration"
                 onResend={handleResendSMS}
+                debugCode={debugCode}
               />
             )}
 

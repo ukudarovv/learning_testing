@@ -1065,6 +1065,8 @@
       "smsVerificationVerify": "Растау",
       "smsVerificationSecurityNotice": "Растау коды 2 минут ішінде жарамды. Кодты үшінші тұлғаларға хабарламаңыз.",
       "smsVerificationCodeError": "Код 6 саннан тұруы керек",
+      "codeNotReceived": "Код келмеді ме?",
+      "codeNotReceivedHint": "Нөмірді тексеріп, төменде «Қайта жіберу» батырмасын басыңыз.",
       "testContinueSuccess": "Тестті жалғастыру",
       "testCompleteError": "Тестті аяқтау қатесі",
       "testLoadError": "Тестті жүктеу қатесі",
