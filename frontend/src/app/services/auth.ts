@@ -12,8 +12,8 @@ export interface RegisterData {
   password: string;
   password_confirm?: string;
   full_name: string;
-  email?: string;
-  iin?: string;
+  email: string;
+  iin: string;
   role?: string;
   organization?: string;
   language?: string;

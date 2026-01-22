@@ -20,11 +20,20 @@ class UserCreateSerializer(serializers.ModelSerializer):
     """Serializer for user registration"""
     password = serializers.CharField(write_only=True, required=False, allow_blank=True, min_length=8)
     verification_code = serializers.CharField(write_only=True, required=False, allow_blank=True)
-    
+    email = serializers.EmailField(required=True, allow_blank=False)
+    iin = serializers.CharField(required=True, allow_blank=False, max_length=12)
+
     class Meta:
         model = User
         fields = ['phone', 'password', 'full_name', 'email', 'iin', 'role', 'city', 'organization', 'language', 'verified', 'is_active', 'verification_code']
-    
+
+    def validate_iin(self, value):
+        """Normalize IIN to digits only and validate length 12"""
+        digits = ''.join(c for c in str(value) if c.isdigit())
+        if len(digits) != 12:
+            raise serializers.ValidationError('ИИН должен содержать 12 цифр.')
+        return digits
+
     def validate_password(self, value):
         """Validate password if provided"""
         if value and len(value) < 8:

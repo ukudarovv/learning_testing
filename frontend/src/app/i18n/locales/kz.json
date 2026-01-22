@@ -1390,6 +1390,8 @@
       "password": "Құпия сөз",
       "confirmPassword": "Құпия сөзді растау",
       "iin": "ЖСН",
+      "emailPlaceholder": "your@email.com",
+      "iinPlaceholder": "12 сан",
       "city": "Қала",
       "organization": "Компания",
       "organizationPlaceholder": "Компания атауы (міндетті емес)",

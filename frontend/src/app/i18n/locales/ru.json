@@ -1395,6 +1395,8 @@
       "password": "Пароль",
       "confirmPassword": "Подтвердите пароль",
       "iin": "ИИН",
+      "emailPlaceholder": "your@email.com",
+      "iinPlaceholder": "12 цифр",
       "city": "Город",
       "organization": "Компания",
       "organizationPlaceholder": "Название вашей компании (опционально)",
