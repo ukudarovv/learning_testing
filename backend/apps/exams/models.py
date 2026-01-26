@@ -61,6 +61,7 @@ class TestAttempt(models.Model):
     video_recording = models.FileField(upload_to=test_attempt_video_upload_to, null=True, blank=True, help_text='Video recording of test attempt')
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.CharField(max_length=255, blank=True)
+    termination_reason = models.TextField(null=True, blank=True, help_text='Reason for early test termination')
     
     class Meta:
         db_table = 'test_attempts'

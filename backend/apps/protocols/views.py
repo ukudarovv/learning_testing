@@ -234,8 +234,9 @@ class ProtocolViewSet(viewsets.ModelViewSet):
         
         protocol.save()
         
-        # If all PDEK members signed and protocol is for course or test completion, create certificate
-        if all_signed == total_signatures and (protocol.enrollment or protocol.test):
+        # If chairman signed and protocol is for course or test completion, create certificate
+        # Check if chairman just signed (status is signed_chairman)
+        if protocol.status == 'signed_chairman' and (protocol.enrollment or protocol.test):
             from apps.certificates.models import Certificate
             from apps.notifications.models import Notification
             from django.utils import timezone
@@ -244,7 +245,7 @@ class ProtocolViewSet(viewsets.ModelViewSet):
             is_course = protocol.course is not None
             is_test = protocol.test is not None
             
-            # Check if certificate already exists
+            # Check if certificate already exists to avoid duplicates
             certificate_exists = False
             if is_course:
                 certificate_exists = Certificate.objects.filter(

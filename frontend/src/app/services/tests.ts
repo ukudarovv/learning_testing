@@ -1,5 +1,5 @@
 import { apiClient } from './api';
-import { Test, Question } from '../types/lms';
+import { Test, Question, TestEnrollmentRequest } from '../types/lms';
 import { PaginatedResponse, PaginationParams } from '../types/pagination';
 
 // Вспомогательные функции для конвертации форматов вопросов
@@ -453,28 +453,76 @@ const testsService = {
   },
 
   async getTestQuestions(testId: string): Promise<Question[]> {
-    const data = await apiClient.get<any>(`/tests/${testId}/questions/`);
+    let allQuestions: any[] = [];
+    let nextUrl: string | null = `/tests/${testId}/questions/`;
     
-    // Backend может возвращать данные в разных форматах:
-    // 1. Прямой массив: [question1, question2, ...]
-    // 2. Пагинированный ответ: { results: [...], count: N, next: ..., previous: ... }
-    // 3. Объект с данными: { data: [...] }
-    
-    let questionsArray: any[] = [];
-    if (Array.isArray(data)) {
-      questionsArray = data;
-    } else if (data && typeof data === 'object') {
-      if (Array.isArray(data.results)) {
-        questionsArray = data.results;
-      } else if (Array.isArray(data.data)) {
-        questionsArray = data.data;
-      } else if (Array.isArray(data.questions)) {
-        questionsArray = data.questions;
+    // Функция для извлечения относительного пути из полного URL
+    const extractRelativePath = (url: string | null): string | null => {
+      if (!url) return null;
+      
+      // Если это полный URL (начинается с http:// или https://)
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        try {
+          const urlObj = new URL(url);
+          // Извлекаем путь и query параметры
+          let path = urlObj.pathname + urlObj.search;
+          
+          // Убираем префикс /api если он есть, так как базовый URL уже содержит /api
+          if (path.startsWith('/api/')) {
+            path = path.substring(4); // Убираем '/api'
+          }
+          
+          return path;
+        } catch (e) {
+          // Если не удалось распарсить, возвращаем null
+          return null;
+        }
       }
+      
+      // Если это уже относительный путь, убираем /api если он есть
+      if (url.startsWith('/api/')) {
+        return url.substring(4); // Убираем '/api'
+      }
+      
+      return url;
+    };
+    
+    // Загружаем все вопросы, обрабатывая пагинацию если она есть
+    while (nextUrl) {
+      const data = await apiClient.get<any>(nextUrl);
+      
+      // Backend может возвращать данные в разных форматах:
+      // 1. Прямой массив: [question1, question2, ...]
+      // 2. Пагинированный ответ: { results: [...], count: N, next: ..., previous: ... }
+      // 3. Объект с данными: { data: [...] }
+      
+      let questionsArray: any[] = [];
+      if (Array.isArray(data)) {
+        questionsArray = data;
+        nextUrl = null; // Если массив, значит это все вопросы
+      } else if (data && typeof data === 'object') {
+        if (Array.isArray(data.results)) {
+          questionsArray = data.results;
+          // Извлекаем относительный путь из next URL
+          nextUrl = extractRelativePath(data.next);
+        } else if (Array.isArray(data.data)) {
+          questionsArray = data.data;
+          nextUrl = null;
+        } else if (Array.isArray(data.questions)) {
+          questionsArray = data.questions;
+          nextUrl = null;
+        } else {
+          nextUrl = null; // Если нет массива, значит это не пагинированный ответ
+        }
+      } else {
+        nextUrl = null;
+      }
+      
+      allQuestions = allQuestions.concat(questionsArray);
     }
     
     // Конвертируем вопросы из backend формата в frontend формат
-    return questionsArray.map((q: any) => convertQuestionFromBackendFormat(q));
+    return allQuestions.map((q: any) => convertQuestionFromBackendFormat(q));
   },
 
   async addQuestion(testId: string, question: Partial<Question>): Promise<Question> {
@@ -514,6 +562,45 @@ const testsService = {
     return await apiClient.post(`/tests/${testId}/verify_completion_otp/`, {
       otp_code: otpCode,
     });
+  },
+
+  async createEnrollmentRequest(testId: string): Promise<TestEnrollmentRequest> {
+    const data = await apiClient.post<TestEnrollmentRequest>(
+      '/tests/enrollment-requests/',
+      { test_id: parseInt(testId) }
+    );
+    return data;
+  },
+
+  async getEnrollmentRequests(): Promise<TestEnrollmentRequest[]> {
+    const data = await apiClient.get<any>('/tests/enrollment-requests/');
+    // Обработка пагинированного ответа
+    if (data && typeof data === 'object' && 'results' in data) {
+      return Array.isArray(data.results) ? data.results : [];
+    }
+    // Обработка обычного массива
+    return Array.isArray(data) ? data : [];
+  },
+
+  async getMyEnrollmentRequests(): Promise<TestEnrollmentRequest[]> {
+    const data = await apiClient.get<TestEnrollmentRequest[]>('/tests/enrollment-requests/my_requests/');
+    return Array.isArray(data) ? data : [];
+  },
+
+  async approveEnrollmentRequest(requestId: string, adminResponse?: string): Promise<TestEnrollmentRequest> {
+    const data = await apiClient.post<TestEnrollmentRequest>(
+      `/tests/enrollment-requests/${requestId}/approve/`,
+      adminResponse ? { admin_response: adminResponse } : {}
+    );
+    return data;
+  },
+
+  async rejectEnrollmentRequest(requestId: string, reason: string): Promise<TestEnrollmentRequest> {
+    const data = await apiClient.post<TestEnrollmentRequest>(
+      `/tests/enrollment-requests/${requestId}/reject/`,
+      { admin_response: reason }
+    );
+    return data;
   },
 };
 

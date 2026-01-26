@@ -1,9 +1,10 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import CategoryViewSet, CourseViewSet, LessonViewSet
+from .views import CategoryViewSet, CourseViewSet, LessonViewSet, CourseEnrollmentRequestViewSet
 
 router = DefaultRouter()
 router.register(r'categories', CategoryViewSet, basename='category')
+router.register(r'enrollment-requests', CourseEnrollmentRequestViewSet, basename='course-enrollment-request')
 router.register(r'', CourseViewSet, basename='course')
 
 urlpatterns = [

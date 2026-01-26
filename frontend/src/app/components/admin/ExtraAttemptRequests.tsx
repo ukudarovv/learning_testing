@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
-import { CheckCircle, XCircle, Clock, User, FileQuestion, MessageSquare, Calendar, RefreshCw, X } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, User, FileQuestion, MessageSquare, Calendar, RefreshCw, X, AlertCircle, Eye } from 'lucide-react';
 import { ExtraAttemptRequest } from '../../types/lms';
 import { examsService } from '../../services/exams';
 import { toast } from 'sonner';
 import { ApiError } from '../../services/api';
+import { useTranslation } from 'react-i18next';
 
 export function ExtraAttemptRequests() {
+  const { t } = useTranslation();
   const [requests, setRequests] = useState<ExtraAttemptRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -102,6 +104,27 @@ export function ExtraAttemptRequests() {
       default:
         return <Clock className="w-4 h-4" />;
     }
+  };
+
+  const getAttemptsCount = (request: ExtraAttemptRequest): number => {
+    return request.attempts_count || request.attemptsCount || 0;
+  };
+
+  const getMaxAttempts = (request: ExtraAttemptRequest): number => {
+    return request.max_attempts || request.maxAttempts || 0;
+  };
+
+  const getApprovedExtraAttempts = (request: ExtraAttemptRequest): number => {
+    return request.approved_extra_attempts || request.approvedExtraAttempts || 0;
+  };
+
+  const getLimitReached = (request: ExtraAttemptRequest): boolean => {
+    if (request.limit_reached !== undefined) return request.limit_reached;
+    if (request.limitReached !== undefined) return request.limitReached;
+    const attemptsCount = getAttemptsCount(request);
+    const maxAttempts = getMaxAttempts(request);
+    const approvedExtra = getApprovedExtraAttempts(request);
+    return attemptsCount >= (maxAttempts + approvedExtra);
   };
 
   if (loading) {
@@ -286,6 +309,40 @@ export function ExtraAttemptRequests() {
                           <div>
                             <p className="text-sm text-gray-500">Тест</p>
                             <p className="font-medium text-gray-900">{testTitle}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Statistics */}
+                      <div className="mb-4 bg-gray-50 rounded-lg p-4 border border-gray-200">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-sm font-medium text-gray-700">Статистика попыток</p>
+                          {getLimitReached(request) && (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
+                              <AlertCircle className="w-3 h-3" />
+                              {t('admin.extraAttempts.limitReached') || 'Лимит исчерпан'}
+                            </span>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">Использовано попыток</p>
+                            <p className={`text-lg font-bold ${
+                              getLimitReached(request) ? 'text-red-600' : 'text-gray-900'
+                            }`}>
+                              {getAttemptsCount(request)} / {getMaxAttempts(request) + getApprovedExtraAttempts(request)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">Лимит теста</p>
+                            <p className="text-lg font-bold text-gray-900">
+                              {getMaxAttempts(request)}
+                              {getApprovedExtraAttempts(request) > 0 && (
+                                <span className="text-sm text-green-600 ml-1">
+                                  (+{getApprovedExtraAttempts(request)} доп.)
+                                </span>
+                              )}
+                            </p>
                           </div>
                         </div>
                       </div>

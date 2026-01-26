@@ -25,10 +25,16 @@ class TestAttemptViewSet(viewsets.ModelViewSet):
     filter_backends = []
     
     def get_queryset(self):
-        """Filter attempts by user unless admin"""
+        """Filter attempts by user unless admin or PDEK member"""
         queryset = super().get_queryset()
-        if not self.request.user.is_admin:
-            queryset = queryset.filter(user=self.request.user)
+        user = self.request.user
+        
+        # Админы и члены ПДЭК могут видеть все попытки
+        if user.is_admin or getattr(user, 'role', None) in ['pdek_member', 'pdek_chairman']:
+            return queryset
+        
+        # Обычные пользователи видят только свои попытки
+        queryset = queryset.filter(user=user)
         return queryset
     
     def _has_excellent_pass(self, user, test):
@@ -193,6 +199,49 @@ class TestAttemptViewSet(viewsets.ModelViewSet):
         
         return Response(
             TestAttemptSerializer(attempt).data,
+            status=status.HTTP_200_OK
+        )
+    
+    @action(detail=True, methods=['post'])
+    def terminate(self, request, pk=None):
+        """Terminate test attempt early due to violations"""
+        attempt = self.get_object()
+        
+        # Check if user owns this attempt
+        if attempt.user != request.user and not request.user.is_admin:
+            return Response(
+                {'error': 'Permission denied'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Check if already completed
+        if attempt.completed_at:
+            return Response(
+                TestAttemptSerializer(attempt, context={'request': request}).data,
+                status=status.HTTP_200_OK
+            )
+        
+        # Get termination reason from request
+        reason = request.data.get('reason', 'Нарушение правил прохождения теста')
+        
+        # Terminate the attempt
+        attempt.completed_at = timezone.now()
+        attempt.score = 0.0
+        attempt.passed = False
+        attempt.termination_reason = reason
+        attempt.save()
+        
+        # Create notification
+        from apps.notifications.models import Notification
+        Notification.objects.create(
+            user=attempt.user,
+            type='exam_failed',
+            title='Тест досрочно завершен',
+            message=f'Тест "{attempt.test.title}" был досрочно завершен из-за нарушений правил. Причина: {reason}'
+        )
+        
+        return Response(
+            TestAttemptSerializer(attempt, context={'request': request}).data,
             status=status.HTTP_200_OK
         )
     

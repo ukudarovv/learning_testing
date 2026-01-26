@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { ArrowLeft, X, Save, Plus, Trash2, GripVertical, Edit2, Video, FileText, CheckCircle, Upload } from 'lucide-react';
 import { Course, Module, Lesson } from '../../types/lms';
 import { testsService } from '../../services/tests';
@@ -101,6 +101,13 @@ export function CourseEditor({ course, onSave, onCancel }: CourseEditorProps) {
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(false);
+
+  // Фильтруем тесты для финального теста - только standalone тесты
+  const availableFinalTests = useMemo(() => {
+    return availableTests.filter(test => 
+      test.is_standalone === true || test.isStandalone === true
+    );
+  }, [availableTests]);
 
   // Загружаем категории из API
   useEffect(() => {
@@ -354,7 +361,7 @@ export function CourseEditor({ course, onSave, onCancel }: CourseEditorProps) {
                     {loadingTests ? (
                       <option disabled>{t('admin.courses.loadingTests')}</option>
                     ) : (
-                      availableTests.map((test) => (
+                      availableFinalTests.map((test) => (
                         <option key={test.id} value={test.id}>
                           {test.title}
                         </option>

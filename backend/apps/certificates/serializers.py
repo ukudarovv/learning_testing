@@ -48,12 +48,24 @@ class CertificateCreateSerializer(serializers.ModelSerializer):
             validated_data['uploaded_by'] = request.user
             from django.utils import timezone
             validated_data['uploaded_at'] = timezone.now()
-        return super().create(validated_data)
+        
+        # Создаем сертификат
+        certificate = super().create(validated_data)
+        
+        # Генерируем номер и QR код если их нет (метод save() в модели должен это сделать автоматически)
+        if not certificate.number:
+            certificate.generate_number()
+        if not certificate.qr_code:
+            certificate.generate_qr_code()
+        certificate.save()
+        
+        return certificate
 
 
 class CertificateUpdateSerializer(serializers.ModelSerializer):
     """Serializer for updating certificate"""
     template = serializers.PrimaryKeyRelatedField(queryset=CertificateTemplate.objects.all(), required=False, allow_null=True)
+    file = serializers.FileField(required=False, allow_null=True)
     
     class Meta:
         model = Certificate
@@ -71,9 +83,9 @@ class CertificateUpdateSerializer(serializers.ModelSerializer):
         return value
     
     def to_internal_value(self, data):
-        """Handle empty strings for nullable fields"""
+        """Handle empty strings for nullable fields and FormData"""
+        # Handle FormData (QueryDict)
         if hasattr(data, 'get'):
-            # Handle QueryDict from FormData
             mutable_data = {}
             for key in ['number', 'template', 'valid_until']:
                 value = data.get(key)
@@ -84,14 +96,22 @@ class CertificateUpdateSerializer(serializers.ModelSerializer):
                     mutable_data[key] = None
                 elif value is not None:
                     mutable_data[key] = value
-            # File is handled separately by DRF from request.FILES
-            return super().to_internal_value(mutable_data)
+            
+            # File is handled from request.FILES in the view, but we need to include it
+            # DRF will automatically get file from request.FILES if field name matches
+            result = super().to_internal_value(mutable_data)
+            return result
+        
         return super().to_internal_value(data)
     
     def update(self, instance, validated_data):
         request = self.context.get('request')
         old_number = instance.number
         number_changed = 'number' in validated_data and validated_data['number'] != old_number
+        
+        # Получаем файл из request.FILES если он есть
+        if request and hasattr(request, 'FILES') and 'file' in request.FILES:
+            validated_data['file'] = request.FILES['file']
         
         if request and hasattr(request, 'user'):
             # Если загружается новый файл, обновляем информацию о загрузке

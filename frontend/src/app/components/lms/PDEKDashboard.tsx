@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FileText, CheckCircle, Clock, AlertTriangle, Phone } from 'lucide-react';
-import { Protocol } from '../../types/lms';
+import { FileText, CheckCircle, Clock, AlertTriangle, Phone, Video, ChevronDown, ChevronUp, XCircle } from 'lucide-react';
+import { Protocol, TestAttempt } from '../../types/lms';
 import { SMSVerification } from './SMSVerification';
 import { useProtocols } from '../../hooks/useProtocols';
 import { protocolsService } from '../../services/protocols';
+import { examsService } from '../../services/exams';
 import { useUser } from '../../contexts/UserContext';
 import { toast } from 'sonner';
 
@@ -15,6 +16,9 @@ export function PDEKDashboard() {
   const [showSMSModal, setShowSMSModal] = useState(false);
   const [protocolToSign, setProtocolToSign] = useState<Protocol | null>(null);
   const [loading, setLoading] = useState(false);
+  const [testAttempt, setTestAttempt] = useState<TestAttempt | null>(null);
+  const [loadingAttempt, setLoadingAttempt] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
 
   const isChairman = currentUser?.role === 'pdek_chairman';
   
@@ -229,10 +233,33 @@ export function PDEKDashboard() {
                           console.log('Full protocol received:', fullProtocol);
                           // Данные уже адаптированы в getProtocol, используем их напрямую
                           setSelectedProtocol(fullProtocol);
+                          
+                          // Загружаем данные попытки теста, если есть attemptId
+                          const attemptId = fullProtocol.attemptId 
+                            ? String(fullProtocol.attemptId) 
+                            : (fullProtocol.attempt?.id ? String(fullProtocol.attempt.id) : null);
+                          console.log('Attempt ID from protocol:', attemptId, 'fullProtocol:', fullProtocol);
+                          if (attemptId) {
+                            setLoadingAttempt(true);
+                            try {
+                              const attempt = await examsService.getTestAttempt(attemptId);
+                              console.log('Loaded test attempt:', attempt);
+                              setTestAttempt(attempt);
+                            } catch (error) {
+                              console.error('Failed to load test attempt:', error);
+                              setTestAttempt(null);
+                            } finally {
+                              setLoadingAttempt(false);
+                            }
+                          } else {
+                            console.log('No attemptId found in protocol');
+                            setTestAttempt(null);
+                          }
                         } catch (error) {
                           console.error('Failed to load protocol details:', error);
                           // Fallback к протоколу из списка
                           setSelectedProtocol(protocol);
+                          setTestAttempt(null);
                         }
                       }}
                       className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
@@ -269,8 +296,8 @@ export function PDEKDashboard() {
                           {t('lms.pdek.signedStatus')}
                         </span>
                       </div>
-                      <p className="text-gray-600 mb-2">{protocol.courseName}</p>
-                      <p className="text-sm text-gray-500">{protocol.userName}</p>
+                      <p className="text-gray-600 mb-2">{protocol.courseName && protocol.courseName !== 'Не указано' ? protocol.courseName : (protocol.testName && protocol.testName !== 'Не указано' ? protocol.testName : '—')}</p>
+                      <p className="text-sm text-gray-500">{protocol.userName && protocol.userName !== 'Не указано' ? protocol.userName : '—'}</p>
                     </div>
                     <button
                       onClick={async () => {
@@ -281,10 +308,33 @@ export function PDEKDashboard() {
                           console.log('Full protocol received:', fullProtocol);
                           // Данные уже адаптированы в getProtocol, используем их напрямую
                           setSelectedProtocol(fullProtocol);
+                          
+                          // Загружаем данные попытки теста, если есть attemptId
+                          const attemptId = fullProtocol.attemptId 
+                            ? String(fullProtocol.attemptId) 
+                            : (fullProtocol.attempt?.id ? String(fullProtocol.attempt.id) : null);
+                          console.log('Attempt ID from protocol:', attemptId, 'fullProtocol:', fullProtocol);
+                          if (attemptId) {
+                            setLoadingAttempt(true);
+                            try {
+                              const attempt = await examsService.getTestAttempt(attemptId);
+                              console.log('Loaded test attempt:', attempt);
+                              setTestAttempt(attempt);
+                            } catch (error) {
+                              console.error('Failed to load test attempt:', error);
+                              setTestAttempt(null);
+                            } finally {
+                              setLoadingAttempt(false);
+                            }
+                          } else {
+                            console.log('No attemptId found in protocol');
+                            setTestAttempt(null);
+                          }
                         } catch (error) {
                           console.error('Failed to load protocol details:', error);
                           // Fallback к протоколу из списка
                           setSelectedProtocol(protocol);
+                          setTestAttempt(null);
                         }
                       }}
                       className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
@@ -322,7 +372,11 @@ export function PDEKDashboard() {
               <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-gray-900">{t('lms.pdek.protocolNumber', { number: selectedProtocol.number })}</h2>
                 <button
-                  onClick={() => setSelectedProtocol(null)}
+                  onClick={() => {
+                    setSelectedProtocol(null);
+                    setTestAttempt(null);
+                    setShowDetails(false);
+                  }}
                   className="text-gray-400 hover:text-gray-600"
                 >
                   <span className="text-2xl">×</span>
@@ -419,6 +473,118 @@ export function PDEKDashboard() {
                   ))}
                 </div>
               </div>
+
+              {/* Test Attempt Details - для членов ПДЭК показываем все детали */}
+              {loadingAttempt ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                  <p className="mt-2 text-gray-600">{t('lms.pdek.loadingAttemptDetails') || 'Загрузка деталей попытки...'}</p>
+                </div>
+              ) : testAttempt && (
+                <>
+                  {/* Video Recording Section */}
+                  {(testAttempt.video_recording || testAttempt.videoRecording) && (
+                    <div className="mb-6">
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <div className="flex items-center gap-3 mb-3">
+                          <Video className="w-5 h-5 text-blue-600" />
+                          <h4 className="font-semibold text-gray-900">
+                            {t('lms.pdek.videoRecording') || 'Видеозапись попытки'}
+                          </h4>
+                        </div>
+                        <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden">
+                          <video
+                            src={testAttempt.video_recording || testAttempt.videoRecording || ''}
+                            controls
+                            className="w-full h-full"
+                            style={{ maxHeight: '400px' }}
+                          >
+                            {t('lms.pdek.videoNotSupported') || 'Ваш браузер не поддерживает воспроизведение видео.'}
+                          </video>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Detailed Answers Section */}
+                  {(() => {
+                    const answerDetails = testAttempt.answer_details || testAttempt.answerDetails || [];
+                    if (answerDetails.length === 0) return null;
+                    
+                    return (
+                      <div className="mb-6">
+                        <button
+                          onClick={() => setShowDetails(!showDetails)}
+                          className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+                        >
+                          <span className="font-semibold text-gray-900">
+                            {t('lms.pdek.detailedResults', { 
+                              correct: answerDetails.filter((d: any) => d.is_correct).length, 
+                              total: answerDetails.length 
+                            }) || `Детальные результаты (${answerDetails.filter((d: any) => d.is_correct).length} из ${answerDetails.length} правильно)`}
+                          </span>
+                          {showDetails ? (
+                            <ChevronUp className="w-5 h-5 text-gray-500" />
+                          ) : (
+                            <ChevronDown className="w-5 h-5 text-gray-500" />
+                          )}
+                        </button>
+
+                        {showDetails && (
+                          <div className="mt-4 space-y-4">
+                            {answerDetails.map((detail: any, index: number) => (
+                              <div
+                                key={detail.question_id || index}
+                                className={`border-2 rounded-lg p-4 ${
+                                  detail.is_correct
+                                    ? 'border-green-200 bg-green-50'
+                                    : 'border-red-200 bg-red-50'
+                                }`}
+                              >
+                                <div className="flex items-start justify-between mb-3">
+                                  <div className="flex items-start gap-3 flex-1">
+                                    {detail.is_correct ? (
+                                      <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" />
+                                    ) : (
+                                      <XCircle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
+                                    )}
+                                    <div className="flex-1">
+                                      <p className="font-semibold text-gray-900 mb-2 text-lg">
+                                        {t('lms.pdek.questionNumber', { number: index + 1 }) || `Вопрос ${index + 1}`}: {detail.question_text || detail.questionText || ''}
+                                      </p>
+                                      
+                                      <div className="space-y-2 text-sm">
+                                        <div>
+                                          <span className="font-medium text-gray-700">{t('lms.pdek.studentAnswer') || 'Ответ студента'}: </span>
+                                          <span className={`${
+                                            detail.is_correct ? 'text-green-700' : 'text-red-700'
+                                          } font-medium`}>
+                                            {detail.user_answer_display || detail.userAnswerDisplay || t('lms.pdek.notAnswered') || 'Не отвечено'}
+                                          </span>
+                                        </div>
+                                        
+                                        {/* Для ПДЭК всегда показываем правильный ответ */}
+                                        {!detail.is_correct && (
+                                          <div>
+                                            <span className="font-medium text-gray-700">{t('lms.pdek.correctAnswer') || 'Правильный ответ'}: </span>
+                                            <span className="text-green-700 font-medium">
+                                              {detail.correct_answer_display || detail.correctAnswerDisplay || ''}
+                                            </span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </>
+              )}
             </div>
 
             <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
@@ -428,16 +594,18 @@ export function PDEKDashboard() {
               >
                 {t('common.close')}
               </button>
-              <button
-                onClick={() => {
-                  handleSignRequest(selectedProtocol);
-                  setSelectedProtocol(null);
-                }}
-                className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <Phone className="w-4 h-4" />
-                {t('lms.pdek.signSms')}
-              </button>
+                <button
+                  onClick={() => {
+                    handleSignRequest(selectedProtocol);
+                    setSelectedProtocol(null);
+                    setTestAttempt(null);
+                    setShowDetails(false);
+                  }}
+                  className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Phone className="w-4 h-4" />
+                  {t('lms.pdek.signSms')}
+                </button>
             </div>
           </div>
         </div>

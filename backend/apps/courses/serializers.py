@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Category, Course, Module, Lesson, CourseEnrollment, LessonProgress, CourseCompletionVerification
+from .models import Category, Course, Module, Lesson, CourseEnrollment, LessonProgress, CourseCompletionVerification, CourseEnrollmentRequest
 from apps.accounts.serializers import UserSerializer
 
 
@@ -216,4 +216,39 @@ class OTPRequestSerializer(serializers.Serializer):
 class OTPVerifySerializer(serializers.Serializer):
     """Serializer for OTP verification"""
     otp_code = serializers.CharField(max_length=6, min_length=6)
+
+
+class CourseEnrollmentRequestSerializer(serializers.ModelSerializer):
+    """Course enrollment request serializer"""
+    user = UserSerializer(read_only=True)
+    course = serializers.SerializerMethodField()
+    processed_by = UserSerializer(read_only=True)
+    
+    class Meta:
+        model = CourseEnrollmentRequest
+        fields = [
+            'id', 'user', 'course', 'status', 'admin_response',
+            'processed_by', 'processed_at', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'processed_by', 'processed_at']
+    
+    def get_course(self, obj):
+        """Return simplified course data"""
+        course = obj.course
+        return {
+            'id': course.id,
+            'title': course.title,
+            'title_kz': course.title_kz,
+            'title_en': course.title_en,
+        }
+
+
+class CourseEnrollmentRequestCreateSerializer(serializers.Serializer):
+    """Serializer for creating course enrollment request"""
+    course_id = serializers.IntegerField()
+
+
+class CourseEnrollmentRequestProcessSerializer(serializers.Serializer):
+    """Serializer for processing course enrollment request (approve/reject)"""
+    admin_response = serializers.CharField(required=False, allow_blank=True)
 

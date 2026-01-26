@@ -1,5 +1,5 @@
 import { apiClient } from './api';
-import { Course, CourseEnrollment } from '../types/lms';
+import { Course, CourseEnrollment, CourseEnrollmentRequest } from '../types/lms';
 import { PaginatedResponse, PaginationParams } from '../types/pagination';
 
 const coursesService = {
@@ -335,8 +335,8 @@ const coursesService = {
     await apiClient.post(`/courses/${courseId}/enroll/`, { user_ids: userIds });
   },
 
-  async selfEnroll(courseId: string): Promise<{ message: string; enrollment_id: number }> {
-    const data = await apiClient.post<{ message: string; enrollment_id: number }>(
+  async selfEnroll(courseId: string): Promise<{ message: string; enrollment_id?: number; request_id?: number; status?: string }> {
+    const data = await apiClient.post<{ message: string; enrollment_id?: number; request_id?: number; status?: string }>(
       `/courses/${courseId}/enroll/`,
       {}
     );
@@ -377,6 +377,45 @@ const coursesService = {
     return apiClient.post<{ message: string; protocol_id: number }>(`/courses/${courseId}/verify_completion_otp/`, {
       otp_code: otpCode
     });
+  },
+
+  async createEnrollmentRequest(courseId: string): Promise<CourseEnrollmentRequest> {
+    const data = await apiClient.post<CourseEnrollmentRequest>(
+      '/courses/enrollment-requests/',
+      { course_id: parseInt(courseId) }
+    );
+    return data;
+  },
+
+  async getEnrollmentRequests(): Promise<CourseEnrollmentRequest[]> {
+    const data = await apiClient.get<any>('/courses/enrollment-requests/');
+    // Обработка пагинированного ответа
+    if (data && typeof data === 'object' && 'results' in data) {
+      return Array.isArray(data.results) ? data.results : [];
+    }
+    // Обработка обычного массива
+    return Array.isArray(data) ? data : [];
+  },
+
+  async getMyEnrollmentRequests(): Promise<CourseEnrollmentRequest[]> {
+    const data = await apiClient.get<CourseEnrollmentRequest[]>('/courses/enrollment-requests/my_requests/');
+    return Array.isArray(data) ? data : [];
+  },
+
+  async approveEnrollmentRequest(requestId: string, adminResponse?: string): Promise<CourseEnrollmentRequest> {
+    const data = await apiClient.post<CourseEnrollmentRequest>(
+      `/courses/enrollment-requests/${requestId}/approve/`,
+      adminResponse ? { admin_response: adminResponse } : {}
+    );
+    return data;
+  },
+
+  async rejectEnrollmentRequest(requestId: string, reason: string): Promise<CourseEnrollmentRequest> {
+    const data = await apiClient.post<CourseEnrollmentRequest>(
+      `/courses/enrollment-requests/${requestId}/reject/`,
+      { admin_response: reason }
+    );
+    return data;
   },
 };
 

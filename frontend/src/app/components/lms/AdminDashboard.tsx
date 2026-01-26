@@ -10,6 +10,7 @@ import { LicenseEditor } from '../admin/LicenseEditor';
 import { ContactManagement } from '../admin/ContactManagement';
 import { ExtraAttemptRequests } from '../admin/ExtraAttemptRequests';
 import { TestAttemptsManagement } from '../admin/TestAttemptsManagement';
+import { EnrollmentRequests } from '../admin/EnrollmentRequests';
 import { AddStudentsToCourseModal } from '../admin/AddStudentsToCourseModal';
 import { VacancyManagement } from '../admin/VacancyManagement';
 import { VacancyApplications } from '../admin/VacancyApplications';
@@ -22,6 +23,7 @@ import { LicenseCategoryManagement } from '../admin/LicenseCategoryManagement';
 import { PartnerManagement } from '../admin/PartnerManagement';
 import { PartnerEditor } from '../admin/PartnerEditor';
 import { CertificateManagement } from '../admin/CertificateManagement';
+import { ProtocolManagement } from '../admin/ProtocolManagement';
 import { ContentPageEditor } from '../admin/ContentPageEditor';
 import { Course, Test, User } from '../../types/lms';
 import { License, licensesService } from '../../services/licenses';
@@ -58,7 +60,7 @@ function getStatusText(status: string, t: (key: string) => string): string {
 export function AdminDashboard() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [activeSection, setActiveSection] = useState<'overview' | 'courses' | 'users' | 'tests' | 'reports' | 'categories' | 'licenses' | 'license-categories' | 'contacts' | 'extra-attempts' | 'test-attempts' | 'vacancies' | 'vacancy-applications' | 'vacancy-statistics' | 'projects' | 'project-categories' | 'partners' | 'certificates' | 'content-pages'>('overview');
+  const [activeSection, setActiveSection] = useState<'overview' | 'courses' | 'users' | 'tests' | 'reports' | 'categories' | 'licenses' | 'license-categories' | 'contacts' | 'extra-attempts' | 'test-attempts' | 'enrollment-requests' | 'protocols' | 'vacancies' | 'vacancy-applications' | 'vacancy-statistics' | 'projects' | 'project-categories' | 'partners' | 'certificates' | 'content-pages'>('overview');
   const [showUserEditor, setShowUserEditor] = useState(false);
   const [showLicenseEditor, setShowLicenseEditor] = useState(false);
   const [showVacancyEditor, setShowVacancyEditor] = useState(false);
@@ -359,6 +361,39 @@ export function AdminDashboard() {
                   <span className="font-medium">{t('admin.dashboard.navigation.tests')}</span>
                 </button>
                 <button
+                  onClick={() => setActiveSection('test-attempts')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                    activeSection === 'test-attempts'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <Video className="w-5 h-5 flex-shrink-0" />
+                  <span className="font-medium text-sm leading-tight">{t('admin.testAttempts.title') || 'Попытки тестов'}</span>
+                </button>
+                <button
+                  onClick={() => setActiveSection('extra-attempts')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                    activeSection === 'extra-attempts'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <RotateCcw className="w-5 h-5 flex-shrink-0" />
+                  <span className="font-medium text-sm leading-tight">{t('admin.extraAttempts.title')}</span>
+                </button>
+                <button
+                  onClick={() => setActiveSection('enrollment-requests')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                    activeSection === 'enrollment-requests'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <UserPlus className="w-5 h-5 flex-shrink-0" />
+                  <span className="font-medium text-sm leading-tight">{t('admin.enrollmentRequests.title') || 'Запросы на запись'}</span>
+                </button>
+                <button
                   onClick={() => setActiveSection('reports')}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                     activeSection === 'reports'
@@ -379,6 +414,17 @@ export function AdminDashboard() {
                 >
                   <Award className="w-5 h-5" />
                   <span className="font-medium">{t('admin.dashboard.navigation.certificates')}</span>
+                </button>
+                <button
+                  onClick={() => setActiveSection('protocols')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                    activeSection === 'protocols'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <FileText className="w-5 h-5" />
+                  <span className="font-medium">{t('admin.dashboard.navigation.protocols') || 'Протоколы'}</span>
                 </button>
                 <button
                   onClick={() => setActiveSection('categories')}
@@ -423,28 +469,6 @@ export function AdminDashboard() {
                 >
                   <Mail className="w-5 h-5" />
                   <span className="font-medium">{t('admin.contacts.title')}</span>
-                </button>
-                <button
-                  onClick={() => setActiveSection('extra-attempts')}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                    activeSection === 'extra-attempts'
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <RotateCcw className="w-5 h-5 flex-shrink-0" />
-                  <span className="font-medium text-sm leading-tight">{t('admin.extraAttempts.title')}</span>
-                </button>
-                <button
-                  onClick={() => setActiveSection('test-attempts')}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                    activeSection === 'test-attempts'
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <Video className="w-5 h-5 flex-shrink-0" />
-                  <span className="font-medium text-sm leading-tight">{t('admin.testAttempts.title') || 'Попытки тестов'}</span>
                 </button>
                 <button
                   onClick={() => setActiveSection('vacancies')}
@@ -575,8 +599,14 @@ export function AdminDashboard() {
             {activeSection === 'certificates' && (
               <CertificateManagement />
             )}
+            {activeSection === 'protocols' && (
+              <ProtocolManagement />
+            )}
             {activeSection === 'extra-attempts' && (
               <ExtraAttemptRequests />
+            )}
+            {activeSection === 'enrollment-requests' && (
+              <EnrollmentRequests />
             )}
             {activeSection === 'test-attempts' && (
               <TestAttemptsManagement />

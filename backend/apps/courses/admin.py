@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Category, Course, Module, Lesson, CourseEnrollment, LessonProgress, CourseCompletionVerification
+from .models import Category, Course, Module, Lesson, CourseEnrollment, LessonProgress, CourseCompletionVerification, CourseEnrollmentRequest
 
 
 @admin.register(Course)
@@ -45,6 +45,15 @@ class LessonProgressAdmin(admin.ModelAdmin):
     list_filter = ('completed', 'completed_at')
     search_fields = ('enrollment__user__phone', 'enrollment__user__full_name', 'lesson__title')
     readonly_fields = ('completed_at',)
+
+
+@admin.register(CourseEnrollmentRequest)
+class CourseEnrollmentRequestAdmin(admin.ModelAdmin):
+    list_display = ('user', 'course', 'status', 'processed_by', 'processed_at', 'created_at')
+    list_filter = ('status', 'created_at', 'processed_at')
+    search_fields = ('user__phone', 'user__full_name', 'course__title')
+    ordering = ('-created_at',)
+    readonly_fields = ('created_at', 'updated_at', 'processed_at')
 
 
 @admin.register(CourseCompletionVerification)

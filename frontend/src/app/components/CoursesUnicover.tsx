@@ -8,6 +8,7 @@ import { Course, Test } from '../types/lms';
 import { useUser } from '../contexts/UserContext';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { useEnrollmentRequests } from '../hooks/useEnrollmentRequests';
 
 // Fallback иконки для категорий, если в базе нет icon
 const categoryIcons: Record<string, typeof Shield> = {
@@ -22,12 +23,14 @@ export function CoursesUnicover() {
   const navigate = useNavigate();
   const { user } = useUser();
   const { i18n, t } = useTranslation();
+  const { courseRequests, testRequests, refresh: refreshEnrollmentRequests } = useEnrollmentRequests();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null); // null = использовать язык интерфейса
   const [courses, setCourses] = useState<Course[]>([]);
   const [tests, setTests] = useState<Test[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [enrollingCourseId, setEnrollingCourseId] = useState<string | null>(null);
   
   // Получаем текущий язык интерфейса
   const currentInterfaceLanguage = i18n.language || localStorage.getItem('language') || 'ru';
@@ -209,7 +212,7 @@ export function CoursesUnicover() {
     return getCategoryName(category);
   };
 
-  const handleEnrollClick = (course: Course) => {
+  const handleEnrollClick = async (course: Course) => {
     if (!user) {
       // Если пользователь не авторизован, перенаправляем на страницу входа
       toast.info(t('education.courses.loginRequired'));
@@ -217,15 +220,64 @@ export function CoursesUnicover() {
       return;
     }
 
-    // Если пользователь авторизован, переходим к курсу
-    if (user.role === 'student') {
-      navigate(`/student/course/${course.id}`);
-    } else {
+    if (user.role !== 'student') {
       toast.info(t('education.courses.studentsOnly'));
+      return;
+    }
+
+    // Проверяем, есть ли уже запрос на запись
+    const existingRequest = courseRequests.find(r => r.courseId === course.id || (typeof r.course === 'object' && r.course?.id === course.id));
+    
+    if (existingRequest) {
+      if (existingRequest.status === 'pending') {
+        toast.info(t('education.courses.requestPending') || 'Запрос на запись уже подан и ожидает подтверждения');
+        return;
+      } else if (existingRequest.status === 'approved') {
+        // Если запрос одобрен, переходим к курсу
+        navigate(`/student/course/${course.id}`);
+        return;
+      }
+    }
+
+    // Проверяем, есть ли уже запись
+    try {
+      const enrollments = await coursesService.getMyEnrollments();
+      const isEnrolled = enrollments.some(e => e.courseId === course.id || (typeof e.course === 'object' && e.course?.id === course.id));
+      
+      if (isEnrolled) {
+        navigate(`/student/course/${course.id}`);
+        return;
+      }
+    } catch (error) {
+      // Игнорируем ошибку, продолжаем создавать запрос
+    }
+
+    // Создаем запрос на запись
+    try {
+      setEnrollingCourseId(course.id);
+      const result = await coursesService.selfEnroll(course.id);
+      
+      if (result.request_id || result.status === 'pending') {
+        toast.success(t('education.courses.requestCreated') || 'Запрос на запись создан. Ожидайте подтверждения администратора.');
+        await refreshEnrollmentRequests();
+      } else if (result.enrollment_id) {
+        // Если сразу создалась запись (старая логика для обратной совместимости)
+        toast.success(t('education.courses.enrolled') || 'Вы успешно записаны на курс');
+        navigate(`/student/course/${course.id}`);
+      }
+    } catch (error: any) {
+      if (error.message?.includes('already') || error.message?.includes('уже')) {
+        // Если уже записан или запрос уже существует
+        navigate(`/student/course/${course.id}`);
+      } else {
+        toast.error(error.message || t('education.courses.enrollError') || 'Ошибка при создании запроса');
+      }
+    } finally {
+      setEnrollingCourseId(null);
     }
   };
 
-  const handleTestClick = (testId: string | number) => {
+  const handleTestClick = async (testId: string | number) => {
     if (!user) {
       // Если пользователь не авторизован, перенаправляем на страницу входа
       toast.info(t('education.courses.loginRequired'));
@@ -233,11 +285,38 @@ export function CoursesUnicover() {
       return;
     }
 
-    // Если пользователь авторизован, переходим к тесту
-    if (user.role === 'student') {
-      navigate(`/student/test/${testId}`);
-    } else {
+    if (user.role !== 'student') {
       toast.info(t('education.courses.studentsOnly'));
+      return;
+    }
+
+    // Проверяем, есть ли уже запрос на запись для теста
+    const test = tests.find(t => t.id === String(testId));
+    const existingRequest = testRequests.find(r => r.testId === String(testId) || (typeof r.test === 'object' && r.test?.id === String(testId)));
+    
+    if (existingRequest) {
+      if (existingRequest.status === 'pending') {
+        toast.info(t('education.tests.requestPending') || 'Запрос на запись уже подан и ожидает подтверждения');
+        return;
+      } else if (existingRequest.status === 'approved') {
+        // Если запрос одобрен, переходим к тесту
+        navigate(`/student/test/${testId}`);
+        return;
+      }
+    }
+
+    // Создаем запрос на запись для всех тестов
+    try {
+      await testsService.createEnrollmentRequest(String(testId));
+      toast.success(t('education.tests.requestCreated') || 'Запрос на запись создан. Ожидайте подтверждения администратора.');
+      await refreshEnrollmentRequests();
+    } catch (error: any) {
+      if (error.message?.includes('already') || error.message?.includes('уже')) {
+        // Если запрос уже существует
+        toast.info(t('education.tests.requestPending') || 'Запрос на запись уже подан');
+      } else {
+        toast.error(error.message || t('education.tests.requestError') || 'Ошибка при создании запроса');
+      }
     }
   };
 
@@ -405,12 +484,46 @@ export function CoursesUnicover() {
                   </div>
                 )}
                 
-                <button 
-                  onClick={() => handleEnrollClick(course)}
-                  className="mt-6 w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-                >
-                  {user ? t('education.courses.goToCourse') : t('education.courses.enroll')}
-                </button>
+                {(() => {
+                  const existingRequest = courseRequests.find(r => r.courseId === course.id || (typeof r.course === 'object' && r.course?.id === course.id));
+                  const isEnrolling = enrollingCourseId === course.id;
+                  
+                  if (existingRequest) {
+                    if (existingRequest.status === 'pending') {
+                      return (
+                        <button 
+                          disabled
+                          className="mt-6 w-full bg-yellow-100 text-yellow-800 px-6 py-3 rounded-lg font-medium cursor-not-allowed"
+                        >
+                          {t('education.courses.requestPending') || 'Ожидает подтверждения'}
+                        </button>
+                      );
+                    } else if (existingRequest.status === 'approved') {
+                      return (
+                        <button 
+                          onClick={() => navigate(`/student/course/${course.id}`)}
+                          className="mt-6 w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                        >
+                          {t('education.courses.goToCourse') || 'Перейти к курсу'}
+                        </button>
+                      );
+                    }
+                  }
+                  
+                  return (
+                    <button 
+                      onClick={() => handleEnrollClick(course)}
+                      disabled={isEnrolling}
+                      className="mt-6 w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isEnrolling 
+                        ? (t('education.courses.creatingRequest') || 'Создание запроса...')
+                        : user 
+                        ? (t('education.courses.requestEnrollment') || 'Записаться на курс')
+                        : t('education.courses.enroll')}
+                    </button>
+                  );
+                })()}
               </div>
             );
           })}
@@ -489,12 +602,53 @@ export function CoursesUnicover() {
                   </div>
                 </div>
                 
-                <button 
-                  onClick={() => handleTestClick(test.id)}
-                  className="mt-6 w-full bg-orange-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-orange-700 transition-colors"
-                >
-                  {user ? (t('education.courses.startTest') || 'Начать тест') : t('education.courses.enroll')}
-                </button>
+                {(() => {
+                  if (!user) {
+                    return (
+                      <button 
+                        onClick={() => handleTestClick(test.id)}
+                        className="mt-6 w-full bg-orange-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-orange-700 transition-colors"
+                      >
+                        {t('education.courses.enroll')}
+                      </button>
+                    );
+                  }
+
+                  // Проверяем статус запроса на запись
+                  const existingRequest = testRequests.find(r => r.testId === test.id || (typeof r.test === 'object' && r.test?.id === test.id));
+                  
+                  if (existingRequest) {
+                    if (existingRequest.status === 'pending') {
+                      return (
+                        <button 
+                          disabled
+                          className="mt-6 w-full bg-yellow-500 text-white px-6 py-3 rounded-lg font-medium cursor-not-allowed opacity-75"
+                        >
+                          {t('education.courses.requestPending') || 'Ожидает подтверждения'}
+                        </button>
+                      );
+                    } else if (existingRequest.status === 'approved') {
+                      return (
+                        <button 
+                          onClick={() => handleTestClick(test.id)}
+                          className="mt-6 w-full bg-orange-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-orange-700 transition-colors"
+                        >
+                          {t('education.courses.startTest') || 'Начать тест'}
+                        </button>
+                      );
+                    }
+                  }
+
+                  // Нет запроса или запрос отклонен - показываем кнопку создания запроса
+                  return (
+                    <button 
+                      onClick={() => handleTestClick(test.id)}
+                      className="mt-6 w-full bg-orange-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-orange-700 transition-colors"
+                    >
+                      {t('education.courses.startTest') || 'Начать тест'}
+                    </button>
+                  );
+                })()}
               </div>
             );
           })}

@@ -166,6 +166,11 @@ const examsService = {
       sms_code: smsCode,
     });
   },
+
+  // Test termination
+  async terminateTestAttempt(attemptId: string, reason: string): Promise<TestAttempt> {
+    return apiClient.post<TestAttempt>(`/exams/${attemptId}/terminate/`, { reason });
+  },
 };
 
 export { examsService };

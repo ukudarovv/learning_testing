@@ -1,8 +1,9 @@
 import { BookOpen, Award, FileText, TrendingUp, CheckCircle2, AlertCircle, Play, Clock, FileQuestion, Edit2, User } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useMyEnrollments } from '../../hooks/useMyEnrollments';
 import { useNotifications } from '../../hooks/useNotifications';
+import { useEnrollmentRequests } from '../../hooks/useEnrollmentRequests';
 import { certificatesService } from '../../services/certificates';
 import { examsService } from '../../services/exams';
 import { protocolsService } from '../../services/protocols';
@@ -15,8 +16,10 @@ import { toast } from 'sonner';
 export function StudentDashboard() {
   const { t } = useTranslation();
   const { user } = useUser();
+  const navigate = useNavigate();
   const { courses, loading: coursesLoading } = useMyEnrollments();
   const { notifications, loading: notificationsLoading } = useNotifications({ read: false });
+  const { courseRequests, testRequests, loading: requestsLoading } = useEnrollmentRequests();
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [certificatesLoading, setCertificatesLoading] = useState(true);
   const [testAttempts, setTestAttempts] = useState<TestAttempt[]>([]);
@@ -202,6 +205,133 @@ export function StudentDashboard() {
                   ))}
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Enrollment Requests */}
+        {(courseRequests.length > 0 || testRequests.length > 0) && (
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">{t('lms.student.enrollmentRequests') || 'Мои запросы на запись'}</h2>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {courseRequests.map(request => {
+                const courseTitle = typeof request.course === 'object' ? request.course?.title : 'Курс';
+                const courseId = typeof request.course === 'object' ? request.course?.id : request.courseId;
+                const isApproved = request.status === 'approved';
+                const isClickable = isApproved && courseId;
+                
+                const cardContent = (
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <BookOpen className="w-5 h-5 text-blue-600" />
+                        <span className="text-sm text-gray-500">Курс</span>
+                      </div>
+                      <h3 className="text-lg font-bold text-gray-900">{courseTitle}</h3>
+                      <div className="mt-3">
+                        <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
+                          request.status === 'pending' 
+                            ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                            : request.status === 'approved'
+                            ? 'bg-green-100 text-green-800 border border-green-200'
+                            : 'bg-red-100 text-red-800 border border-red-200'
+                        }`}>
+                          {request.status === 'pending' 
+                            ? (t('lms.student.requestStatus.pending') || 'Ожидает подтверждения')
+                            : request.status === 'approved'
+                            ? (t('lms.student.requestStatus.approved') || 'Одобрен')
+                            : (t('lms.student.requestStatus.rejected') || 'Отклонен')}
+                        </span>
+                      </div>
+                      {request.admin_response || request.adminResponse ? (
+                        <p className="mt-2 text-sm text-gray-600">
+                          {request.admin_response || request.adminResponse}
+                        </p>
+                      ) : null}
+                      {isApproved && courseId && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/student/course/${courseId}`);
+                          }}
+                          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                        >
+                          {t('lms.student.goToCourse') || 'Перейти к курсу'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+                
+                return (
+                  <div 
+                    key={request.id} 
+                    className={`bg-white rounded-lg shadow-md p-6 ${isClickable ? 'cursor-pointer hover:shadow-lg transition-shadow' : ''}`}
+                    onClick={isClickable ? () => navigate(`/student/course/${courseId}`) : undefined}
+                  >
+                    {cardContent}
+                  </div>
+                );
+              })}
+              {testRequests.map(request => {
+                const testTitle = typeof request.test === 'object' ? request.test?.title : 'Тест';
+                const testId = typeof request.test === 'object' ? request.test?.id : request.testId;
+                const isApproved = request.status === 'approved';
+                const isClickable = isApproved && testId;
+                
+                const cardContent = (
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <FileQuestion className="w-5 h-5 text-orange-600" />
+                        <span className="text-sm text-gray-500">Тест</span>
+                      </div>
+                      <h3 className="text-lg font-bold text-gray-900">{testTitle}</h3>
+                      <div className="mt-3">
+                        <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
+                          request.status === 'pending' 
+                            ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                            : request.status === 'approved'
+                            ? 'bg-green-100 text-green-800 border border-green-200'
+                            : 'bg-red-100 text-red-800 border border-red-200'
+                        }`}>
+                          {request.status === 'pending' 
+                            ? (t('lms.student.requestStatus.pending') || 'Ожидает подтверждения')
+                            : request.status === 'approved'
+                            ? (t('lms.student.requestStatus.approved') || 'Одобрен')
+                            : (t('lms.student.requestStatus.rejected') || 'Отклонен')}
+                        </span>
+                      </div>
+                      {request.admin_response || request.adminResponse ? (
+                        <p className="mt-2 text-sm text-gray-600">
+                          {request.admin_response || request.adminResponse}
+                        </p>
+                      ) : null}
+                      {isApproved && testId && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/student/test/${testId}`);
+                          }}
+                          className="mt-4 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium"
+                        >
+                          {t('lms.student.goToTest') || 'Перейти к тесту'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+                
+                return (
+                  <div 
+                    key={request.id} 
+                    className={`bg-white rounded-lg shadow-md p-6 ${isClickable ? 'cursor-pointer hover:shadow-lg transition-shadow' : ''}`}
+                    onClick={isClickable ? () => navigate(`/student/test/${testId}`) : undefined}
+                  >
+                    {cardContent}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

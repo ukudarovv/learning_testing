@@ -1,7 +1,8 @@
 from rest_framework import serializers
-from .models import Test, Question, TestCompletionVerification
+from .models import Test, Question, TestCompletionVerification, TestEnrollmentRequest
 from apps.courses.serializers import CategorySerializer
 from apps.courses.models import Category
+from apps.accounts.serializers import UserSerializer
 import uuid
 
 
@@ -101,6 +102,41 @@ class QuestionCreateSerializer(serializers.ModelSerializer):
                         opt['id'] = str(uuid.uuid4())
             validated_data['options'] = options
         return super().update(instance, validated_data)
+
+
+class TestEnrollmentRequestSerializer(serializers.ModelSerializer):
+    """Test enrollment request serializer"""
+    user = UserSerializer(read_only=True)
+    test = serializers.SerializerMethodField()
+    processed_by = UserSerializer(read_only=True)
+
+    class Meta:
+        model = TestEnrollmentRequest
+        fields = [
+            'id', 'user', 'test', 'status', 'admin_response',
+            'processed_by', 'processed_at', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'processed_by', 'processed_at']
+    
+    def get_test(self, obj):
+        """Return simplified test data"""
+        test = obj.test
+        return {
+            'id': test.id,
+            'title': test.title,
+            'title_kz': test.title_kz,
+            'title_en': test.title_en,
+        }
+
+
+class TestEnrollmentRequestCreateSerializer(serializers.Serializer):
+    """Serializer for creating test enrollment request"""
+    test_id = serializers.IntegerField()
+
+
+class TestEnrollmentRequestProcessSerializer(serializers.Serializer):
+    """Serializer for processing test enrollment request (approve/reject)"""
+    admin_response = serializers.CharField(required=False, allow_blank=True)
 
 
 class TestCompletionVerificationSerializer(serializers.ModelSerializer):

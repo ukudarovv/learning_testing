@@ -1,4 +1,4 @@
-import { X, CheckCircle, XCircle, Clock, RotateCcw, ArrowLeft, ChevronDown, ChevronUp, Video, Download, Send } from 'lucide-react';
+import { X, CheckCircle, XCircle, Clock, RotateCcw, ArrowLeft, ChevronDown, ChevronUp, Video, Send } from 'lucide-react';
 import { Test, TestAttempt, ExtraAttemptRequest } from '../../types/lms';
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -131,52 +131,50 @@ export function TestResultModal({
             )}
           </div>
 
-          {/* Statistics - показываем только если showResults = true */}
-          {showResults && (
-            <>
-              <div className="bg-gray-50 rounded-lg p-6 mb-6">
-                <div className="grid grid-cols-2 gap-6 mb-4">
-                  <div className="text-center">
-                    <p className="text-sm text-gray-600 mb-1">{t('lms.coursePlayer.testResultScore')}</p>
-                    <p className={`text-4xl font-bold ${passed ? 'text-green-600' : 'text-red-600'}`}>
-                      {score.toFixed(2)}%
-                    </p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-sm text-gray-600 mb-1">{t('lms.coursePlayer.testResultPassingScore')}</p>
-                    <p className="text-4xl font-bold text-gray-900">{passingScore}%</p>
+          {/* Statistics - всегда показываем */}
+          <div className="bg-gray-50 rounded-lg p-6 mb-6">
+            <div className="grid grid-cols-2 gap-6 mb-4">
+              <div className="text-center">
+                <p className="text-sm text-gray-600 mb-1">{t('lms.coursePlayer.testResultScore')}</p>
+                <p className={`text-4xl font-bold ${passed ? 'text-green-600' : 'text-red-600'}`}>
+                  {score.toFixed(2)}%
+                </p>
+              </div>
+              <div className="text-center">
+                <p className="text-sm text-gray-600 mb-1">{t('lms.coursePlayer.testResultPassingScore')}</p>
+                <p className="text-4xl font-bold text-gray-900">{passingScore}%</p>
+              </div>
+            </div>
+            
+            <div className="border-t border-gray-200 pt-4 mt-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-gray-400" />
+                  <div>
+                    <p className="text-xs text-gray-500">{t('lms.coursePlayer.testResultTimeSpent')}</p>
+                    <p className="text-sm font-semibold text-gray-900">{formatTime(timeSpent)}</p>
                   </div>
                 </div>
-                
-                <div className="border-t border-gray-200 pt-4 mt-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-5 h-5 text-gray-400" />
-                      <div>
-                        <p className="text-xs text-gray-500">{t('lms.coursePlayer.testResultTimeSpent')}</p>
-                        <p className="text-sm font-semibold text-gray-900">{formatTime(timeSpent)}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <RotateCcw className="w-5 h-5 text-gray-400" />
-                      <div>
-                        <p className="text-xs text-gray-500">{t('lms.coursePlayer.testAttempts')}</p>
-                        <p className="text-sm font-semibold text-gray-900">
-                          {attemptsUsed} из {attemptsTotal}
-                        </p>
-                      </div>
-                    </div>
+                <div className="flex items-center gap-2">
+                  <RotateCcw className="w-5 h-5 text-gray-400" />
+                  <div>
+                    <p className="text-xs text-gray-500">{t('lms.coursePlayer.testAttempts')}</p>
+                    <p className="text-sm font-semibold text-gray-900">
+                      {attemptsUsed} из {attemptsTotal}
+                    </p>
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
 
-              {/* Progress Bar */}
-              <div className="mb-6">
-                <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
-                  <span>{t('lms.coursePlayer.testProgress')}</span>
-                  <span>{score.toFixed(2)}%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-3">
+          {/* Progress Bar - всегда показываем */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+              <span>{t('lms.coursePlayer.testProgress')}</span>
+              <span>{score.toFixed(2)}%</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-3">
                   <div
                     className={`h-3 rounded-full transition-all duration-500 ${
                       passed ? 'bg-green-600' : 'bg-red-600'
@@ -189,9 +187,7 @@ export function TestResultModal({
                   <span className="font-semibold">{passingScore}% ({t('lms.coursePlayer.testResultPassingScore')})</span>
                   <span>100%</span>
                 </div>
-              </div>
-            </>
-          )}
+          </div>
 
           {/* Messages */}
           {passed ? (
@@ -253,21 +249,13 @@ export function TestResultModal({
                       {t('lms.coursePlayer.testResultVideoNotSupported') || 'Ваш браузер не поддерживает воспроизведение видео.'}
                     </video>
                   </div>
-                  <a
-                    href={videoUrl}
-                    download
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-                  >
-                    <Download className="w-4 h-4" />
-                    {t('lms.coursePlayer.testResultDownloadVideo') || 'Скачать видеозапись'}
-                  </a>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Detailed Answers Section - показываем только если showResults = true */}
-          {showResults && answerDetails.length > 0 && (
+          {/* Detailed Answers Section - показываем всегда, но правильные ответы только если showResults = true */}
+          {answerDetails.length > 0 && (
             <div className="mb-6">
               <button
                 onClick={() => setShowDetails(!showDetails)}
@@ -316,7 +304,8 @@ export function TestResultModal({
                                 </span>
                               </div>
                               
-                              {!detail.is_correct && (
+                              {/* Правильный ответ показываем только если showResults = true */}
+                              {showResults && !detail.is_correct && (
                                 <div>
                                   <span className="font-medium text-gray-700">{t('lms.coursePlayer.testResultCorrectAnswer')}: </span>
                                   <span className="text-green-700 font-medium">

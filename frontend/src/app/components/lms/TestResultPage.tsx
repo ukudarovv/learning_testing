@@ -1,11 +1,13 @@
-import { CheckCircle, XCircle, Clock, RotateCcw, ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react';
-import { Test, TestAttempt, Protocol } from '../../types/lms';
+import { CheckCircle, XCircle, Clock, RotateCcw, ArrowLeft, ChevronDown, ChevronUp, Send, Video } from 'lucide-react';
+import { Test, TestAttempt, Protocol, ExtraAttemptRequest } from '../../types/lms';
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SMSVerification } from './SMSVerification';
 import { useUser } from '../../contexts/UserContext';
 import { testsService } from '../../services/tests';
 import { protocolsService } from '../../services/protocols';
+import { examsService } from '../../services/exams';
+import { ExtraAttemptRequestModal } from './ExtraAttemptRequestModal';
 import { toast } from 'sonner';
 
 interface TestResultPageProps {
@@ -43,7 +45,13 @@ export function TestResultPage({
   const [protocolCreated, setProtocolCreated] = useState(false);
   const [protocol, setProtocol] = useState<Protocol | null>(null);
   const [loadingProtocol, setLoadingProtocol] = useState(true);
+  const [showExtraAttemptModal, setShowExtraAttemptModal] = useState(false);
+  const [extraAttemptRequests, setExtraAttemptRequests] = useState<ExtraAttemptRequest[]>([]);
+  const [loadingRequests, setLoadingRequests] = useState(false);
   const answerDetails = result.answer_details || result.answerDetails || [];
+  
+  // Проверяем, нужно ли показывать результаты
+  const showResults = test.showResults !== undefined ? test.showResults : (test.show_results !== undefined ? test.show_results : true);
   
   // Проверяем, существует ли протокол для этой попытки
   useEffect(() => {
@@ -79,6 +87,36 @@ export function TestResultPage({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isStandalone, passed, protocolCreated, showSMSVerification, user, test?.id, loadingProtocol, protocol]);
+  
+  // Загружаем запросы на дополнительные попытки
+  useEffect(() => {
+    const loadRequests = async () => {
+      if (!test?.id || passed) return;
+      
+      try {
+        setLoadingRequests(true);
+        const allRequests = await examsService.getExtraAttemptRequests();
+        const requestsForThisTest = allRequests.filter(r => {
+          const rTestId = typeof r.test === 'object' ? r.test?.id : r.testId || r.test;
+          return String(rTestId) === String(test.id);
+        });
+        setExtraAttemptRequests(requestsForThisTest);
+      } catch (error) {
+        console.error('Failed to load extra attempt requests:', error);
+        setExtraAttemptRequests([]);
+      } finally {
+        setLoadingRequests(false);
+      }
+    };
+    
+    loadRequests();
+  }, [test?.id, passed]);
+  
+  // Проверяем, есть ли pending запрос
+  const hasPendingRequest = extraAttemptRequests.some(r => r.status === 'pending');
+  
+  // Извлекаем URL видео из результата (поддерживаем оба формата)
+  const videoUrl = result.video_recording || result.videoRecording || null;
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -193,7 +231,7 @@ export function TestResultPage({
               )}
             </div>
 
-            {/* Statistics */}
+            {/* Statistics - всегда показываем */}
             <div className="bg-gray-50 rounded-lg p-6 mb-6">
               <div className="grid grid-cols-2 gap-6 mb-4">
                 <div className="text-center">
@@ -230,7 +268,7 @@ export function TestResultPage({
               </div>
             </div>
 
-            {/* Progress Bar */}
+            {/* Progress Bar - всегда показываем */}
             <div className="mb-6">
               <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
                 <span>{t('lms.coursePlayer.testProgress') || 'Прогресс выполнения'}</span>
@@ -295,7 +333,7 @@ export function TestResultPage({
               </>
             ) : (
               <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
-                <p className="text-sm text-orange-800">
+                <p className="text-sm text-orange-800 mb-2">
                   {remainingAttempts > 0 
                     ? t('lms.coursePlayer.testResultRemainingAttempts', { 
                         count: remainingAttempts,
@@ -308,10 +346,48 @@ export function TestResultPage({
                     : t('lms.coursePlayer.testResultNoAttempts')
                   }
                 </p>
+                {remainingAttempts === 0 && !hasPendingRequest && test?.id && (
+                  <button
+                    onClick={() => setShowExtraAttemptModal(true)}
+                    className="mt-3 flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium"
+                  >
+                    <Send className="w-4 h-4" />
+                    {t('lms.coursePlayer.requestExtraAttempts') || 'Запросить дополнительные попытки'}
+                  </button>
+                )}
+                {hasPendingRequest && (
+                  <p className="text-xs text-orange-700 mt-2">
+                    {t('lms.coursePlayer.extraAttemptRequestPending') || 'Ваш запрос на дополнительные попытки ожидает рассмотрения администратором.'}
+                  </p>
+                )}
               </div>
             )}
 
-            {/* Detailed Answers Section */}
+            {/* Video Recording Section - всегда показываем, если есть */}
+            {videoUrl && (
+              <div className="mb-6">
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-center gap-3 mb-3">
+                    <Video className="w-5 h-5 text-blue-600" />
+                    <h4 className="font-semibold text-gray-900">
+                      {t('lms.coursePlayer.testResultVideoRecording') || 'Видеозапись попытки'}
+                    </h4>
+                  </div>
+                  <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden">
+                    <video
+                      src={videoUrl}
+                      controls
+                      className="w-full h-full"
+                      style={{ maxHeight: '400px' }}
+                    >
+                      {t('lms.coursePlayer.testResultVideoNotSupported') || 'Ваш браузер не поддерживает воспроизведение видео.'}
+                    </video>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Detailed Answers Section - показываем всегда, но правильные ответы только если showResults = true */}
             {answerDetails.length > 0 && (
               <div className="mb-6">
                 <button
@@ -361,7 +437,8 @@ export function TestResultPage({
                                   </span>
                                 </div>
                                 
-                                {!detail.is_correct && (
+                                {/* Правильный ответ показываем только если showResults = true */}
+                                {showResults && !detail.is_correct && (
                                   <div>
                                     <span className="font-medium text-gray-700">{t('lms.coursePlayer.testResultCorrectAnswer') || 'Правильный ответ'}: </span>
                                     <span className="text-green-700 font-medium">
@@ -432,6 +509,26 @@ export function TestResultPage({
               }
             }
           }}
+        />
+      )}
+
+      {showExtraAttemptModal && test?.id && (
+        <ExtraAttemptRequestModal
+          testId={String(test.id)}
+          existingRequest={null}
+          onSuccess={(request) => {
+            setExtraAttemptRequests(prev => [...prev, request]);
+            setShowExtraAttemptModal(false);
+            // Перезагружаем запросы для актуального состояния
+            examsService.getExtraAttemptRequests().then(allRequests => {
+              const requestsForThisTest = allRequests.filter(r => {
+                const rTestId = typeof r.test === 'object' ? r.test?.id : r.testId || r.test;
+                return String(rTestId) === String(test.id);
+              });
+              setExtraAttemptRequests(requestsForThisTest);
+            }).catch(console.error);
+          }}
+          onCancel={() => setShowExtraAttemptModal(false)}
         />
       )}
     </div>

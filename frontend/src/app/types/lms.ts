@@ -269,6 +269,18 @@ export interface TestAttempt {
   answerDetails?: AnswerDetail[]; // Frontend format
   video_recording?: string; // Backend format (URL)
   videoRecording?: string; // Frontend format (URL)
+  attempts_count?: number; // Backend format
+  attemptsCount?: number; // Frontend format
+  max_attempts?: number; // Backend format
+  maxAttempts?: number; // Frontend format
+  approved_extra_attempts?: number; // Backend format
+  approvedExtraAttempts?: number; // Frontend format
+  has_pending_request?: boolean; // Backend format
+  hasPendingRequest?: boolean; // Frontend format
+  has_approved_request?: boolean; // Backend format
+  hasApprovedRequest?: boolean; // Frontend format
+  limit_reached?: boolean; // Backend format
+  limitReached?: boolean; // Frontend format
 }
 
 export interface ExtraAttemptRequest {
@@ -284,6 +296,14 @@ export interface ExtraAttemptRequest {
   processed_by_id?: string;
   processed_at?: string; // ISO string
   createdAt?: string; // Frontend format
+  attempts_count?: number; // Backend format
+  attemptsCount?: number; // Frontend format
+  max_attempts?: number; // Backend format
+  maxAttempts?: number; // Frontend format
+  approved_extra_attempts?: number; // Backend format
+  approvedExtraAttempts?: number; // Frontend format
+  limit_reached?: boolean; // Backend format
+  limitReached?: boolean; // Frontend format
   created_at?: string; // Backend format
   updatedAt?: string; // Frontend format
   updated_at?: string; // Backend format
@@ -386,12 +406,14 @@ export interface Certificate {
 }
 
 export interface PendingCertificate {
-  enrollment_id: string;
+  enrollment_id?: string | null;
   student: User;
-  course: Course;
+  course?: Course | null;
+  test?: Test | null;
+  protocol_id?: string | number | null;
   completed_at?: string;
-  certificate_id?: string;
-  certificate_number?: string;
+  certificate_id?: string | null;
+  certificate_number?: string | null;
   has_certificate_record: boolean;
   needs_upload: boolean;
 }
@@ -404,10 +426,61 @@ export interface PDEKCommission {
   courses: string[]; // course IDs
 }
 
+export interface CourseEnrollment {
+  id: string;
+  user?: User;
+  userId?: string;
+  student?: User; // Alias for user (for frontend compatibility)
+  course?: Course;
+  courseId?: string;
+  progress?: number;
+  status: CourseStatus;
+  enrolled_at?: string;
+  enrolledAt?: string;
+  completed_at?: string;
+  completedAt?: string;
+}
+
+export interface CourseEnrollmentRequest {
+  id: string;
+  user?: User;
+  userId?: string;
+  course?: Course;
+  courseId?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  admin_response?: string;
+  adminResponse?: string;
+  processed_by?: User;
+  processed_by_id?: string;
+  processedById?: string;
+  processed_at?: string;
+  processedAt?: string;
+  created_at?: string;
+  createdAt?: string;
+}
+
+export interface TestEnrollmentRequest {
+  id: string;
+  user?: User;
+  userId?: string;
+  test?: Test;
+  testId?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  admin_response?: string;
+  adminResponse?: string;
+  processed_by?: User;
+  processed_by_id?: string;
+  processedById?: string;
+  processed_at?: string;
+  processedAt?: string;
+  created_at?: string;
+  createdAt?: string;
+}
+
 export interface Notification {
   id: string;
   userId: string;
-  type: 'course_assigned' | 'exam_available' | 'protocol_ready' | 'certificate_issued' | 'pdek_signature_request';
+  type: 'course_assigned' | 'exam_available' | 'protocol_ready' | 'certificate_issued' | 'pdek_signature_request' | 'enrollment_request' | 'enrollment_approved' | 'enrollment_rejected' | 'test_enrollment_request' | 'test_enrollment_approved' | 'test_enrollment_rejected';
   title: string;
   message: string;
   read: boolean;

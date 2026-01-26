@@ -155,18 +155,32 @@ const certificatesService = {
     file: File,
     templateId?: string,
     studentId?: string,
-    courseId?: string
+    courseId?: string | null,
+    testId?: string | null
   ): Promise<Certificate> {
     const formData = new FormData();
     formData.append('file', file);
     if (templateId) formData.append('template', templateId);
     if (studentId) formData.append('student', studentId);
     if (courseId) formData.append('course', courseId);
+    if (testId) formData.append('test', testId);
+    
+    console.log('uploadCertificate called with:', {
+      certificateId,
+      fileName: file.name,
+      fileSize: file.size,
+      templateId,
+      studentId,
+      courseId,
+      testId
+    });
     
     if (certificateId) {
       // Update existing certificate - use request method directly for FormData
       const url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/certificates/${certificateId}/`;
       const token = apiClient.getToken();
+      console.log('Updating certificate at:', url);
+      
       const response = await fetch(url, {
         method: 'PATCH',
         headers: {
@@ -175,15 +189,39 @@ const certificatesService = {
         body: formData,
       });
       
+      console.log('Update certificate response status:', response.status, response.statusText);
+      
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || errorData.message || 'Failed to update certificate');
+        const errorText = await response.text();
+        console.error('Update certificate error response:', errorText);
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { detail: errorText || 'Unknown error' };
+        }
+        console.error('Update certificate error:', errorData);
+        throw new Error(errorData.detail || errorData.message || errorData.error || `Failed to update certificate: ${response.status} ${response.statusText}`);
       }
       
-      return response.json();
+      const result = await response.json();
+      console.log('Update certificate success:', result);
+      return result;
     } else {
       // Create new certificate
-      return apiClient.post<Certificate>('/certificates/', formData);
+      console.log('Creating new certificate');
+      if (!studentId) {
+        throw new Error('Student ID is required for creating certificate');
+      }
+      
+      try {
+        const result = await apiClient.post<Certificate>('/certificates/', formData);
+        console.log('Certificate created:', result);
+        return result;
+      } catch (error: any) {
+        console.error('Create certificate error:', error);
+        throw error;
+      }
     }
   },
 

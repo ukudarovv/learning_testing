@@ -22,6 +22,17 @@ export function CertificateManagement() {
     fetchData();
   }, [activeTab]);
 
+  // Обновляем данные при возврате на вкладку
+  useEffect(() => {
+    const handleFocus = () => {
+      if (document.hasFocus()) {
+        fetchData();
+      }
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, []);
+
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -88,10 +99,12 @@ export function CertificateManagement() {
   const filteredPending = pendingCertificates.filter(pending => {
     const studentName = pending.student?.full_name || pending.student?.fullName || '';
     const courseName = pending.course?.title || '';
+    const testName = pending.test?.title || '';
     const query = searchQuery.toLowerCase();
     return (
       studentName.toLowerCase().includes(query) ||
-      courseName.toLowerCase().includes(query)
+      courseName.toLowerCase().includes(query) ||
+      testName.toLowerCase().includes(query)
     );
   });
 
@@ -308,7 +321,7 @@ export function CertificateManagement() {
                     </tr>
                   ) : (
                     filteredPending.map((pending) => (
-                      <tr key={pending.enrollment_id} className="hover:bg-gray-50">
+                      <tr key={pending.enrollment_id || pending.protocol_id || `pending-${pending.student?.id}`} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <User className="w-4 h-4 text-gray-400 mr-2" />
@@ -320,9 +333,17 @@ export function CertificateManagement() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <BookOpen className="w-4 h-4 text-gray-400 mr-2" />
-                            <span className="text-sm text-gray-900">
-                              {pending.course?.title || 'Неизвестно'}
-                            </span>
+                            <div className="flex flex-col">
+                              <span className="text-sm text-gray-900">
+                                {pending.course?.title || pending.test?.title || 'Неизвестно'}
+                              </span>
+                              {pending.test && (
+                                <span className="text-xs text-gray-500">Тест</span>
+                              )}
+                              {pending.course && (
+                                <span className="text-xs text-gray-500">Курс</span>
+                              )}
+                            </div>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -440,6 +461,7 @@ function UploadCertificateModal({ pending, certificate, onClose, onSuccess }: Up
       
       if (certificate) {
         // Update existing certificate
+        console.log('Updating certificate:', certificate.id);
         await certificatesService.updateCertificate(certificate.id, {
           file: file,
           templateId: templateId || undefined,
@@ -447,20 +469,55 @@ function UploadCertificateModal({ pending, certificate, onClose, onSuccess }: Up
         toast.success('Сертификат обновлен');
       } else if (pending) {
         // Create or update certificate
+        const studentId = pending.student?.id 
+          ? String(pending.student.id) 
+          : (typeof pending.student === 'object' && pending.student && pending.student.id 
+              ? String(pending.student.id) 
+              : null);
+        const courseId = pending.course?.id 
+          ? String(pending.course.id) 
+          : (typeof pending.course === 'object' && pending.course && pending.course.id 
+              ? String(pending.course.id) 
+              : null);
+        const testId = pending.test?.id 
+          ? String(pending.test.id) 
+          : (typeof pending.test === 'object' && pending.test && pending.test.id 
+              ? String(pending.test.id) 
+              : null);
+        
+        console.log('Uploading certificate:', {
+          certificateId: pending.certificate_id,
+          studentId,
+          courseId,
+          testId,
+          templateId,
+          fileName: file.name
+        });
+        
+        if (!studentId) {
+          toast.error('Не указан студент для сертификата');
+          return;
+        }
+        
         await certificatesService.uploadCertificate(
           pending.certificate_id || null,
           file,
           templateId || undefined,
-          pending.student?.id || pending.student?.id,
-          pending.course?.id
+          studentId,
+          courseId,
+          testId || null
         );
         toast.success('Сертификат загружен');
+      } else {
+        toast.error('Не выбраны данные для загрузки сертификата');
+        return;
       }
       
       onSuccess();
     } catch (error: any) {
       console.error('Failed to upload certificate:', error);
-      toast.error(error.message || 'Ошибка при загрузке сертификата');
+      const errorMessage = error.message || error.detail || error.error || 'Ошибка при загрузке сертификата';
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

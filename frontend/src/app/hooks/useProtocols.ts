@@ -14,11 +14,11 @@ export function useProtocols(params?: { user?: string; status?: string }) {
         setLoading(true);
         setError(null);
         const data = await protocolsService.getProtocols(params);
-        // Защита от не-массивов и адаптация данных
+        // Данные уже адаптированы в protocolsService.getProtocols()
+        // Защита от не-массивов
         const dataArray = Array.isArray(data) ? data : [];
-        const adaptedProtocols = dataArray.map(adaptProtocol);
-        console.log('Fetched protocols:', adaptedProtocols);
-        setProtocols(adaptedProtocols);
+        console.log('Fetched protocols:', dataArray);
+        setProtocols(dataArray);
       } catch (err: any) {
         setError(err.message || 'Ошибка загрузки протоколов');
         console.error('Failed to fetch protocols:', err);

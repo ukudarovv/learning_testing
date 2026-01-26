@@ -28,6 +28,12 @@ export function adaptProtocol(backendProtocol: any): Protocol {
   console.log('adaptProtocol - course:', backendProtocol.course);
   console.log('adaptProtocol - attempt:', backendProtocol.attempt);
   
+  // Проверяем, не является ли протокол уже адаптированным (если есть userName, значит уже адаптирован)
+  if (backendProtocol.userName && !backendProtocol.student) {
+    console.log('adaptProtocol - protocol already adapted, returning as is');
+    return backendProtocol as Protocol;
+  }
+  
   // Обработка даты экзамена
   let examDate: Date;
   if (backendProtocol.exam_date) {
@@ -36,20 +42,39 @@ export function adaptProtocol(backendProtocol: any): Protocol {
     if (isNaN(examDate.getTime())) {
       examDate = new Date(); // Fallback к текущей дате если дата невалидна
     }
+  } else if (backendProtocol.examDate) {
+    // Если дата уже в формате Date
+    examDate = backendProtocol.examDate instanceof Date 
+      ? backendProtocol.examDate 
+      : new Date(backendProtocol.examDate);
   } else {
     examDate = new Date(); // Fallback к текущей дате если дата отсутствует
   }
   
   // Извлекаем данные студента
-  const studentFullName = backendProtocol.student?.full_name || backendProtocol.student_name || null;
-  const studentIIN = backendProtocol.student?.iin || null;
-  const studentPhone = backendProtocol.student?.phone || backendProtocol.student_phone || null;
+  const studentFullName = backendProtocol.student?.full_name 
+    || backendProtocol.student_name 
+    || backendProtocol.userName 
+    || null;
+  const studentIIN = backendProtocol.student?.iin 
+    || backendProtocol.userIIN 
+    || null;
+  const studentPhone = backendProtocol.student?.phone 
+    || backendProtocol.student_phone 
+    || backendProtocol.userPhone 
+    || null;
   
   // Извлекаем данные курса
-  const courseTitle = backendProtocol.course?.title || backendProtocol.course_name || null;
+  const courseTitle = backendProtocol.course?.title 
+    || backendProtocol.course_name 
+    || backendProtocol.courseName 
+    || null;
   
   // Извлекаем данные теста (для standalone тестов)
-  const testTitle = backendProtocol.test?.title || backendProtocol.test_name || null;
+  const testTitle = backendProtocol.test?.title 
+    || backendProtocol.test_name 
+    || backendProtocol.testName 
+    || null;
   
   // Для standalone тестов используем название теста в качестве courseName
   const displayCourseName = courseTitle || testTitle || null;
@@ -66,26 +91,28 @@ export function adaptProtocol(backendProtocol: any): Protocol {
   const adapted = {
     id: String(backendProtocol.id),
     number: backendProtocol.number,
-    userId: String(backendProtocol.student?.id || backendProtocol.student || ''),
+    userId: String(backendProtocol.student?.id || backendProtocol.student || backendProtocol.userId || ''),
     userName: studentFullName || 'Не указано',
     userIIN: studentIIN || 'Не указано',
     userPhone: studentPhone || 'Не указано',
-    courseId: String(backendProtocol.course?.id || backendProtocol.course || ''),
+    courseId: String(backendProtocol.course?.id || backendProtocol.course || backendProtocol.courseId || ''),
     courseName: displayCourseName || 'Не указано',
-    testId: String(backendProtocol.test?.id || backendProtocol.test || ''),
+    testId: String(backendProtocol.test?.id || backendProtocol.test || backendProtocol.testId || ''),
     testName: testTitle || 'Не указано',
     attemptId: backendProtocol.attempt?.id 
       ? String(backendProtocol.attempt.id) 
       : backendProtocol.attempt 
         ? String(backendProtocol.attempt)
-        : 'Не указано',
+        : backendProtocol.attemptId
+        ? String(backendProtocol.attemptId)
+        : undefined,
     examDate: examDate,
     score: backendProtocol.score || 0,
-    passingScore: backendProtocol.passing_score || 0,
+    passingScore: backendProtocol.passing_score || backendProtocol.passingScore || 0,
     result: backendProtocol.result || 'passed',
     status: backendProtocol.status,
     signatures: (backendProtocol.signatures || []).map((sig: any) => adaptSignature(sig)),
-    rejectionReason: backendProtocol.rejection_reason,
+    rejectionReason: backendProtocol.rejection_reason || backendProtocol.rejectionReason,
   };
   
   console.log('adaptProtocol - adapted result:', adapted);

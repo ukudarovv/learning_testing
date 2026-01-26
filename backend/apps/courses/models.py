@@ -216,6 +216,44 @@ class LessonProgress(models.Model):
         return f"{self.enrollment.user.full_name or self.enrollment.user.phone} - {self.lesson.title}"
 
 
+class CourseEnrollmentRequest(models.Model):
+    """Request for course enrollment with admin approval"""
+    
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+    
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='course_enrollment_requests', on_delete=models.CASCADE)
+    course = models.ForeignKey(Course, related_name='enrollment_requests', on_delete=models.CASCADE)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    admin_response = models.TextField(blank=True, help_text='Admin response or rejection reason')
+    processed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name='processed_course_enrollment_requests',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
+    processed_at = models.DateTimeField(null=True, blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'course_enrollment_requests'
+        ordering = ['-created_at']
+        unique_together = ['user', 'course']
+        indexes = [
+            models.Index(fields=['user', 'course', 'status']),
+            models.Index(fields=['status', '-created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user.full_name or self.user.phone} - {self.course.title} ({self.get_status_display()})"
+
+
 class CourseCompletionVerification(models.Model):
     """Course completion SMS verification"""
     

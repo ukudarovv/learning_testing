@@ -10,6 +10,8 @@ import { examsService } from '../services/exams';
 import { useUser } from '../contexts/UserContext';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
+import { useEnrollmentRequests } from '../hooks/useEnrollmentRequests';
+import { testsService } from '../services/tests';
 
 export function TestPage() {
   const { testId } = useParams();
@@ -18,6 +20,7 @@ export function TestPage() {
   const { t } = useTranslation();
   const { user } = useUser();
   const { test, loading: testLoading } = useTest(testId);
+  const { testRequests } = useEnrollmentRequests();
   const [attemptId, setAttemptId] = useState<number | null>(null);
   const [testCompleted, setTestCompleted] = useState(false);
   const [testResult, setTestResult] = useState<{ score: number; passed: boolean } | null>(null);
@@ -27,19 +30,17 @@ export function TestPage() {
   const [testAttemptResult, setTestAttemptResult] = useState<TestAttempt | null>(null);
   const [testTimeSpent, setTestTimeSpent] = useState(0);
   const [testAttempts, setTestAttempts] = useState<TestAttempt[]>([]);
+  const [creatingRequest, setCreatingRequest] = useState(false);
   
   // Получаем courseId и attemptId из state (для финального теста)
   const courseId = (location.state as any)?.courseId;
   const stateAttemptId = (location.state as any)?.attemptId;
   const viewResults = (location.state as any)?.viewResults || false;
   
-  // Проверяем, является ли тест автономным
-  // Для viewResults можем определить из попытки
-  const isStandaloneTest = test 
-    ? (test.is_standalone || test.isStandalone) && test.category
-    : (testAttemptResult?.test && typeof testAttemptResult.test === 'object' 
-        ? (testAttemptResult.test.is_standalone || testAttemptResult.test.isStandalone) && testAttemptResult.test.category
-        : false);
+  // Проверяем, является ли тест частью курса (если передан courseId, то тест внутри курса)
+  // Тесты внутри курса не требуют запроса на запись, они доступны через курс
+  const isTestInCourse = !!courseId;
+  const isStandaloneTest = !isTestInCourse;
   
   // Обрабатываем просмотр результатов завершенной попытки
   useEffect(() => {
@@ -134,6 +135,24 @@ export function TestPage() {
       const initializeAttempt = async () => {
         try {
           setStarting(true);
+          
+          // Проверяем доступ для тестов (кроме тестов внутри курса)
+          // Тесты внутри курса доступны через курс и не требуют отдельного запроса
+          if (!isTestInCourse && test.id) {
+            const existingRequest = testRequests.find(r => r.testId === test.id || (typeof r.test === 'object' && r.test?.id === test.id));
+            
+            if (!existingRequest || existingRequest.status !== 'approved') {
+              // Нет доступа - показываем сообщение
+              if (existingRequest && existingRequest.status === 'pending') {
+                toast.info(t('lms.test.requestPending') || 'Запрос на запись уже подан и ожидает подтверждения администратора');
+              } else {
+                toast.info(t('lms.test.accessRequired') || 'Для прохождения этого теста требуется подтверждение администратора');
+              }
+              navigate('/student/dashboard');
+              setStarting(false);
+              return;
+            }
+          }
           
           // Если передан attemptId из state (для продолжения незавершенной попытки)
           if (stateAttemptId) {

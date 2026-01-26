@@ -42,6 +42,16 @@ class CertificateViewSet(viewsets.ModelViewSet):
     ordering_fields = ['issued_at', 'uploaded_at']
     ordering = ['-issued_at']
     
+    def get_queryset(self):
+        """Filter certificates - for list action, show only certificates with files"""
+        queryset = super().get_queryset()
+        
+        # For list action, show only certificates that have uploaded files
+        if self.action == 'list':
+            queryset = queryset.filter(file__isnull=False).exclude(file='')
+        
+        return queryset
+    
     def get_serializer_class(self):
         if self.action == 'create':
             return CertificateCreateSerializer
@@ -106,25 +116,18 @@ class CertificateViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['get'], url_path='pending')
     def pending_certificates(self, request):
-        """Get list of students who need certificate uploads"""
+        """Get list of students who need certificate uploads (courses and standalone tests)"""
         from apps.accounts.serializers import UserSerializer
         from apps.courses.serializers import CourseSerializer
+        from apps.tests.serializers import TestSerializer
+        from apps.protocols.models import Protocol
         
-        # Get all completed enrollments
+        pending_list = []
+        
+        # 1. Get certificates for completed course enrollments
         completed_enrollments = CourseEnrollment.objects.filter(
             status='completed'
         ).select_related('user', 'course')
-        
-        # Get certificates that exist for these enrollments
-        certificates_subquery = Certificate.objects.filter(
-            student=OuterRef('user'),
-            course=OuterRef('course')
-        )
-        
-        # Find enrollments that either:
-        # 1. Don't have a certificate at all, OR
-        # 2. Have a certificate but no uploaded file
-        pending_list = []
         
         for enrollment in completed_enrollments:
             certificate = Certificate.objects.filter(
@@ -133,12 +136,48 @@ class CertificateViewSet(viewsets.ModelViewSet):
             ).first()
             
             # Include if no certificate OR certificate without file
-            if not certificate or not certificate.file:
+            # Check both file field and if file path is empty
+            has_file = certificate and certificate.file and str(certificate.file).strip() != ''
+            
+            if not certificate or not has_file:
                 pending_list.append({
                     'enrollment_id': enrollment.id,
                     'student': UserSerializer(enrollment.user).data,
                     'course': CourseSerializer(enrollment.course).data,
+                    'test': None,
+                    'protocol_id': None,
                     'completed_at': enrollment.completed_at.isoformat() if enrollment.completed_at else None,
+                    'certificate_id': certificate.id if certificate else None,
+                    'certificate_number': certificate.number if certificate else None,
+                    'has_certificate_record': certificate is not None,
+                    'needs_upload': True
+                })
+        
+        # 2. Get certificates for standalone tests with signed protocols
+        signed_test_protocols = Protocol.objects.filter(
+            test__isnull=False,
+            course__isnull=True,
+            status='signed_chairman',
+            result='passed'
+        ).select_related('student', 'test')
+        
+        for protocol in signed_test_protocols:
+            certificate = Certificate.objects.filter(
+                protocol=protocol,
+                student=protocol.student,
+                test=protocol.test
+            ).first()
+            
+            has_file = certificate and certificate.file and str(certificate.file).strip() != ''
+            
+            if not certificate or not has_file:
+                pending_list.append({
+                    'enrollment_id': None,
+                    'student': UserSerializer(protocol.student).data,
+                    'course': None,
+                    'test': TestSerializer(protocol.test).data,
+                    'protocol_id': protocol.id,
+                    'completed_at': protocol.exam_date.isoformat() if protocol.exam_date else None,
                     'certificate_id': certificate.id if certificate else None,
                     'certificate_number': certificate.number if certificate else None,
                     'has_certificate_record': certificate is not None,

@@ -4,12 +4,16 @@ from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django.db.models import Max
+from django.utils import timezone
 
-from .models import Test, Question, TestCompletionVerification
+from .models import Test, Question, TestCompletionVerification, TestEnrollmentRequest
 from .serializers import (
     TestSerializer,
     QuestionSerializer,
     QuestionCreateSerializer,
+    TestEnrollmentRequestSerializer,
+    TestEnrollmentRequestCreateSerializer,
+    TestEnrollmentRequestProcessSerializer,
 )
 from apps.accounts.permissions import IsAdminOrReadOnly
 from apps.core.utils import get_request_language
@@ -59,14 +63,21 @@ class TestViewSet(viewsets.ModelViewSet):
         
         return queryset
     
+    def paginate_queryset(self, queryset):
+        """Disable pagination for questions action"""
+        if self.action == 'questions':
+            return None
+        return super().paginate_queryset(queryset)
+    
     @action(detail=True, methods=['get', 'post'])
     def questions(self, request, pk=None):
         """Get or add questions to test"""
         test = self.get_object()
         
         if request.method == 'GET':
-            questions = test.questions.all()
+            questions = test.questions.all().order_by('order', 'id')
             serializer = QuestionSerializer(questions, many=True)
+            # Возвращаем данные напрямую без пагинации
             return Response(serializer.data)
         
         elif request.method == 'POST':
@@ -374,4 +385,386 @@ class QuestionViewSet(viewsets.ModelViewSet):
                 raise NotFound('Test not found')
         else:
             serializer.save()
+
+
+class TestEnrollmentRequestViewSet(viewsets.ModelViewSet):
+    """Test enrollment request ViewSet"""
+    queryset = TestEnrollmentRequest.objects.select_related('user', 'test', 'processed_by').all()
+    serializer_class = TestEnrollmentRequestSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    pagination_class = None  # Отключить пагинацию для этого ViewSet
+    
+    def get_queryset(self):
+        """Filter requests by user unless admin"""
+        queryset = super().get_queryset()
+        
+        # Проверка прав администратора
+        is_admin_user = (
+            self.request.user.is_admin or
+            self.request.user.role == 'admin' or 
+            self.request.user.is_superuser or 
+            self.request.user.is_staff
+        )
+        
+        if not is_admin_user:
+            queryset = queryset.filter(user=self.request.user)
+        else:
+            # Admin can filter by status
+            status_filter = self.request.query_params.get('status')
+            if status_filter:
+                queryset = queryset.filter(status=status_filter)
+        return queryset
+    
+    def get_serializer_class(self):
+        """Return appropriate serializer class"""
+        if self.action == 'create':
+            return TestEnrollmentRequestCreateSerializer
+        elif self.action in ['approve', 'reject']:
+            return TestEnrollmentRequestProcessSerializer
+        return TestEnrollmentRequestSerializer
+    
+    def create(self, request):
+        """Create a new test enrollment request"""
+        serializer = TestEnrollmentRequestCreateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                {'error': 'Invalid request data', 'details': serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        test_id = serializer.validated_data['test_id']
+        
+        try:
+            test = Test.objects.get(id=test_id)
+        except Test.DoesNotExist:
+            return Response(
+                {'error': 'Test not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Убрана проверка is_standalone - теперь запросы можно создавать для всех тестов
+        
+        # Check if request already exists
+        existing_request = TestEnrollmentRequest.objects.filter(
+            user=request.user,
+            test=test
+        ).first()
+        
+        if existing_request:
+            if existing_request.status == 'pending':
+                return Response(
+                    {'error': 'Request already pending'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            elif existing_request.status == 'approved':
+                return Response(
+                    {'error': 'Request already approved'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        # Create request
+        enrollment_request = TestEnrollmentRequest.objects.create(
+            user=request.user,
+            test=test,
+            status='pending'
+        )
+        
+        # Create notification for admin
+        from apps.notifications.models import Notification
+        from apps.accounts.models import User
+        admins = User.objects.filter(role='admin', is_active=True)
+        for admin in admins:
+            Notification.objects.create(
+                user=admin,
+                type='test_enrollment_request',
+                title='Новый запрос на запись на тест',
+                message=f'Студент {request.user.full_name or request.user.phone} запросил запись на тест "{test.title}"'
+            )
+        
+        return Response(
+            TestEnrollmentRequestSerializer(enrollment_request).data,
+            status=status.HTTP_201_CREATED
+        )
+    
+    @action(detail=False, methods=['get'])
+    def my_requests(self, request):
+        """Get current user's enrollment requests"""
+        requests = TestEnrollmentRequest.objects.filter(
+            user=request.user
+        ).select_related('test', 'processed_by')
+        serializer = TestEnrollmentRequestSerializer(requests, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def approve(self, request, pk=None):
+        """Approve test enrollment request (admin only)"""
+        if not request.user.is_admin:
+            return Response(
+                {'error': 'Permission denied'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        enrollment_request = self.get_object()
+        
+        if enrollment_request.status != 'pending':
+            return Response(
+                {'error': f'Request is already {enrollment_request.get_status_display()}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Approve request
+        enrollment_request.status = 'approved'
+        enrollment_request.processed_by = request.user
+        enrollment_request.processed_at = timezone.now()
+        if request.data.get('admin_response'):
+            enrollment_request.admin_response = request.data['admin_response']
+        enrollment_request.save()
+        
+        # Create notification for student
+        from apps.notifications.models import Notification
+        Notification.objects.create(
+            user=enrollment_request.user,
+            type='test_enrollment_approved',
+            title='Запрос на запись на тест одобрен',
+            message=f'Ваш запрос на запись на тест "{enrollment_request.test.title}" был одобрен. Теперь вы можете пройти тест.'
+        )
+        
+        return Response(
+            TestEnrollmentRequestSerializer(enrollment_request).data,
+            status=status.HTTP_200_OK
+        )
+    
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def reject(self, request, pk=None):
+        """Reject test enrollment request (admin only)"""
+        if not request.user.is_admin:
+            return Response(
+                {'error': 'Permission denied'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        enrollment_request = self.get_object()
+        
+        if enrollment_request.status != 'pending':
+            return Response(
+                {'error': f'Request is already {enrollment_request.get_status_display()}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        serializer = TestEnrollmentRequestProcessSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        # Reject request
+        enrollment_request.status = 'rejected'
+        enrollment_request.processed_by = request.user
+        enrollment_request.processed_at = timezone.now()
+        enrollment_request.admin_response = serializer.validated_data.get('admin_response', '')
+        enrollment_request.save()
+        
+        # Create notification for student
+        from apps.notifications.models import Notification
+        Notification.objects.create(
+            user=enrollment_request.user,
+            type='test_enrollment_rejected',
+            title='Запрос на запись на тест отклонен',
+            message=f'Ваш запрос на запись на тест "{enrollment_request.test.title}" был отклонен.' + (
+                f' Причина: {enrollment_request.admin_response}' if enrollment_request.admin_response else ''
+            )
+        )
+        
+        return Response(
+            TestEnrollmentRequestSerializer(enrollment_request).data,
+            status=status.HTTP_200_OK
+        )
+
+
+class TestEnrollmentRequestViewSet(viewsets.ModelViewSet):
+    """Test enrollment request ViewSet"""
+    queryset = TestEnrollmentRequest.objects.select_related('user', 'test', 'processed_by').all()
+    serializer_class = TestEnrollmentRequestSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    pagination_class = None  # Отключить пагинацию для этого ViewSet
+    
+    def get_queryset(self):
+        """Filter requests by user unless admin"""
+        queryset = super().get_queryset()
+        
+        # Проверка прав администратора
+        is_admin_user = (
+            self.request.user.is_admin or
+            self.request.user.role == 'admin' or 
+            self.request.user.is_superuser or 
+            self.request.user.is_staff
+        )
+        
+        if not is_admin_user:
+            queryset = queryset.filter(user=self.request.user)
+        else:
+            # Admin can filter by status
+            status_filter = self.request.query_params.get('status')
+            if status_filter:
+                queryset = queryset.filter(status=status_filter)
+        return queryset
+    
+    def get_serializer_class(self):
+        """Return appropriate serializer class"""
+        if self.action == 'create':
+            return TestEnrollmentRequestCreateSerializer
+        elif self.action in ['approve', 'reject']:
+            return TestEnrollmentRequestProcessSerializer
+        return TestEnrollmentRequestSerializer
+    
+    def create(self, request):
+        """Create a new test enrollment request"""
+        serializer = TestEnrollmentRequestCreateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                {'error': 'Invalid request data', 'details': serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        test_id = serializer.validated_data['test_id']
+        
+        try:
+            test = Test.objects.get(id=test_id)
+        except Test.DoesNotExist:
+            return Response(
+                {'error': 'Test not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Убрана проверка is_standalone - теперь запросы можно создавать для всех тестов
+        
+        # Check if request already exists
+        existing_request = TestEnrollmentRequest.objects.filter(
+            user=request.user,
+            test=test
+        ).first()
+        
+        if existing_request:
+            if existing_request.status == 'pending':
+                return Response(
+                    {'error': 'Request already pending'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            elif existing_request.status == 'approved':
+                return Response(
+                    {'error': 'Request already approved'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        # Create request
+        enrollment_request = TestEnrollmentRequest.objects.create(
+            user=request.user,
+            test=test,
+            status='pending'
+        )
+        
+        # Create notification for admin
+        from apps.notifications.models import Notification
+        from apps.accounts.models import User
+        admins = User.objects.filter(role='admin', is_active=True)
+        for admin in admins:
+            Notification.objects.create(
+                user=admin,
+                type='test_enrollment_request',
+                title='Новый запрос на запись на тест',
+                message=f'Студент {request.user.full_name or request.user.phone} запросил запись на тест "{test.title}"'
+            )
+        
+        return Response(
+            TestEnrollmentRequestSerializer(enrollment_request).data,
+            status=status.HTTP_201_CREATED
+        )
+    
+    @action(detail=False, methods=['get'])
+    def my_requests(self, request):
+        """Get current user's enrollment requests"""
+        requests = TestEnrollmentRequest.objects.filter(
+            user=request.user
+        ).select_related('test', 'processed_by')
+        serializer = TestEnrollmentRequestSerializer(requests, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def approve(self, request, pk=None):
+        """Approve test enrollment request (admin only)"""
+        if not request.user.is_admin:
+            return Response(
+                {'error': 'Permission denied'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        enrollment_request = self.get_object()
+        
+        if enrollment_request.status != 'pending':
+            return Response(
+                {'error': f'Request is already {enrollment_request.get_status_display()}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Approve request
+        enrollment_request.status = 'approved'
+        enrollment_request.processed_by = request.user
+        enrollment_request.processed_at = timezone.now()
+        if request.data.get('admin_response'):
+            enrollment_request.admin_response = request.data['admin_response']
+        enrollment_request.save()
+        
+        # Create notification for student
+        from apps.notifications.models import Notification
+        Notification.objects.create(
+            user=enrollment_request.user,
+            type='test_enrollment_approved',
+            title='Запрос на запись на тест одобрен',
+            message=f'Ваш запрос на запись на тест "{enrollment_request.test.title}" был одобрен. Теперь вы можете пройти тест.'
+        )
+        
+        return Response(
+            TestEnrollmentRequestSerializer(enrollment_request).data,
+            status=status.HTTP_200_OK
+        )
+    
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def reject(self, request, pk=None):
+        """Reject test enrollment request (admin only)"""
+        if not request.user.is_admin:
+            return Response(
+                {'error': 'Permission denied'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        enrollment_request = self.get_object()
+        
+        if enrollment_request.status != 'pending':
+            return Response(
+                {'error': f'Request is already {enrollment_request.get_status_display()}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        serializer = TestEnrollmentRequestProcessSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        # Reject request
+        enrollment_request.status = 'rejected'
+        enrollment_request.processed_by = request.user
+        enrollment_request.processed_at = timezone.now()
+        enrollment_request.admin_response = serializer.validated_data.get('admin_response', '')
+        enrollment_request.save()
+        
+        # Create notification for student
+        from apps.notifications.models import Notification
+        Notification.objects.create(
+            user=enrollment_request.user,
+            type='test_enrollment_rejected',
+            title='Запрос на запись на тест отклонен',
+            message=f'Ваш запрос на запись на тест "{enrollment_request.test.title}" был отклонен.' + (
+                f' Причина: {enrollment_request.admin_response}' if enrollment_request.admin_response else ''
+            )
+        )
+        
+        return Response(
+            TestEnrollmentRequestSerializer(enrollment_request).data,
+            status=status.HTTP_200_OK
+        )
 

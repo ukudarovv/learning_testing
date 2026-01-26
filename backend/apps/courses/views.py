@@ -16,7 +16,7 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-from .models import Category, Course, Module, Lesson, CourseEnrollment, LessonProgress, CourseCompletionVerification
+from .models import Category, Course, Module, Lesson, CourseEnrollment, LessonProgress, CourseCompletionVerification, CourseEnrollmentRequest
 from .serializers import (
     CategorySerializer,
     CourseSerializer,
@@ -27,6 +27,9 @@ from .serializers import (
     CourseCompletionVerificationSerializer,
     OTPRequestSerializer,
     OTPVerifySerializer,
+    CourseEnrollmentRequestSerializer,
+    CourseEnrollmentRequestCreateSerializer,
+    CourseEnrollmentRequestProcessSerializer,
 )
 from apps.accounts.permissions import IsAdmin, IsAdminOrReadOnly
 from apps.exams.models import TestAttempt
@@ -123,27 +126,75 @@ class CourseViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['post'])
     def enroll(self, request, pk=None):
-        """Enroll students in course (self-enrollment or admin enrollment)"""
+        """Enroll students in course (self-enrollment creates request, admin enrollment is direct)"""
         course = self.get_object()
         user_ids = request.data.get('user_ids', [])
         
-        # Self-enrollment: если user_ids не указан, записать текущего пользователя
+        # Self-enrollment: если user_ids не указан, создаем запрос на запись
         if not user_ids:
-            enrollment, created = CourseEnrollment.objects.get_or_create(
+            # Проверяем, есть ли уже запрос или запись
+            existing_request = CourseEnrollmentRequest.objects.filter(
                 user=request.user,
-                course=course,
-                defaults={'status': 'assigned'}
-            )
-            if created:
-                return Response({
-                    'message': 'Successfully enrolled in course',
-                    'enrollment_id': enrollment.id
-                }, status=status.HTTP_201_CREATED)
-            else:
+                course=course
+            ).first()
+            
+            if existing_request:
+                if existing_request.status == 'pending':
+                    return Response({
+                        'message': 'Request already pending',
+                        'request_id': existing_request.id,
+                        'status': 'pending'
+                    }, status=status.HTTP_200_OK)
+                elif existing_request.status == 'approved':
+                    # Если запрос одобрен, проверяем наличие enrollment
+                    enrollment = CourseEnrollment.objects.filter(
+                        user=request.user,
+                        course=course
+                    ).first()
+                    if enrollment:
+                        return Response({
+                            'message': 'Already enrolled in this course',
+                            'enrollment_id': enrollment.id
+                        }, status=status.HTTP_200_OK)
+            
+            # Проверяем, есть ли уже запись
+            existing_enrollment = CourseEnrollment.objects.filter(
+                user=request.user,
+                course=course
+            ).first()
+            
+            if existing_enrollment:
                 return Response({
                     'message': 'Already enrolled in this course',
-                    'enrollment_id': enrollment.id
+                    'enrollment_id': existing_enrollment.id
                 }, status=status.HTTP_200_OK)
+            
+            # Создаем запрос на запись
+            enrollment_request = CourseEnrollmentRequest.objects.create(
+                user=request.user,
+                course=course,
+                status='pending'
+            )
+            
+            logger.info(f"Created enrollment request: ID={enrollment_request.id}, User={request.user.phone}, Course={course.title}, Status={enrollment_request.status}")
+            
+            # Create notification for admin
+            from apps.notifications.models import Notification
+            from apps.accounts.models import User
+            admins = User.objects.filter(role='admin', is_active=True)
+            for admin in admins:
+                Notification.objects.create(
+                    user=admin,
+                    type='enrollment_request',
+                    title='Новый запрос на запись на курс',
+                    message=f'Студент {request.user.full_name or request.user.phone} запросил запись на курс "{course.title}"'
+                )
+            
+            return Response({
+                'message': 'Enrollment request created',
+                'request_id': enrollment_request.id,
+                'status': 'pending'
+            }, status=status.HTTP_201_CREATED)
         
         # Admin enrollment: записать список пользователей (только для админов)
         if not isinstance(user_ids, list):
@@ -283,20 +334,59 @@ class CourseViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['get'])
     def with_progress(self, request, pk=None):
-        """Get course with student's progress (auto-enroll if not enrolled)"""
+        """Get course with student's progress (check for approved enrollment request first)"""
         course = self.get_object()
         enrollment = CourseEnrollment.objects.filter(
             user=request.user,
             course=course
         ).first()
         
-        # Auto-enroll if not enrolled
+        # If not enrolled, check for approved enrollment request
         if not enrollment:
-            enrollment = CourseEnrollment.objects.create(
+            enrollment_request = CourseEnrollmentRequest.objects.filter(
                 user=request.user,
-                course=course,
-                status='assigned'
-            )
+                course=course
+            ).first()
+            
+            if enrollment_request:
+                if enrollment_request.status == 'pending':
+                    # Request is pending, return error
+                    return Response(
+                        {
+                            'error': 'Enrollment request pending',
+                            'message': 'Your enrollment request is pending admin approval',
+                            'request_status': 'pending'
+                        },
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+                elif enrollment_request.status == 'approved':
+                    # Request approved, create enrollment
+                    enrollment = CourseEnrollment.objects.create(
+                        user=request.user,
+                        course=course,
+                        status='assigned'
+                    )
+                else:
+                    # Request rejected
+                    return Response(
+                        {
+                            'error': 'Enrollment request rejected',
+                            'message': 'Your enrollment request was rejected',
+                            'request_status': 'rejected',
+                            'admin_response': enrollment_request.admin_response
+                        },
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+            else:
+                # No enrollment and no request - return error
+                return Response(
+                    {
+                        'error': 'Enrollment required',
+                        'message': 'You need to request enrollment for this course',
+                        'request_status': 'not_requested'
+                    },
+                    status=status.HTTP_403_FORBIDDEN
+                )
         
         # Get lesson progress
         lesson_progress = {
@@ -845,4 +935,269 @@ class LessonViewSet(viewsets.ReadOnlyModelViewSet):
         except Exception as e:
             logger.error(f'Error in LibreOffice conversion: {str(e)}')
             return False
+
+
+class CourseEnrollmentRequestViewSet(viewsets.ModelViewSet):
+    """Course enrollment request ViewSet"""
+    queryset = CourseEnrollmentRequest.objects.select_related('user', 'course', 'processed_by').all()
+    serializer_class = CourseEnrollmentRequestSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    pagination_class = None  # Отключить пагинацию для этого ViewSet
+    
+    def get_queryset(self):
+        """Filter requests by user unless admin"""
+        queryset = super().get_queryset()
+        
+        # Проверка прав администратора
+        is_admin_user = (
+            self.request.user.is_admin or  # Использовать свойство is_admin
+            self.request.user.role == 'admin' or 
+            self.request.user.is_superuser or 
+            self.request.user.is_staff
+        )
+        
+        # Debug: log user info
+        logger.info(f"get_queryset - User: {self.request.user.phone}, Role: {self.request.user.role}, is_admin property: {self.request.user.is_admin}, is_admin_user: {is_admin_user}")
+        logger.info(f"Total requests in DB: {CourseEnrollmentRequest.objects.count()}")
+        
+        # If user is admin, return all requests (with optional status filter)
+        if is_admin_user:
+            status_filter = self.request.query_params.get('status')
+            if status_filter:
+                queryset = queryset.filter(status=status_filter)
+            logger.info(f"Admin queryset - returning {queryset.count()} requests")
+            # Admin sees all requests - no additional filtering needed
+            return queryset
+        else:
+            # Non-admin users only see their own requests
+            filtered = queryset.filter(user=self.request.user)
+            logger.info(f"Non-admin queryset - returning {filtered.count()} requests for user {self.request.user.phone}")
+            return filtered
+    
+    def list(self, request, *args, **kwargs):
+        """Override list to add debug logging"""
+        is_admin_user = (
+            request.user.role == 'admin' or 
+            request.user.is_superuser or 
+            request.user.is_staff
+        )
+        logger.info(f"list() - User: {request.user.phone}, Role: {request.user.role}, is_admin: {is_admin_user}")
+        logger.info(f"Total requests in DB: {CourseEnrollmentRequest.objects.count()}")
+        
+        queryset = self.filter_queryset(self.get_queryset())
+        logger.info(f"Filtered queryset count: {queryset.count()}")
+        
+        serializer = self.get_serializer(queryset, many=True)
+        logger.info(f"Returning {len(serializer.data)} items")
+        return Response(serializer.data)
+    
+    def get_serializer_class(self):
+        """Return appropriate serializer class"""
+        if self.action == 'create':
+            return CourseEnrollmentRequestCreateSerializer
+        elif self.action in ['approve', 'reject']:
+            return CourseEnrollmentRequestProcessSerializer
+        return CourseEnrollmentRequestSerializer
+    
+    def create(self, request):
+        """Create a new course enrollment request"""
+        serializer = CourseEnrollmentRequestCreateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                {'error': 'Invalid request data', 'details': serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        course_id = serializer.validated_data['course_id']
+        
+        try:
+            course = Course.objects.get(id=course_id)
+        except Course.DoesNotExist:
+            return Response(
+                {'error': 'Course not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Check if already enrolled
+        existing_enrollment = CourseEnrollment.objects.filter(
+            user=request.user,
+            course=course
+        ).first()
+        
+        if existing_enrollment:
+            return Response(
+                {'error': 'Already enrolled in this course'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check if request already exists
+        existing_request = CourseEnrollmentRequest.objects.filter(
+            user=request.user,
+            course=course
+        ).first()
+        
+        if existing_request:
+            if existing_request.status == 'pending':
+                return Response(
+                    {'error': 'Request already pending'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            elif existing_request.status == 'approved':
+                return Response(
+                    {'error': 'Request already approved'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        # Create request
+        enrollment_request = CourseEnrollmentRequest.objects.create(
+            user=request.user,
+            course=course,
+            status='pending'
+        )
+        
+        logger.info(f"Created enrollment request via create() method: ID={enrollment_request.id}, User={request.user.phone}, Course={course.title}, Status={enrollment_request.status}")
+        logger.info(f"Total requests in DB after creation: {CourseEnrollmentRequest.objects.count()}")
+        
+        # Create notification for admin
+        from apps.notifications.models import Notification
+        from apps.accounts.models import User
+        admins = User.objects.filter(role='admin', is_active=True)
+        logger.info(f"Found {admins.count()} admins to notify")
+        for admin in admins:
+            Notification.objects.create(
+                user=admin,
+                type='enrollment_request',
+                title='Новый запрос на запись на курс',
+                message=f'Студент {request.user.full_name or request.user.phone} запросил запись на курс "{course.title}"'
+            )
+        
+        return Response(
+            CourseEnrollmentRequestSerializer(enrollment_request).data,
+            status=status.HTTP_201_CREATED
+        )
+    
+    @action(detail=False, methods=['get'])
+    def my_requests(self, request):
+        """Get current user's enrollment requests"""
+        requests = CourseEnrollmentRequest.objects.filter(
+            user=request.user
+        ).select_related('course', 'processed_by')
+        serializer = CourseEnrollmentRequestSerializer(requests, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def debug_info(self, request):
+        """Debug endpoint to check admin status and request count"""
+        is_admin_user = (
+            request.user.role == 'admin' or 
+            request.user.is_superuser or 
+            request.user.is_staff
+        )
+        total_requests = CourseEnrollmentRequest.objects.count()
+        pending_requests = CourseEnrollmentRequest.objects.filter(status='pending').count()
+        
+        return Response({
+            'user': {
+                'phone': request.user.phone,
+                'role': request.user.role,
+                'is_admin_property': request.user.is_admin,
+                'is_admin_user': is_admin_user,
+                'is_staff': request.user.is_staff,
+                'is_superuser': request.user.is_superuser,
+            },
+            'requests': {
+                'total': total_requests,
+                'pending': pending_requests,
+            },
+            'all_requests': list(CourseEnrollmentRequest.objects.values('id', 'user__phone', 'course__title', 'status')[:10])
+        })
+    
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def approve(self, request, pk=None):
+        """Approve course enrollment request (admin only)"""
+        if not request.user.is_admin:
+            return Response(
+                {'error': 'Permission denied'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        enrollment_request = self.get_object()
+        
+        if enrollment_request.status != 'pending':
+            return Response(
+                {'error': f'Request is already {enrollment_request.get_status_display()}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Approve request
+        enrollment_request.status = 'approved'
+        enrollment_request.processed_by = request.user
+        enrollment_request.processed_at = timezone.now()
+        if request.data.get('admin_response'):
+            enrollment_request.admin_response = request.data['admin_response']
+        enrollment_request.save()
+        
+        # Create enrollment
+        enrollment, created = CourseEnrollment.objects.get_or_create(
+            user=enrollment_request.user,
+            course=enrollment_request.course,
+            defaults={'status': 'assigned'}
+        )
+        
+        # Create notification for student
+        from apps.notifications.models import Notification
+        Notification.objects.create(
+            user=enrollment_request.user,
+            type='enrollment_approved',
+            title='Запрос на запись на курс одобрен',
+            message=f'Ваш запрос на запись на курс "{enrollment_request.course.title}" был одобрен. Теперь вы можете начать обучение.'
+        )
+        
+        return Response(
+            CourseEnrollmentRequestSerializer(enrollment_request).data,
+            status=status.HTTP_200_OK
+        )
+    
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def reject(self, request, pk=None):
+        """Reject course enrollment request (admin only)"""
+        if not request.user.is_admin:
+            return Response(
+                {'error': 'Permission denied'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        enrollment_request = self.get_object()
+        
+        if enrollment_request.status != 'pending':
+            return Response(
+                {'error': f'Request is already {enrollment_request.get_status_display()}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        serializer = CourseEnrollmentRequestProcessSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        # Reject request
+        enrollment_request.status = 'rejected'
+        enrollment_request.processed_by = request.user
+        enrollment_request.processed_at = timezone.now()
+        enrollment_request.admin_response = serializer.validated_data.get('admin_response', '')
+        enrollment_request.save()
+        
+        # Create notification for student
+        from apps.notifications.models import Notification
+        Notification.objects.create(
+            user=enrollment_request.user,
+            type='enrollment_rejected',
+            title='Запрос на запись на курс отклонен',
+            message=f'Ваш запрос на запись на курс "{enrollment_request.course.title}" был отклонен.' + (
+                f' Причина: {enrollment_request.admin_response}' if enrollment_request.admin_response else ''
+            )
+        )
+        
+        return Response(
+            CourseEnrollmentRequestSerializer(enrollment_request).data,
+            status=status.HTTP_200_OK
+        )
 

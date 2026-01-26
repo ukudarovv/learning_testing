@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Video, Download, Eye, Search, Filter, Calendar, User, FileQuestion, CheckCircle, XCircle, Clock, RefreshCw, X, Trash2 } from 'lucide-react';
+import { Video, Download, Eye, Search, Filter, Calendar, User, FileQuestion, CheckCircle, XCircle, Clock, RefreshCw, X, Trash2, AlertCircle, Send } from 'lucide-react';
 import { TestAttempt, Test } from '../../types/lms';
 import { examsService } from '../../services/exams';
 import { testsService } from '../../services/tests';
@@ -19,6 +19,7 @@ export function TestAttemptsManagement() {
   const [testFilter, setTestFilter] = useState<string>('all');
   const [passedFilter, setPassedFilter] = useState<'all' | 'passed' | 'failed'>('all');
   const [dateFilter, setDateFilter] = useState<string>('all'); // 'all', 'today', 'week', 'month'
+  const [limitFilter, setLimitFilter] = useState<'all' | 'reached'>('all'); // Фильтр по лимиту
   const [selectedAttempt, setSelectedAttempt] = useState<TestAttempt | null>(null);
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [showDeleteSMSModal, setShowDeleteSMSModal] = useState(false);
@@ -94,6 +95,31 @@ export function TestAttemptsManagement() {
     }
   };
 
+  const getAttemptsCount = (attempt: TestAttempt): number => {
+    return attempt.attempts_count || attempt.attemptsCount || 0;
+  };
+
+  const getMaxAttempts = (attempt: TestAttempt): number => {
+    return attempt.max_attempts || attempt.maxAttempts || 0;
+  };
+
+  const getApprovedExtraAttempts = (attempt: TestAttempt): number => {
+    return attempt.approved_extra_attempts || attempt.approvedExtraAttempts || 0;
+  };
+
+  const getLimitReached = (attempt: TestAttempt): boolean => {
+    if (attempt.limit_reached !== undefined) return attempt.limit_reached;
+    if (attempt.limitReached !== undefined) return attempt.limitReached;
+    const attemptsCount = getAttemptsCount(attempt);
+    const maxAttempts = getMaxAttempts(attempt);
+    const approvedExtra = getApprovedExtraAttempts(attempt);
+    return attemptsCount >= (maxAttempts + approvedExtra);
+  };
+
+  const hasPendingRequest = (attempt: TestAttempt): boolean => {
+    return attempt.has_pending_request || attempt.hasPendingRequest || false;
+  };
+
   const filteredAttempts = attempts.filter(attempt => {
     // Поиск по имени пользователя, телефону или названию теста
     const user = attempt.user;
@@ -140,7 +166,10 @@ export function TestAttemptsManagement() {
       }
     }
 
-    return matchesSearch && matchesTest && matchesPassed && matchesDate;
+    // Фильтр по лимиту
+    const matchesLimit = limitFilter === 'all' || (limitFilter === 'reached' && getLimitReached(attempt));
+
+    return matchesSearch && matchesTest && matchesPassed && matchesDate && matchesLimit;
   });
 
   const formatDate = (date: Date | string | undefined): string => {
@@ -249,7 +278,7 @@ export function TestAttemptsManagement() {
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow-md p-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -296,6 +325,16 @@ export function TestAttemptsManagement() {
             <option value="week">{t('admin.testAttempts.week') || 'За неделю'}</option>
             <option value="month">{t('admin.testAttempts.month') || 'За месяц'}</option>
           </select>
+
+          {/* Limit Filter */}
+          <select
+            value={limitFilter}
+            onChange={(e) => setLimitFilter(e.target.value as 'all' | 'reached')}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="all">{t('admin.testAttempts.allLimits') || 'Все лимиты'}</option>
+            <option value="reached">{t('admin.testAttempts.limitReached') || 'Лимит исчерпан'}</option>
+          </select>
         </div>
       </div>
 
@@ -316,6 +355,9 @@ export function TestAttemptsManagement() {
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     {t('admin.testAttempts.test') || 'Тест'}
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    {t('admin.testAttempts.attempts') || 'Попытки'}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     {t('admin.testAttempts.score') || 'Балл'}
@@ -354,6 +396,23 @@ export function TestAttemptsManagement() {
                         <div className="flex items-center gap-2">
                           <FileQuestion className="w-4 h-4 text-gray-400" />
                           <span className="text-sm text-gray-900">{getTestTitle(attempt)}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-sm font-medium ${
+                            getLimitReached(attempt) ? 'text-red-600' : 'text-gray-900'
+                          }`}>
+                            {getAttemptsCount(attempt)} / {getMaxAttempts(attempt) + getApprovedExtraAttempts(attempt)}
+                          </span>
+                          {getLimitReached(attempt) && (
+                            <AlertCircle className="w-4 h-4 text-red-600" title={t('admin.testAttempts.limitReached') || 'Лимит исчерпан'} />
+                          )}
+                          {hasPendingRequest(attempt) && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200" title={t('admin.testAttempts.pendingRequest') || 'Ожидает запрос на дополнительные попытки'}>
+                              <Send className="w-3 h-3" />
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">

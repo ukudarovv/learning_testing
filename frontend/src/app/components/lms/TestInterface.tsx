@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Clock, CheckCircle, Circle, AlertTriangle, ArrowLeft, ArrowRight, Flag, X } from 'lucide-react';
 import { Question, Answer } from '../../types/lms';
 import { examsService } from '../../services/exams';
 import { VideoPermissionModal } from './VideoPermissionModal';
 import { useVideoRecorder } from '../../hooks/useVideoRecorder';
+import { useTestProtection } from '../../hooks/useTestProtection';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 
@@ -41,6 +42,9 @@ export function TestInterface({
   const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
   const [videoPermissionGranted, setVideoPermissionGranted] = useState(false);
   const { isRecording, startRecording, stopRecording, error: videoError, recordingTime } = useVideoRecorder();
+  const [showViolationWarning, setShowViolationWarning] = useState(false);
+  const [isTerminating, setIsTerminating] = useState(false);
+  const previousViolationCountRef = useRef(0);
   
   // Восстанавливаем сохраненные ответы, если они есть
   const initialAnswers = savedAnswers 
@@ -86,6 +90,9 @@ export function TestInterface({
     // Это важно для безопасности - нужно убедиться, что камера доступна при продолжении
     return false;
   });
+  
+  // Защита от скриншотов и нарушений (после объявления testStarted)
+  const { violationCount, violationType, resetViolations } = useTestProtection(testStarted);
   
   // Автоматически показываем модальное окно с запросом разрешения, если требуется видеозапись и тест не начат
   // Но только если пользователь еще не закрывал его вручную
@@ -239,6 +246,25 @@ export function TestInterface({
     return () => clearTimeout(saveTimer);
   }, [answers, currentQuestionIndex, testId, testStarted]); // Добавить testStarted
 
+  // Обработка нарушений защиты
+  useEffect(() => {
+    if (!testStarted || isTerminating) return;
+
+    // Если количество нарушений увеличилось
+    if (violationCount > previousViolationCountRef.current) {
+      previousViolationCountRef.current = violationCount;
+
+      // Если достигли 3 нарушений - завершаем тест
+      if (violationCount >= 3) {
+        handleTerminateTest();
+        return;
+      }
+
+      // Показываем предупреждение
+      setShowViolationWarning(true);
+    }
+  }, [violationCount, testStarted, isTerminating]);
+
   // Предотвращение случайного закрытия
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -249,6 +275,87 @@ export function TestInterface({
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, []);
+
+  // Функция досрочного завершения теста
+  const handleTerminateTest = async () => {
+    if (isTerminating) return;
+    
+    setIsTerminating(true);
+    setShowViolationWarning(false);
+
+    // Определяем причину завершения
+    let reason = 'Нарушение правил прохождения теста';
+    if (violationType === 'screenshot') {
+      reason = 'Обнаружена попытка сделать скриншот';
+    } else if (violationType === 'screencast') {
+      reason = 'Обнаружена попытка записи экрана';
+    } else if (violationType === 'copy') {
+      reason = 'Обнаружена попытка копирования';
+    } else if (violationType === 'hotkey' || violationType === 'devtools') {
+      reason = 'Использование запрещенных горячих клавиш';
+    } else if (violationType === 'contextmenu') {
+      reason = 'Попытка открыть контекстное меню';
+    }
+
+    try {
+      // Останавливаем видеозапись, если активна
+      let videoBlob: Blob | null = null;
+      if (isRecording) {
+        try {
+          videoBlob = await stopRecording();
+        } catch (error) {
+          console.error('Error stopping video recording:', error);
+        }
+      }
+
+      // Останавливаем видеопоток
+      if (videoStream) {
+        videoStream.getTracks().forEach((track) => track.stop());
+        setVideoStream(null);
+      }
+
+      // Сохраняем текущие ответы
+      try {
+        const savedProgress = localStorage.getItem(`test_${testId}_progress`);
+        const progress = savedProgress ? JSON.parse(savedProgress) : null;
+        const currentAttemptId = attemptId || progress?.attemptId;
+        
+        if (currentAttemptId) {
+          const allAnswers: Record<string, any> = {};
+          answers.forEach((answer) => {
+            if (answer.answer !== '' && answer.answer !== null && answer.answer !== undefined) {
+              allAnswers[answer.questionId] = answer.answer;
+            }
+          });
+          
+          if (Object.keys(allAnswers).length > 0) {
+            await examsService.saveAllAnswers(Number(currentAttemptId), allAnswers);
+          }
+        }
+      } catch (error) {
+        console.error('Error saving answers before termination:', error);
+      }
+
+      // Завершаем тест через API
+      if (attemptId) {
+        try {
+          await examsService.terminateTestAttempt(String(attemptId), reason);
+        } catch (error) {
+          console.error('Error terminating test attempt:', error);
+        }
+      }
+
+      // Удаляем сохраненный прогресс
+      localStorage.removeItem(`test_${testId}_progress`);
+
+      // Вызываем onComplete с текущими ответами
+      const timeSpent = Math.floor((Date.now() - startTime) / 1000);
+      onComplete(answers, timeSpent, videoBlob || undefined);
+    } catch (error) {
+      console.error('Error terminating test:', error);
+      toast.error(t('lms.test.terminationError') || 'Ошибка при завершении теста');
+    }
+  };
 
   const handleAnswerChange = (answer: string | string[]) => {
     const newAnswers = [...answers];
@@ -361,6 +468,25 @@ export function TestInterface({
   const answeredCount = answers.filter((_, i) => isAnswered(i)).length;
 
 
+  // Получаем текст предупреждения в зависимости от типа нарушения
+  const getViolationMessage = () => {
+    switch (violationType) {
+      case 'screenshot':
+        return t('lms.test.screenshotWarning') || 'Обнаружена попытка сделать скриншот';
+      case 'screencast':
+        return t('lms.test.screenCaptureWarning') || 'Обнаружена попытка записи экрана';
+      case 'copy':
+        return t('lms.test.copyWarning') || 'Копирование запрещено';
+      case 'hotkey':
+      case 'devtools':
+        return t('lms.test.hotkeyWarning') || 'Использование горячих клавиш запрещено';
+      case 'contextmenu':
+        return t('lms.test.contextMenuWarning') || 'Контекстное меню запрещено';
+      default:
+        return t('lms.test.violationDetected') || 'Обнаружено нарушение правил';
+    }
+  };
+
   return (
     <>
       {/* Модальное окно с запросом разрешения на камеру */}
@@ -372,9 +498,72 @@ export function TestInterface({
           onPermissionDenied={handleVideoPermissionDenied}
         />
       )}
+      
+      {/* Модальное окно предупреждения о нарушениях */}
+      {showViolationWarning && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-2xl ring-4 ring-red-500 ring-opacity-50 max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-red-600" />
+              </div>
+              <h2 className="text-xl font-bold text-gray-900">
+                {t('lms.test.warningTitle') || 'Предупреждение о нарушении'}
+              </h2>
+            </div>
+            
+            <div className="mb-6 space-y-3">
+              <p className="text-gray-700 font-medium">
+                {getViolationMessage()}
+              </p>
+              <p className="text-sm text-gray-600">
+                {t('lms.test.warningMessage') || 'Обнаружено нарушение правил прохождения теста. После 3 предупреждений тест будет автоматически завершен.'}
+              </p>
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 mt-4">
+                <p className="text-sm font-semibold text-red-800">
+                  {t('lms.test.violationCount', { count: violationCount }) || `Нарушений: ${violationCount} из 3`}
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowViolationWarning(false)}
+              className="w-full px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors"
+            >
+              {t('common.close') || 'Закрыть'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Показываем интерфейс теста только если тест начат или видеозапись не требуется */}
       {(testStarted || !requiresVideoRecording) && (
-      <div className={inModal ? "bg-gray-50" : "min-h-screen bg-gray-50 pt-20"}>
+      <div 
+        className={inModal ? "bg-gray-50" : "min-h-screen bg-gray-50 pt-20"}
+        style={{ 
+          userSelect: 'none',
+          WebkitUserSelect: 'none',
+          MozUserSelect: 'none',
+          msUserSelect: 'none',
+        }}
+        onContextMenu={(e) => e.preventDefault()}
+        onDragStart={(e) => e.preventDefault()}
+        onMouseDown={(e) => {
+          // Блокируем выделение текста при зажатии мыши
+          const target = e.target as HTMLElement;
+          // Разрешаем клики по интерактивным элементам
+          if (target.tagName === 'INPUT' || target.tagName === 'BUTTON' || target.tagName === 'TEXTAREA' || target.closest('button') || target.closest('input') || target.closest('textarea')) {
+            return;
+          }
+          // Блокируем выделение для остальных элементов
+          if (window.getSelection) {
+            const selection = window.getSelection();
+            if (selection && selection.rangeCount > 0) {
+              selection.removeAllRanges();
+            }
+          }
+        }}
+      >
       <div className={inModal ? "px-4 py-4 max-w-6xl" : "container mx-auto px-4 py-8 max-w-6xl"}>
         {/* Header */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">

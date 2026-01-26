@@ -113,6 +113,49 @@ class Question(models.Model):
         super().save(*args, **kwargs)
 
 
+class TestEnrollmentRequest(models.Model):
+    """Request for test enrollment with admin approval"""
+    
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+    
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='test_enrollment_requests', on_delete=models.CASCADE)
+    test = models.ForeignKey(Test, related_name='enrollment_requests', on_delete=models.CASCADE)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    admin_response = models.TextField(blank=True, help_text='Admin response or rejection reason')
+    processed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name='processed_test_enrollment_requests',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
+    processed_at = models.DateTimeField(null=True, blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'test_enrollment_requests'
+        ordering = ['-created_at']
+        unique_together = ['user', 'test']
+        indexes = [
+            models.Index(fields=['user', 'test', 'status']),
+            models.Index(fields=['status', '-created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user.full_name or self.user.phone} - {self.test.title} ({self.get_status_display()})"
+    
+    def clean(self):
+        """Validate test enrollment request"""
+        # Убрана проверка is_standalone - теперь запросы можно создавать для всех тестов
+        pass
+
+
 class TestCompletionVerification(models.Model):
     """Test completion SMS verification for standalone tests"""
     

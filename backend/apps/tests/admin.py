@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Test, Question
+from .models import Test, Question, TestEnrollmentRequest
 
 
 @admin.register(Test)
@@ -18,4 +18,13 @@ class QuestionAdmin(admin.ModelAdmin):
     search_fields = ('text',)
     ordering = ('test', 'order', 'id')
     readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(TestEnrollmentRequest)
+class TestEnrollmentRequestAdmin(admin.ModelAdmin):
+    list_display = ('user', 'test', 'status', 'processed_by', 'processed_at', 'created_at')
+    list_filter = ('status', 'created_at', 'processed_at')
+    search_fields = ('user__phone', 'user__full_name', 'test__title')
+    ordering = ('-created_at',)
+    readonly_fields = ('created_at', 'updated_at', 'processed_at')
 
