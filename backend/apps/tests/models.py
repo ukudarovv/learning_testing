@@ -24,7 +24,7 @@ class Test(models.Model):
     show_results = models.BooleanField(default=True, help_text='Show test results to students after completion')
     language = models.CharField(max_length=2, choices=LANGUAGE_CHOICES, default='ru', help_text='Language of the test content')
     category = models.ForeignKey('courses.Category', related_name='tests', on_delete=models.PROTECT, null=True, blank=True, help_text='Category for standalone tests displayed on Training Programs page')
-    is_standalone = models.BooleanField(default=False, help_text='If True, test can be taken without a course and will be displayed on Training Programs page')
+    is_standalone = models.BooleanField(default=True, help_text='If True, test can be used in courses. If False, test is standalone and will be displayed on Training Programs page')
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

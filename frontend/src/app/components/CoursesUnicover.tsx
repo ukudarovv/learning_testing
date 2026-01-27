@@ -103,13 +103,13 @@ export function CoursesUnicover() {
           }
         }
         
-        // Фильтруем активные тесты с категориями и is_standalone=true
-        // Показываем только тесты, которые имеют категорию И помечены как standalone
+        // Фильтруем активные тесты с категориями и is_standalone=false
+        // Показываем только тесты, которые имеют категорию И НЕ используются в курсах (автономные тесты)
         const activeTests = testsList.filter(test => 
           test && 
           test.is_active !== false && 
           test.category && // Должна быть категория
-          (test.is_standalone || test.isStandalone) // И должен быть флаг is_standalone
+          (!test.is_standalone && !test.isStandalone) // Тест НЕ используется в курсах (автономный)
         );
         setTests(activeTests);
       } catch (error) {

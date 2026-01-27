@@ -102,7 +102,7 @@ export function CourseEditor({ course, onSave, onCancel }: CourseEditorProps) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(false);
 
-  // Фильтруем тесты для финального теста - только standalone тесты
+  // Фильтруем тесты для финального теста - только тесты, используемые в курсах
   const availableFinalTests = useMemo(() => {
     return availableTests.filter(test => 
       test.is_standalone === true || test.isStandalone === true

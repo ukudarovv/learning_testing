@@ -97,8 +97,8 @@ class TestViewSet(viewsets.ModelViewSet):
         """Request OTP for standalone test completion verification"""
         test = self.get_object()
         
-        # Check if test is standalone (must have both category and is_standalone flag)
-        if not test.is_standalone or not test.category:
+        # Check if test is standalone (must have category and is_standalone=False, meaning not used in courses)
+        if test.is_standalone or not test.category:
             return Response(
                 {'error': 'This test is not a standalone test'},
                 status=status.HTTP_400_BAD_REQUEST

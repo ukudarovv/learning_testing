@@ -73,17 +73,17 @@ export function StudentDashboard() {
   // Защита от случаев, когда notifications не является массивом
   const unreadNotifications = Array.isArray(notifications) ? notifications.filter(n => !n.read) : [];
 
-  // Фильтруем пройденные standalone тесты
+  // Фильтруем пройденные standalone тесты (тесты, не используемые в курсах)
   const completedStandaloneTests = Array.isArray(testAttempts) ? testAttempts.filter(attempt => {
     // Проверяем, что test является объектом (не строкой)
     if (!attempt.test || typeof attempt.test === 'string') {
       return false;
     }
     
-    // Проверяем, что тест является standalone
+    // Проверяем, что тест НЕ используется в курсах (является автономным)
     const isStandalone = attempt.test.is_standalone || attempt.test.isStandalone;
-    if (!isStandalone) {
-      return false;
+    if (isStandalone) {
+      return false; // Пропускаем тесты, используемые в курсах
     }
     
     // Проверяем, что тест пройден
