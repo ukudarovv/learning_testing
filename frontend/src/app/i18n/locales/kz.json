@@ -597,8 +597,8 @@
       "loadingCategories": "Категориялар жүктелуде...",
       "language": "Тест тілі",
       "isStandalone": "Курстарда пайдалану",
-      "standaloneTestWarning": "⚠️ Автономды тест үшін категорияны таңдау керек. Тест Training Programs бетінде көрсетіледі.",
-      "standaloneTestRequiresCategory": "Автономды тест үшін категорияны таңдау керек",
+      "standaloneTestWarning": "⚠️ Курстарда пайдаланылмайтын тест үшін категорияны таңдау керек. Тест Training Programs бетінде көрсетіледі.",
+      "standaloneTestRequiresCategory": "Курстарда пайдаланылмайтын тест үшін категорияны таңдау керек",
       "requiresVideoRecording": "Бейне жазу қажет",
       "questionTypes": {
         "singleChoice": "Бір дұрыс жауап",

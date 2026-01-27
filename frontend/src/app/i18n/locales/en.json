@@ -597,8 +597,8 @@
       "loadingCategories": "Loading categories...",
       "language": "Test Language",
       "isStandalone": "Use in courses",
-      "standaloneTestWarning": "⚠️ For a standalone test, you must select a category. The test will be displayed on the Training Programs page.",
-      "standaloneTestRequiresCategory": "For a standalone test, you must select a category",
+      "standaloneTestWarning": "⚠️ For a test not used in courses, you must select a category. The test will be displayed on the Training Programs page.",
+      "standaloneTestRequiresCategory": "For a test not used in courses, you must select a category",
       "requiresVideoRecording": "Requires video recording",
       "questionTypes": {
         "singleChoice": "Single Choice",

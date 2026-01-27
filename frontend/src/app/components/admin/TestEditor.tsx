@@ -56,12 +56,12 @@ export function TestEditor({ test, onSave, onCancel }: TestEditorProps) {
     maxAttempts: test?.maxAttempts || test?.max_attempts || 3,
     language: test?.language || 'ru',
     shuffleQuestions: true,
-    showResults: true,
+    showResults: test?.showResults !== undefined ? test.showResults : (test?.show_results !== undefined ? test.show_results : false),
     questions: [],
     category: test?.category,
     categoryId: typeof test?.category === 'object' ? test?.category?.id : test?.categoryId,
-    isStandalone: test?.is_standalone || test?.isStandalone || false,
-    is_standalone: test?.is_standalone || test?.isStandalone || false,
+    isStandalone: test?.is_standalone !== undefined ? test.is_standalone : (test?.isStandalone !== undefined ? test.isStandalone : true),
+    is_standalone: test?.is_standalone !== undefined ? test.is_standalone : (test?.isStandalone !== undefined ? test.isStandalone : true),
     requiresVideoRecording: test?.requiresVideoRecording !== undefined ? test.requiresVideoRecording : (test?.requires_video_recording !== undefined ? test.requires_video_recording : false),
     requires_video_recording: test?.requires_video_recording !== undefined ? test.requires_video_recording : (test?.requiresVideoRecording !== undefined ? test.requiresVideoRecording : false),
   });
@@ -128,12 +128,12 @@ export function TestEditor({ test, onSave, onCancel }: TestEditorProps) {
         language: test.language || prev.language || 'ru',
         category: test.category,
         categoryId: categoryId,
-        isStandalone: test.is_standalone !== undefined ? test.is_standalone : (test.isStandalone !== undefined ? test.isStandalone : false),
-        is_standalone: test.is_standalone !== undefined ? test.is_standalone : (test.isStandalone !== undefined ? test.isStandalone : false),
+        isStandalone: test.is_standalone !== undefined ? test.is_standalone : (test.isStandalone !== undefined ? test.isStandalone : true),
+        is_standalone: test.is_standalone !== undefined ? test.is_standalone : (test.isStandalone !== undefined ? test.isStandalone : true),
         requiresVideoRecording: test.requiresVideoRecording !== undefined ? test.requiresVideoRecording : (test.requires_video_recording !== undefined ? test.requires_video_recording : false),
         requires_video_recording: test.requires_video_recording !== undefined ? test.requires_video_recording : (test.requiresVideoRecording !== undefined ? test.requiresVideoRecording : false),
         shuffleQuestions: test.shuffleQuestions !== undefined ? test.shuffleQuestions : (test.shuffle_questions !== undefined ? test.shuffle_questions : prev.shuffleQuestions),
-        showResults: test.showResults !== undefined ? test.showResults : (test.show_results !== undefined ? test.show_results : prev.showResults),
+        showResults: test.showResults !== undefined ? test.showResults : (test.show_results !== undefined ? test.show_results : false),
       }));
     }
   }, [test?.id, test?.title, test?.description, test?.timeLimit, test?.time_limit, test?.passingScore, test?.passing_score, test?.maxAttempts, test?.max_attempts, test?.category, test?.is_standalone, test?.isStandalone, test?.requires_video_recording, test?.requiresVideoRecording]);
@@ -249,11 +249,11 @@ export function TestEditor({ test, onSave, onCancel }: TestEditorProps) {
       return;
     }
 
-    // Валидация: если is_standalone=true, должна быть выбрана категория
-    if (formData.isStandalone || formData.is_standalone) {
+    // Валидация: если is_standalone=false (не используется в курсах), должна быть выбрана категория
+    if (!formData.isStandalone && !formData.is_standalone) {
       const categoryId = typeof formData.category === 'object' ? formData.category?.id : formData.categoryId;
       if (!categoryId) {
-        alert(t('admin.tests.standaloneTestRequiresCategory') || 'Для автономного теста необходимо выбрать категорию');
+        alert(t('admin.tests.standaloneTestRequiresCategory') || 'Для теста, не используемого в курсах, необходимо выбрать категорию');
         return;
       }
     }
@@ -491,18 +491,18 @@ export function TestEditor({ test, onSave, onCancel }: TestEditorProps) {
                 <label className="flex items-center gap-2">
                   <input
                     type="checkbox"
-                    checked={formData.isStandalone || formData.is_standalone || false}
+                    checked={formData.isStandalone !== undefined ? formData.isStandalone : (formData.is_standalone !== undefined ? formData.is_standalone : true)}
                     onChange={(e) => setFormData({ ...formData, isStandalone: e.target.checked, is_standalone: e.target.checked })}
                     className="rounded"
                   />
                   <span className="text-sm text-gray-700">
-                    {t('admin.tests.isStandalone') || 'Можно проходить без курса'}
+                    {t('admin.tests.isStandalone') || 'Использовать в курсах'}
                   </span>
                 </label>
-                {(formData.isStandalone || formData.is_standalone) && (
+                {(!formData.isStandalone && !formData.is_standalone) && (
                   <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                     <p className="text-sm text-yellow-800">
-                      {t('admin.tests.standaloneTestWarning') || '⚠️ Для автономного теста необходимо указать категорию. Тест будет отображаться на странице Training Programs.'}
+                      {t('admin.tests.standaloneTestWarning') || '⚠️ Для теста, не используемого в курсах, необходимо выбрать категорию. Тест будет отображаться на странице Training Programs.'}
                     </p>
                   </div>
                 )}
