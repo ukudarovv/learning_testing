@@ -596,7 +596,7 @@
       "selectCategory": "Select Category",
       "loadingCategories": "Loading categories...",
       "language": "Test Language",
-      "isStandalone": "Can be taken without a course",
+      "isStandalone": "Use in courses",
       "standaloneTestWarning": "⚠️ For a standalone test, you must select a category. The test will be displayed on the Training Programs page.",
       "standaloneTestRequiresCategory": "For a standalone test, you must select a category",
       "requiresVideoRecording": "Requires video recording",

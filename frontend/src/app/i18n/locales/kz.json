@@ -596,7 +596,7 @@
       "selectCategory": "Категорияны таңдаңыз",
       "loadingCategories": "Категориялар жүктелуде...",
       "language": "Тест тілі",
-      "isStandalone": "Курссыз өтуге болады",
+      "isStandalone": "Курстарда пайдалану",
       "standaloneTestWarning": "⚠️ Автономды тест үшін категорияны таңдау керек. Тест Training Programs бетінде көрсетіледі.",
       "standaloneTestRequiresCategory": "Автономды тест үшін категорияны таңдау керек",
       "requiresVideoRecording": "Бейне жазу қажет",
