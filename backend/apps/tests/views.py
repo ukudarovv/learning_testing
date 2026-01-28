@@ -634,6 +634,33 @@ class TestEnrollmentRequestViewSet(viewsets.ModelViewSet):
             TestEnrollmentRequestSerializer(enrollment_request).data,
             status=status.HTTP_200_OK
         )
+
+
+class TestAssignmentViewSet(viewsets.ModelViewSet):
+    """Test assignment ViewSet"""
+    queryset = TestAssignment.objects.select_related('user', 'test', 'assigned_by').all()
+    serializer_class = TestAssignmentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        """Admins see all assignments; students see their own."""
+        queryset = super().get_queryset()
+        user = self.request.user
+
+        is_admin = bool(getattr(user, 'is_admin', False) or getattr(user, 'is_staff', False))
+        if is_admin:
+            test_id = self.request.query_params.get('test_id')
+            if test_id:
+                queryset = queryset.filter(test_id=test_id)
+            return queryset
+
+        return queryset.filter(user=user)
+
+    def get_permissions(self):
+        """Read for authenticated; write only for admins."""
+        if self.action in ['list', 'retrieve']:
+            return [permissions.IsAuthenticated()]
+        return [IsAdminOrReadOnly()]
     
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def reject(self, request, pk=None):
