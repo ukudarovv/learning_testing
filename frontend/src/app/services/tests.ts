@@ -1,5 +1,5 @@
 import { apiClient } from './api';
-import { Test, Question, TestEnrollmentRequest } from '../types/lms';
+import { Test, Question, TestEnrollmentRequest, TestAssignment } from '../types/lms';
 import { PaginatedResponse, PaginationParams } from '../types/pagination';
 
 // Вспомогательные функции для конвертации форматов вопросов
@@ -601,6 +601,37 @@ const testsService = {
       { admin_response: reason }
     );
     return data;
+  },
+
+  // Test Assignment methods
+  async assignTests(testId: string, userIds: string[]): Promise<void> {
+    await apiClient.post(`/tests/${testId}/assign/`, { user_ids: userIds });
+  },
+
+  async revokeTestAssignment(testId: string, userId: string): Promise<void> {
+    await apiClient.post(`/tests/${testId}/revoke_assignment/`, { user_id: userId });
+  },
+
+  async getTestAssignments(testId: string): Promise<TestAssignment[]> {
+    const data = await apiClient.get<any>(`/tests/${testId}/assignments/`);
+    if (Array.isArray(data)) {
+      return data;
+    }
+    if (data && Array.isArray(data.results)) {
+      return data.results;
+    }
+    return [];
+  },
+
+  async getMyTestAssignments(): Promise<TestAssignment[]> {
+    const data = await apiClient.get<any>('/tests/assignments/');
+    if (Array.isArray(data)) {
+      return data;
+    }
+    if (data && Array.isArray(data.results)) {
+      return data.results;
+    }
+    return [];
   },
 };
 

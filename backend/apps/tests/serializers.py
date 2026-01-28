@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Test, Question, TestCompletionVerification, TestEnrollmentRequest
+from .models import Test, Question, TestCompletionVerification, TestEnrollmentRequest, TestAssignment
 from apps.courses.serializers import CategorySerializer
 from apps.courses.models import Category
 from apps.accounts.serializers import UserSerializer
@@ -102,6 +102,31 @@ class QuestionCreateSerializer(serializers.ModelSerializer):
                         opt['id'] = str(uuid.uuid4())
             validated_data['options'] = options
         return super().update(instance, validated_data)
+
+
+class TestAssignmentSerializer(serializers.ModelSerializer):
+    """Test assignment serializer"""
+    user = UserSerializer(read_only=True)
+    test = serializers.SerializerMethodField()
+    assigned_by = UserSerializer(read_only=True)
+
+    class Meta:
+        model = TestAssignment
+        fields = [
+            'id', 'user', 'test', 'assigned_at', 'assigned_by',
+            'status', 'completed_at'
+        ]
+        read_only_fields = ['id', 'assigned_at', 'assigned_by', 'completed_at']
+    
+    def get_test(self, obj):
+        """Return simplified test data"""
+        test = obj.test
+        return {
+            'id': test.id,
+            'title': test.title,
+            'title_kz': test.title_kz,
+            'title_en': test.title_en,
+        }
 
 
 class TestEnrollmentRequestSerializer(serializers.ModelSerializer):

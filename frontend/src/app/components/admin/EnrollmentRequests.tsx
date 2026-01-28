@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, Clock, User, BookOpen, FileQuestion, MessageSquare, Calendar, RefreshCw, X, AlertCircle, Eye } from 'lucide-react';
-import { CourseEnrollmentRequest, TestEnrollmentRequest } from '../../types/lms';
+import { CourseEnrollmentRequest, TestEnrollmentRequest, TestAssignment } from '../../types/lms';
 import { coursesService } from '../../services/courses';
 import { testsService } from '../../services/tests';
 import { toast } from 'sonner';
@@ -25,19 +25,24 @@ export function EnrollmentRequests() {
       setLoading(true);
       setError(null);
       console.log('Fetching enrollment requests...');
-      const [courseData, testData] = await Promise.all([
+      const [courseData, testData, assignmentsData] = await Promise.all([
         coursesService.getEnrollmentRequests(),
-        testsService.getEnrollmentRequests()
+        testsService.getEnrollmentRequests(),
+        testsService.getMyTestAssignments().catch(() => []) // Загружаем все назначения (для админа)
       ]);
       console.log('Course requests received:', courseData);
       console.log('Test requests received:', testData);
+      console.log('Test assignments received:', assignmentsData);
       // Ensure data is an array
       const safeCourseData = Array.isArray(courseData) ? courseData : [];
       const safeTestData = Array.isArray(testData) ? testData : [];
+      const safeAssignmentsData = Array.isArray(assignmentsData) ? assignmentsData : [];
       console.log('Safe course data:', safeCourseData);
       console.log('Safe test data:', safeTestData);
+      console.log('Safe assignments data:', safeAssignmentsData);
       setCourseRequests(safeCourseData);
       setTestRequests(safeTestData);
+      setTestAssignments(safeAssignmentsData.filter(a => a.status === 'assigned'));
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'Ошибка загрузки запросов';
       setError(message);
@@ -431,6 +436,101 @@ export function EnrollmentRequests() {
           </div>
         )}
       </div>
+
+      {/* Test Assignments Section */}
+      {testAssignments.length > 0 && (typeFilter === 'all' || typeFilter === 'tests') && (
+        <div className="mt-8">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">
+            {t('admin.users.assignedTests') || 'Назначенные тесты'}
+          </h2>
+          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+            <div className="divide-y divide-gray-200">
+              {testAssignments.map((assignment) => {
+                const testTitle = typeof assignment.test === 'object' ? assignment.test?.title : 'Тест';
+                const userName =
+                  typeof assignment.user === 'object'
+                    ? (assignment.user?.full_name || assignment.user?.fullName || assignment.user?.phone || 'Студент')
+                    : 'Студент';
+                const userPhone = typeof assignment.user === 'object' ? assignment.user?.phone : '';
+                const assignedByName =
+                  typeof assignment.assigned_by === 'object'
+                    ? (assignment.assigned_by?.full_name || assignment.assigned_by?.fullName || assignment.assigned_by?.phone || 'Администратор')
+                    : 'Администратор';
+
+                return (
+                  <div key={assignment.id} className="p-6 hover:bg-gray-50 transition-colors">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="px-3 py-1 rounded-full border text-sm font-medium flex items-center gap-1 bg-purple-100 text-purple-800 border-purple-200">
+                            <CheckCircle className="w-4 h-4" />
+                            {t('admin.users.assignedByAdmin') || 'Назначено администратором'}
+                          </div>
+                          <div className="text-sm text-gray-500 flex items-center gap-1">
+                            <FileQuestion className="w-4 h-4" />
+                            Тест
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            <Calendar className="w-4 h-4 inline mr-1" />
+                            {new Date(assignment.assigned_at || assignment.assignedAt || '').toLocaleString('ru-RU')}
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                          <div className="flex items-start gap-2">
+                            <User className="w-5 h-5 text-gray-400 mt-0.5" />
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">{userName}</p>
+                              {userPhone && <p className="text-xs text-gray-500">{userPhone}</p>}
+                            </div>
+                          </div>
+                          <div className="flex items-start gap-2">
+                            <FileQuestion className="w-5 h-5 text-gray-400 mt-0.5" />
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">{testTitle}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-2 text-xs text-gray-500">
+                          Назначено администратором: {assignedByName}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 ml-4">
+                        <button
+                          onClick={async () => {
+                            try {
+                              const testId = typeof assignment.test === 'object' ? assignment.test?.id : assignment.testId;
+                              const userId = typeof assignment.user === 'object' ? assignment.user?.id : assignment.userId;
+                              if (testId && userId) {
+                                await testsService.revokeTestAssignment(String(testId), String(userId));
+                                toast.success(t('admin.users.testAssignmentRevoked') || 'Назначение теста отозвано');
+                                fetchRequests();
+                              }
+                            } catch (error: any) {
+                              const message =
+                                error instanceof ApiError
+                                  ? error.message
+                                  : (t('admin.users.revokeTestAssignmentError') || 'Не удалось отозвать назначение');
+                              toast.error(message);
+                              console.error('Failed to revoke test assignment:', error);
+                            }
+                          }}
+                          className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
+                        >
+                          <X className="w-4 h-4" />
+                          {t('admin.users.revokeTestAssignment') || 'Отозвать назначение'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Reject Modal */}
       {showRejectModal && selectedRequest && (

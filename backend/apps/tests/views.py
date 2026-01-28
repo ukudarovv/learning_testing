@@ -6,7 +6,7 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from django.db.models import Max
 from django.utils import timezone
 
-from .models import Test, Question, TestCompletionVerification, TestEnrollmentRequest
+from .models import Test, Question, TestCompletionVerification, TestEnrollmentRequest, TestAssignment
 from .serializers import (
     TestSerializer,
     QuestionSerializer,
@@ -14,6 +14,7 @@ from .serializers import (
     TestEnrollmentRequestSerializer,
     TestEnrollmentRequestCreateSerializer,
     TestEnrollmentRequestProcessSerializer,
+    TestAssignmentSerializer,
 )
 from apps.accounts.permissions import IsAdminOrReadOnly
 from apps.core.utils import get_request_language
@@ -347,6 +348,106 @@ class TestViewSet(viewsets.ModelViewSet):
             'message': 'Test completion verified. Protocol created for PDEK review.',
             'protocol_id': protocol.id
         }, status=status.HTTP_200_OK)
+    
+    @action(detail=True, methods=['post'])
+    def assign(self, request, pk=None):
+        """Assign test to students (admin only)"""
+        test = self.get_object()
+        user_ids = request.data.get('user_ids', [])
+        
+        if not isinstance(user_ids, list):
+            return Response({'error': 'user_ids must be a list'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Проверка прав администратора
+        if not request.user.is_staff:
+            return Response(
+                {'error': 'Only admins can assign tests'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        assigned = []
+        for user_id in user_ids:
+            try:
+                from apps.accounts.models import User
+                user = User.objects.get(id=user_id)
+                assignment, created = TestAssignment.objects.get_or_create(
+                    user=user,
+                    test=test,
+                    defaults={
+                        'status': 'assigned',
+                        'assigned_by': request.user
+                    }
+                )
+                if created:
+                    assigned.append(user_id)
+                    # Создаем уведомление для студента
+                    from apps.notifications.models import Notification
+                    Notification.objects.create(
+                        user=user,
+                        type='test_assigned',
+                        title='Тест назначен',
+                        message=f'Вам назначен тест "{test.title}"'
+                    )
+            except User.DoesNotExist:
+                continue
+        
+        return Response({
+            'message': f'Assigned test to {len(assigned)} students',
+            'assigned': assigned
+        }, status=status.HTTP_200_OK)
+    
+    @action(detail=True, methods=['post'])
+    def revoke_assignment(self, request, pk=None):
+        """Revoke test assignment for a student (admin only)"""
+        test = self.get_object()
+        user_id = request.data.get('user_id')
+        
+        if not user_id:
+            return Response({'error': 'user_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Проверка прав администратора
+        if not request.user.is_staff:
+            return Response(
+                {'error': 'Only admins can revoke test assignments'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        try:
+            assignment = TestAssignment.objects.get(test=test, user_id=user_id)
+            assignment.status = 'revoked'
+            assignment.save()
+            
+            # Создаем уведомление для студента
+            from apps.notifications.models import Notification
+            Notification.objects.create(
+                user=assignment.user,
+                type='test_assignment_revoked',
+                title='Назначение теста отозвано',
+                message=f'Назначение теста "{test.title}" было отозвано администратором'
+            )
+            
+            return Response({
+                'message': 'Test assignment revoked successfully'
+            }, status=status.HTTP_200_OK)
+        except TestAssignment.DoesNotExist:
+            return Response(
+                {'error': 'Test assignment not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+    
+    @action(detail=True, methods=['get'])
+    def assignments(self, request, pk=None):
+        """Get test assignments for this test"""
+        test = self.get_object()
+        
+        # Админы видят все назначения, студенты - только свои
+        if request.user.is_staff:
+            assignments = TestAssignment.objects.filter(test=test).select_related('user', 'assigned_by')
+        else:
+            assignments = TestAssignment.objects.filter(test=test, user=request.user).select_related('user', 'assigned_by')
+        
+        serializer = TestAssignmentSerializer(assignments, many=True)
+        return Response(serializer.data)
 
 
 class QuestionViewSet(viewsets.ModelViewSet):

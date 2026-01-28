@@ -477,6 +477,21 @@ export interface TestEnrollmentRequest {
   createdAt?: string;
 }
 
+export interface TestAssignment {
+  id: number;
+  user?: User | string;
+  userId?: string;
+  test?: Test | string;
+  testId?: string;
+  assigned_at: string;
+  assignedAt?: string;
+  assigned_by?: User | string;
+  assignedById?: string;
+  status: 'assigned' | 'completed' | 'failed' | 'revoked';
+  completed_at?: string;
+  completedAt?: string;
+}
+
 export interface Notification {
   id: string;
   userId: string;

@@ -113,6 +113,43 @@ class Question(models.Model):
         super().save(*args, **kwargs)
 
 
+class TestAssignment(models.Model):
+    """Test assignment by admin"""
+    
+    STATUS_CHOICES = [
+        ('assigned', 'Assigned'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
+        ('revoked', 'Revoked'),
+    ]
+    
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='test_assignments', on_delete=models.CASCADE)
+    test = models.ForeignKey(Test, related_name='assignments', on_delete=models.CASCADE)
+    assigned_at = models.DateTimeField(auto_now_add=True)
+    assigned_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name='assigned_tests',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text='Admin who assigned the test'
+    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='assigned')
+    completed_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        db_table = 'test_assignments'
+        unique_together = ['user', 'test']
+        ordering = ['-assigned_at']
+        indexes = [
+            models.Index(fields=['user', 'test', 'status']),
+            models.Index(fields=['status', '-assigned_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user.full_name or self.user.phone} - {self.test.title} ({self.get_status_display()})"
+
+
 class TestEnrollmentRequest(models.Model):
     """Request for test enrollment with admin approval"""
     

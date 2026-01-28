@@ -2,10 +2,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { Search, Filter, Download, Plus, Edit, Trash2, Eye, Mail, Phone, BookOpen, CheckCircle, XCircle, MoreVertical, UserPlus, Users as UsersIcon } from 'lucide-react';
 import { User } from '../../types/lms';
 import { AssignCoursesModal } from './AssignCoursesModal';
+import { AssignTestsModal } from './AssignTestsModal';
 import { usersService } from '../../services/users';
 import { coursesService } from '../../services/courses';
 import { certificatesService } from '../../services/certificates';
 import { examsService } from '../../services/exams';
+import { testsService } from '../../services/tests';
 import { ApiError } from '../../services/api';
 import { TablePagination } from '../ui/TablePagination';
 import { toast } from 'sonner';
@@ -26,6 +28,7 @@ export function UserManagement({ onCreate, onEdit, refreshTrigger }: UserManagem
   const [showFilters, setShowFilters] = useState(false);
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
   const [userToAssignCourses, setUserToAssignCourses] = useState<User | null>(null);
+  const [userToAssignTests, setUserToAssignTests] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [pagination, setPagination] = useState<{ count: number; next: string | null; previous: string | null }>({
     count: 0,
@@ -338,6 +341,14 @@ export function UserManagement({ onCreate, onEdit, refreshTrigger }: UserManagem
                 </button>
                 <button 
                   onClick={() => {
+                    setUserToAssignTests({ id: 'bulk' } as User);
+                  }}
+                  className="px-3 py-1 text-sm bg-white border border-blue-300 text-blue-700 rounded hover:bg-blue-50 transition-colors"
+                >
+                  {t('admin.users.assignTests') || 'Назначить тесты'}
+                </button>
+                <button 
+                  onClick={() => {
                     toast.info(t('admin.users.messageFeatureNotImplemented'));
                   }}
                   className="px-3 py-1 text-sm bg-white border border-blue-300 text-blue-700 rounded hover:bg-blue-50 transition-colors"
@@ -603,6 +614,53 @@ export function UserManagement({ onCreate, onEdit, refreshTrigger }: UserManagem
           }}
         />
       )}
+
+      {/* Assign Tests Modal */}
+      {userToAssignTests && (
+        <AssignTestsModal
+          user={userToAssignTests.id === 'bulk' ? undefined : userToAssignTests}
+          users={userToAssignTests.id === 'bulk' ? Array.from(selectedUsers).map(id => users.find(u => u.id === id)).filter(Boolean) as User[] : undefined}
+          onClose={() => {
+            setUserToAssignTests(null);
+            setSelectedUsers(new Set());
+          }}
+          onAssign={async (userIds: string[], testIds: string[]) => {
+            if (!userIds || userIds.length === 0) {
+              toast.error(t('admin.users.noUsersSelected'));
+              return;
+            }
+            if (!testIds || testIds.length === 0) {
+              toast.error(t('admin.users.noTestsSelected') || 'Выберите хотя бы один тест');
+              return;
+            }
+            try {
+              let successCount = 0;
+              let errorCount = 0;
+              for (const testId of testIds) {
+                try {
+                  await testsService.assignTests(testId, userIds);
+                  successCount++;
+                } catch (err) {
+                  errorCount++;
+                  console.error(`Failed to assign users to test ${testId}:`, err);
+                }
+              }
+              if (successCount > 0) {
+                toast.success(t('admin.users.testsAssigned', { tests: successCount, users: userIds.length, errors: errorCount > 0 ? ` (${t('common.error')}: ${errorCount})` : '' }) || `Назначено тестов: ${successCount} для ${userIds.length} пользователей${errorCount > 0 ? ` (Ошибка: ${errorCount})` : ''}`);
+              } else {
+                toast.error(t('admin.users.assignTestsError') || 'Не удалось назначить тесты');
+              }
+              setUserToAssignTests(null);
+              setSelectedUsers(new Set());
+              fetchUsers();
+            } catch (error: any) {
+              const message = error instanceof ApiError ? error.message : (t('admin.users.assignTestsError') || 'Не удалось назначить тесты');
+              toast.error(message);
+              console.error('Failed to assign tests:', error);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -619,6 +677,7 @@ function UserDetailModal({ user, onClose, onEdit, onDelete }: UserDetailModalPro
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<'info' | 'courses' | 'activity'>('info');
   const [showAssignCourses, setShowAssignCourses] = useState(false);
+  const [showAssignTests, setShowAssignTests] = useState(false);
   const [enrollments, setEnrollments] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [certificates, setCertificates] = useState<any[]>([]);
@@ -755,6 +814,43 @@ function UserDetailModal({ user, onClose, onEdit, onDelete }: UserDetailModalPro
       const message = error instanceof ApiError ? error.message : t('admin.users.assignCoursesError');
       toast.error(message);
       console.error('Failed to assign courses:', error);
+    }
+  };
+
+  const handleAssignTests = async (userIds: string[], testIds: string[]) => {
+    if (!userIds || userIds.length === 0) {
+      toast.error(t('admin.users.noUsersSelected'));
+      return;
+    }
+    if (!testIds || testIds.length === 0) {
+      toast.error(t('admin.users.noTestsSelected') || 'Выберите хотя бы один тест');
+      return;
+    }
+    try {
+      let successCount = 0;
+      let errorCount = 0;
+      for (const testId of testIds) {
+        try {
+          await testsService.assignTests(testId, userIds);
+          successCount++;
+        } catch (err) {
+          errorCount++;
+          console.error(`Failed to assign users to test ${testId}:`, err);
+        }
+      }
+      if (successCount > 0) {
+        toast.success(t('admin.users.testsAssignedToUser', { tests: successCount, user: user.full_name || user.fullName || t('admin.users.userLower'), errors: errorCount > 0 ? ` (${t('common.error')}: ${errorCount})` : '' }) || `Назначено тестов: ${successCount} для пользователя ${user.full_name || user.fullName || 'пользователя'}${errorCount > 0 ? ` (Ошибка: ${errorCount})` : ''}`);
+      } else {
+        toast.error(t('admin.users.assignTestsError') || 'Не удалось назначить тесты');
+        return;
+      }
+      setShowAssignTests(false);
+      // Обновляем данные пользователя
+      fetchUsers();
+    } catch (error: any) {
+      const message = error instanceof ApiError ? error.message : (t('admin.users.assignTestsError') || 'Не удалось назначить тесты');
+      toast.error(message);
+      console.error('Failed to assign tests:', error);
     }
   };
 
@@ -1062,13 +1158,22 @@ function UserDetailModal({ user, onClose, onEdit, onDelete }: UserDetailModalPro
         {/* Footer */}
         <div className="p-6 border-t border-gray-200">
           <div className="flex items-center justify-between">
-            <button
-              onClick={() => setShowAssignCourses(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-            >
-              <BookOpen className="w-4 h-4" />
-              {t('admin.users.assignCourses')}
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowAssignCourses(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <BookOpen className="w-4 h-4" />
+                {t('admin.users.assignCourses')}
+              </button>
+              <button
+                onClick={() => setShowAssignTests(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                <FileText className="w-4 h-4" />
+                {t('admin.users.assignTests') || 'Назначить тесты'}
+              </button>
+            </div>
             <div className="flex items-center gap-3">
               {onDelete && (
                 <button
@@ -1102,6 +1207,17 @@ function UserDetailModal({ user, onClose, onEdit, onDelete }: UserDetailModalPro
               user={user}
               onClose={() => setShowAssignCourses(false)}
               onAssign={handleAssignCourses}
+            />
+          </div>
+        )}
+
+        {/* Assign Tests Modal (nested) */}
+        {showAssignTests && (
+          <div className="absolute inset-0 z-10">
+            <AssignTestsModal
+              user={user}
+              onClose={() => setShowAssignTests(false)}
+              onAssign={handleAssignTests}
             />
           </div>
         )}

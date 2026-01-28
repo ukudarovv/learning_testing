@@ -7,8 +7,9 @@ import { useEnrollmentRequests } from '../../hooks/useEnrollmentRequests';
 import { certificatesService } from '../../services/certificates';
 import { examsService } from '../../services/exams';
 import { protocolsService } from '../../services/protocols';
+import { testsService } from '../../services/tests';
 import { useState, useEffect } from 'react';
-import { Certificate, TestAttempt, Protocol } from '../../types/lms';
+import { Certificate, TestAttempt, Protocol, TestAssignment } from '../../types/lms';
 import { useUser } from '../../contexts/UserContext';
 import { ProfileEditor } from './ProfileEditor';
 import { toast } from 'sonner';
@@ -24,7 +25,9 @@ export function StudentDashboard() {
   const [certificatesLoading, setCertificatesLoading] = useState(true);
   const [testAttempts, setTestAttempts] = useState<TestAttempt[]>([]);
   const [protocols, setProtocols] = useState<Protocol[]>([]);
+  const [testAssignments, setTestAssignments] = useState<TestAssignment[]>([]);
   const [loadingTests, setLoadingTests] = useState(true);
+  const [loadingAssignments, setLoadingAssignments] = useState(true);
   const [showProfileEditor, setShowProfileEditor] = useState(false);
 
   useEffect(() => {
@@ -210,7 +213,7 @@ export function StudentDashboard() {
         )}
 
         {/* Enrollment Requests */}
-        {(courseRequests.length > 0 || testRequests.length > 0) && (
+        {(courseRequests.length > 0 || testRequests.length > 0 || testAssignments.length > 0) && (
           <div className="mb-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">{t('lms.student.enrollmentRequests') || 'Мои запросы на запись'}</h2>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -325,6 +328,49 @@ export function StudentDashboard() {
                 return (
                   <div 
                     key={request.id} 
+                    className={`bg-white rounded-lg shadow-md p-6 ${isClickable ? 'cursor-pointer hover:shadow-lg transition-shadow' : ''}`}
+                    onClick={isClickable ? () => navigate(`/student/test/${testId}`) : undefined}
+                  >
+                    {cardContent}
+                  </div>
+                );
+              })}
+              {testAssignments.map(assignment => {
+                const testTitle = typeof assignment.test === 'object' ? assignment.test?.title : 'Тест';
+                const testId = typeof assignment.test === 'object' ? assignment.test?.id : assignment.testId;
+                const isClickable = testId && assignment.status === 'assigned';
+                
+                const cardContent = (
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <FileQuestion className="w-5 h-5 text-purple-600" />
+                        <span className="text-sm text-gray-500">Тест</span>
+                      </div>
+                      <h3 className="text-lg font-bold text-gray-900">{testTitle}</h3>
+                      <div className="mt-3">
+                        <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 border border-purple-200">
+                          {t('admin.users.assignedByAdmin') || 'Назначено администратором'}
+                        </span>
+                      </div>
+                      {isClickable && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/student/test/${testId}`);
+                          }}
+                          className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium"
+                        >
+                          {t('lms.student.goToTest') || 'Перейти к тесту'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+                
+                return (
+                  <div 
+                    key={assignment.id} 
                     className={`bg-white rounded-lg shadow-md p-6 ${isClickable ? 'cursor-pointer hover:shadow-lg transition-shadow' : ''}`}
                     onClick={isClickable ? () => navigate(`/student/test/${testId}`) : undefined}
                   >
