@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Filter, Download, Plus, Edit, Trash2, Eye, Mail, Phone, BookOpen, CheckCircle, XCircle, MoreVertical, UserPlus, Users as UsersIcon } from 'lucide-react';
+import { Search, Filter, Download, Plus, Edit, Trash2, Eye, Mail, Phone, BookOpen, CheckCircle, XCircle, MoreVertical, UserPlus, Users as UsersIcon, FileText } from 'lucide-react';
 import { User } from '../../types/lms';
 import { AssignCoursesModal } from './AssignCoursesModal';
 import { AssignTestsModal } from './AssignTestsModal';
