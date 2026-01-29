@@ -610,6 +610,7 @@
       "description": "Описание",
       "descriptionPlaceholder": "Описание теста и инструкции",
       "timeLimit": "Время (мин)",
+      "minutes": "мин",
       "passingScore": "Проходной балл (%)",
       "maxAttempts": "Попыток",
       "shuffleQuestions": "Перемешивать вопросы",

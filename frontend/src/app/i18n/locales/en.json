@@ -597,6 +597,7 @@
       "description": "Description",
       "descriptionPlaceholder": "Test description and instructions",
       "timeLimit": "Time (min)",
+      "minutes": "min",
       "passingScore": "Passing Score (%)",
       "maxAttempts": "Attempts",
       "shuffleQuestions": "Shuffle Questions",

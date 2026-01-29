@@ -597,6 +597,7 @@
       "description": "Сипаттама",
       "descriptionPlaceholder": "Тест сипаттамасы және нұсқаулар",
       "timeLimit": "Уақыт (мин)",
+      "minutes": "мин",
       "passingScore": "Өту баллы (%)",
       "maxAttempts": "Әрекеттер",
       "shuffleQuestions": "Сұрақтарды араластыру",
