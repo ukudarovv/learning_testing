@@ -487,6 +487,7 @@
       "noAssignedTests": "Тағайындалған тесттер жоқ",
       "assignedByAdmin": "Әкімші тарапынан тағайындалған",
       "revokeTestAssignment": "Тағайындауды кері қайтару",
+      "revokeTestAssignmentConfirm": "Тест тағайындауын \"{{test}}\" кері қайтару?",
       "testAssignmentRevoked": "Тест тағайындауы кері қайтарылды",
       "revokeTestAssignmentError": "Тағайындауды кері қайтару мүмкін болмады",
       "noTestsSelected": "Кем дегенде бір тестті таңдаңыз",

@@ -27,7 +27,6 @@ export function StudentDashboard() {
   const [protocols, setProtocols] = useState<Protocol[]>([]);
   const [testAssignments, setTestAssignments] = useState<TestAssignment[]>([]);
   const [loadingTests, setLoadingTests] = useState(true);
-  const [loadingAssignments, setLoadingAssignments] = useState(true);
   const [showProfileEditor, setShowProfileEditor] = useState(false);
 
   useEffect(() => {
@@ -48,16 +47,25 @@ export function StudentDashboard() {
     const fetchTestData = async () => {
       try {
         setLoadingTests(true);
-        const [attemptsData, protocolsData] = await Promise.all([
+        const [attemptsData, protocolsData, assignmentsData] = await Promise.all([
           examsService.getMyAttempts(),
-          protocolsService.getProtocols()
+          protocolsService.getProtocols(),
+          testsService.getMyTestAssignments().catch((err) => {
+            console.error('Failed to fetch test assignments:', err);
+            return [];
+          })
         ]);
         setTestAttempts(attemptsData);
         setProtocols(protocolsData);
+        console.log('Test assignments loaded:', assignmentsData);
+        const assignedTests = assignmentsData.filter(a => a.status === 'assigned');
+        console.log('Filtered assigned tests:', assignedTests);
+        setTestAssignments(assignedTests);
       } catch (error) {
         console.error('Failed to fetch test attempts and protocols:', error);
         setTestAttempts([]);
         setProtocols([]);
+        setTestAssignments([]);
       } finally {
         setLoadingTests(false);
       }

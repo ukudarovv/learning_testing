@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { coursesService } from '../services/courses';
 import { categoriesService, Category } from '../services/categories';
 import { testsService } from '../services/tests';
-import { Course, Test } from '../types/lms';
+import { Course, Test, TestAssignment } from '../types/lms';
 import { useUser } from '../contexts/UserContext';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -31,6 +31,7 @@ export function CoursesUnicover() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [enrollingCourseId, setEnrollingCourseId] = useState<string | null>(null);
+  const [testAssignments, setTestAssignments] = useState<TestAssignment[]>([]);
   
   // Получаем текущий язык интерфейса
   const currentInterfaceLanguage = i18n.language || localStorage.getItem('language') || 'ru';
@@ -112,16 +113,28 @@ export function CoursesUnicover() {
           (!test.is_standalone && !test.isStandalone) // Тест НЕ используется в курсах (автономный)
         );
         setTests(activeTests);
+        
+        // Загружаем назначенные тесты для пользователя
+        if (user) {
+          try {
+            const assignments = await testsService.getMyTestAssignments();
+            setTestAssignments(assignments);
+          } catch (err) {
+            console.error('Failed to fetch test assignments:', err);
+            setTestAssignments([]);
+          }
+        }
       } catch (error) {
         console.error('Failed to fetch courses and tests:', error);
         setCourses([]);
         setTests([]);
+        setTestAssignments([]);
       } finally {
         setLoading(false);
       }
     };
     fetchData();
-  }, [languageToUse]);
+  }, [languageToUse, user]);
   
   // Сбрасываем выбранный язык фильтра при изменении языка интерфейса
   useEffect(() => {
@@ -293,6 +306,18 @@ export function CoursesUnicover() {
     // Проверяем, есть ли уже запрос на запись для теста
     const test = tests.find(t => t.id === String(testId));
     const existingRequest = testRequests.find(r => r.testId === String(testId) || (typeof r.test === 'object' && r.test?.id === String(testId)));
+    
+    // Проверяем наличие назначенного теста администратором
+    const assignedTest = testAssignments.find(a => {
+      const assignmentTestId = typeof a.test === 'object' ? a.test?.id : a.testId;
+      return assignmentTestId === String(testId) && (a.status === 'assigned' || a.status === 'completed');
+    });
+    
+    // Если тест назначен администратором, переходим к нему сразу
+    if (assignedTest) {
+      navigate(`/student/test/${testId}`);
+      return;
+    }
     
     if (existingRequest) {
       if (existingRequest.status === 'pending') {
@@ -614,6 +639,24 @@ export function CoursesUnicover() {
                     );
                   }
 
+                  // Проверяем наличие назначенного теста администратором
+                  const assignedTest = testAssignments.find(a => {
+                    const assignmentTestId = typeof a.test === 'object' ? a.test?.id : a.testId;
+                    return assignmentTestId === test.id && (a.status === 'assigned' || a.status === 'completed');
+                  });
+                  
+                  // Если тест назначен администратором, показываем кнопку "Начать тест"
+                  if (assignedTest) {
+                    return (
+                      <button 
+                        onClick={() => handleTestClick(test.id)}
+                        className="mt-6 w-full bg-purple-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-purple-700 transition-colors"
+                      >
+                        {t('education.courses.startTest') || 'Начать тест'}
+                      </button>
+                    );
+                  }
+                  
                   // Проверяем статус запроса на запись
                   const existingRequest = testRequests.find(r => r.testId === test.id || (typeof r.test === 'object' && r.test?.id === test.id));
                   

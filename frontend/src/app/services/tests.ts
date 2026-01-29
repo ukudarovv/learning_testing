@@ -633,6 +633,17 @@ const testsService = {
     }
     return [];
   },
+
+  async getUserTestAssignments(userId: string): Promise<TestAssignment[]> {
+    const data = await apiClient.get<any>(`/tests/assignments/?user_id=${userId}`);
+    if (Array.isArray(data)) {
+      return data;
+    }
+    if (data && Array.isArray(data.results)) {
+      return data.results;
+    }
+    return [];
+  },
 };
 
 export { testsService };

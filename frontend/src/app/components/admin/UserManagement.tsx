@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Search, Filter, Download, Plus, Edit, Trash2, Eye, Mail, Phone, BookOpen, CheckCircle, XCircle, MoreVertical, UserPlus, Users as UsersIcon, FileText } from 'lucide-react';
-import { User } from '../../types/lms';
+import { User, TestAssignment } from '../../types/lms';
 import { AssignCoursesModal } from './AssignCoursesModal';
 import { AssignTestsModal } from './AssignTestsModal';
 import { usersService } from '../../services/users';
@@ -679,6 +679,7 @@ function UserDetailModal({ user, onClose, onEdit, onDelete }: UserDetailModalPro
   const [showAssignCourses, setShowAssignCourses] = useState(false);
   const [showAssignTests, setShowAssignTests] = useState(false);
   const [enrollments, setEnrollments] = useState<any[]>([]);
+  const [testAssignments, setTestAssignments] = useState<TestAssignment[]>([]);
   const [loading, setLoading] = useState(false);
   const [certificates, setCertificates] = useState<any[]>([]);
   const [attempts, setAttempts] = useState<any[]>([]);
@@ -740,6 +741,15 @@ function UserDetailModal({ user, onClose, onEdit, onDelete }: UserDetailModalPro
           } catch (err) {
             console.error('Failed to fetch certificates:', err);
             setCertificates([]); // Устанавливаем пустой массив при ошибке
+          }
+          
+          // Загружаем назначенные тесты для пользователя
+          try {
+            const assignments = await testsService.getUserTestAssignments(user.id);
+            setTestAssignments(assignments.filter(a => a.status === 'assigned'));
+          } catch (err) {
+            console.error('Failed to fetch test assignments:', err);
+            setTestAssignments([]);
           }
           
           // Попытки тестов - пока не доступны для конкретного пользователя через API
@@ -845,8 +855,13 @@ function UserDetailModal({ user, onClose, onEdit, onDelete }: UserDetailModalPro
         return;
       }
       setShowAssignTests(false);
-      // Обновляем данные пользователя
-      fetchUsers();
+      // Обновляем список тестов
+      try {
+        const assignments = await testsService.getUserTestAssignments(user.id);
+        setTestAssignments(assignments.filter(a => a.status === 'assigned'));
+      } catch (err) {
+        console.error('Failed to refresh test assignments:', err);
+      }
     } catch (error: any) {
       const message = error instanceof ApiError ? error.message : (t('admin.users.assignTestsError') || 'Не удалось назначить тесты');
       toast.error(message);
@@ -901,7 +916,7 @@ function UserDetailModal({ user, onClose, onEdit, onDelete }: UserDetailModalPro
                   : 'border-transparent text-gray-600 hover:text-gray-900'
               }`}
             >
-              {t('admin.users.courses')} ({enrollments.length})
+              {t('admin.users.courses')} ({enrollments.length + testAssignments.length})
             </button>
             <button
               onClick={() => setActiveTab('activity')}
@@ -967,15 +982,19 @@ function UserDetailModal({ user, onClose, onEdit, onDelete }: UserDetailModalPro
                       <p className="text-sm text-blue-600 mb-1">{t('admin.users.coursesAssignedStat')}</p>
                       <p className="text-2xl font-bold text-blue-700">{enrollments.length}</p>
                     </div>
+                    <div className="bg-purple-50 rounded-lg p-4">
+                      <p className="text-sm text-purple-600 mb-1">{t('admin.users.assignedTests') || 'Назначено тестов'}</p>
+                      <p className="text-2xl font-bold text-purple-700">{testAssignments.length}</p>
+                    </div>
                     <div className="bg-green-50 rounded-lg p-4">
                       <p className="text-sm text-green-600 mb-1">{t('admin.users.completed')}</p>
                       <p className="text-2xl font-bold text-green-700">
                         {enrollments.filter(e => e.status === 'completed' || e.status === 'exam_passed').length}
                       </p>
                     </div>
-                    <div className="bg-purple-50 rounded-lg p-4">
-                      <p className="text-sm text-purple-600 mb-1">{t('admin.users.averageScore')}</p>
-                      <p className="text-2xl font-bold text-purple-700">
+                    <div className="bg-orange-50 rounded-lg p-4">
+                      <p className="text-sm text-orange-600 mb-1">{t('admin.users.averageScore')}</p>
+                      <p className="text-2xl font-bold text-orange-700">
                         {enrollments.length > 0
                           ? Math.round(enrollments.reduce((sum, e) => {
                               // Используем прогресс как приблизительную оценку
@@ -1091,6 +1110,71 @@ function UserDetailModal({ user, onClose, onEdit, onDelete }: UserDetailModalPro
                   );
                 })
               )}
+
+              {/* Назначенные тесты */}
+              <div className="mt-6">
+                <h3 className="font-bold text-gray-900 mb-4">
+                  {t('admin.users.assignedTests') || 'Назначенные тесты'} ({testAssignments.length})
+                </h3>
+                {testAssignments.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <p>{t('admin.users.noAssignedTests') || 'Нет назначенных тестов'}</p>
+                  </div>
+                ) : (
+                  testAssignments.map((assignment) => {
+                    const test = typeof assignment.test === 'object' ? assignment.test : null;
+                    const testTitle = test?.title || 'Тест';
+                    const testId = test?.id || assignment.testId;
+                    const status = assignment.status || 'assigned';
+                    
+                    return (
+                      <div key={assignment.id} className="border border-gray-200 rounded-lg p-4 mb-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="font-medium text-gray-900">{testTitle}</h4>
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-1 text-xs font-semibold rounded ${
+                              status === 'completed' 
+                                ? 'bg-green-100 text-green-700'
+                                : status === 'failed'
+                                ? 'bg-red-100 text-red-700'
+                                : 'bg-purple-100 text-purple-700'
+                            }`}>
+                              {status === 'completed' ? t('lms.student.status.completed') : 
+                               status === 'failed' ? t('admin.users.failed') :
+                               t('admin.users.assignedByAdmin')}
+                            </span>
+                            <button
+                              onClick={async () => {
+                                if (window.confirm(t('admin.users.revokeTestAssignmentConfirm', { test: testTitle }) || `Отозвать назначение теста "${testTitle}"?`)) {
+                                  try {
+                                    await testsService.revokeTestAssignment(String(testId), user.id);
+                                    toast.success(t('admin.users.testAssignmentRevoked'));
+                                    // Обновляем список тестов
+                                    const assignments = await testsService.getUserTestAssignments(user.id);
+                                    setTestAssignments(assignments.filter(a => a.status === 'assigned'));
+                                  } catch (error: any) {
+                                    toast.error(`${t('common.error')}: ${error.message || t('admin.users.revokeTestAssignmentError')}`);
+                                  }
+                                }
+                              }}
+                              className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                              title={t('admin.users.revokeTestAssignment')}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                        {assignment.assigned_at && (
+                          <div className="text-sm text-gray-600">
+                            {t('admin.users.assignedByAdmin')}: {new Date(assignment.assigned_at).toLocaleDateString()}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             </div>
           )}
 

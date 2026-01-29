@@ -487,6 +487,7 @@
       "noAssignedTests": "No assigned tests",
       "assignedByAdmin": "Assigned by administrator",
       "revokeTestAssignment": "Revoke Assignment",
+      "revokeTestAssignmentConfirm": "Revoke test assignment \"{{test}}\"?",
       "testAssignmentRevoked": "Test assignment revoked",
       "revokeTestAssignmentError": "Failed to revoke assignment",
       "noTestsSelected": "Select at least one test",

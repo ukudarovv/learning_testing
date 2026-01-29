@@ -309,6 +309,20 @@ class CourseViewSet(viewsets.ModelViewSet):
             # (CASCADE will handle this, but we do it explicitly for clarity)
             LessonProgress.objects.filter(enrollment=enrollment).delete()
             
+            # Delete course enrollment requests for this course and user
+            CourseEnrollmentRequest.objects.filter(
+                course=course,
+                user_id=user_id
+            ).delete()
+            
+            # Delete test enrollment requests for tests in this course and user
+            if course_test_ids:
+                from apps.tests.models import TestEnrollmentRequest
+                TestEnrollmentRequest.objects.filter(
+                    user_id=user_id,
+                    test_id__in=course_test_ids
+                ).delete()
+            
             # Delete enrollment (CASCADE will also delete related data)
             enrollment.delete()
             

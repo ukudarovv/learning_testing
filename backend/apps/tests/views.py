@@ -652,6 +652,10 @@ class TestAssignmentViewSet(viewsets.ModelViewSet):
             test_id = self.request.query_params.get('test_id')
             if test_id:
                 queryset = queryset.filter(test_id=test_id)
+            # Добавить фильтрацию по user_id для админов
+            user_id = self.request.query_params.get('user_id')
+            if user_id:
+                queryset = queryset.filter(user_id=user_id)
             return queryset
 
         return queryset.filter(user=user)

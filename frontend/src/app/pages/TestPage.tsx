@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { useEnrollmentRequests } from '../hooks/useEnrollmentRequests';
 import { testsService } from '../services/tests';
+import { TestAssignment } from '../types/lms';
 
 export function TestPage() {
   const { testId } = useParams();
@@ -21,6 +22,9 @@ export function TestPage() {
   const { user } = useUser();
   const { test, loading: testLoading } = useTest(testId);
   const { testRequests } = useEnrollmentRequests();
+  const [testAssignments, setTestAssignments] = useState<TestAssignment[]>([]);
+  const [loadingAssignments, setLoadingAssignments] = useState(true); // Начинаем с true, чтобы дождаться загрузки
+  const [assignmentsLoaded, setAssignmentsLoaded] = useState(false);
   const [attemptId, setAttemptId] = useState<number | null>(null);
   const [testCompleted, setTestCompleted] = useState(false);
   const [testResult, setTestResult] = useState<{ score: number; passed: boolean } | null>(null);
@@ -106,6 +110,45 @@ export function TestPage() {
     }
   }, [viewResults, stateAttemptId, testCompleted, testAttemptResult, testId, navigate]);
 
+  // Загружаем назначенные тесты
+  useEffect(() => {
+    const fetchAssignments = async () => {
+      // Если это тест внутри курса, не нужно загружать назначения
+      if (!isStandaloneTest) {
+        setLoadingAssignments(false);
+        setAssignmentsLoaded(true);
+        return;
+      }
+      
+      // Если пользователь не авторизован, не загружаем назначения
+      if (!user) {
+        setLoadingAssignments(false);
+        setAssignmentsLoaded(true);
+        return;
+      }
+      
+      try {
+        setLoadingAssignments(true);
+        setAssignmentsLoaded(false);
+        const assignments = await testsService.getMyTestAssignments();
+        setTestAssignments(assignments);
+        console.log('TestPage - Test assignments loaded:', assignments);
+        console.log('TestPage - Current testId:', testId);
+        console.log('TestPage - Assignments for current test:', assignments.filter(a => {
+          const assignmentTestId = typeof a.test === 'object' ? a.test?.id : a.testId;
+          return String(assignmentTestId) === String(testId);
+        }));
+      } catch (error) {
+        console.error('Failed to fetch test assignments:', error);
+        setTestAssignments([]);
+      } finally {
+        setLoadingAssignments(false);
+        setAssignmentsLoaded(true);
+      }
+    };
+    fetchAssignments();
+  }, [user, isStandaloneTest, testId]);
+
   // Загружаем попытки теста
   useEffect(() => {
     const loadAttempts = async () => {
@@ -131,7 +174,9 @@ export function TestPage() {
       return;
     }
     
-    if (test && !attemptId && !starting) {
+    // Ждем загрузки назначенных тестов перед проверкой доступа
+    // Для standalone тестов ждем завершения загрузки назначений
+    if (test && !attemptId && !starting && (!isStandaloneTest || assignmentsLoaded)) {
       const initializeAttempt = async () => {
         try {
           setStarting(true);
@@ -139,9 +184,26 @@ export function TestPage() {
           // Проверяем доступ для тестов (кроме тестов внутри курса)
           // Тесты внутри курса доступны через курс и не требуют отдельного запроса
           if (!isTestInCourse && test.id) {
-            const existingRequest = testRequests.find(r => r.testId === test.id || (typeof r.test === 'object' && r.test?.id === test.id));
+            // Проверяем наличие назначенного теста администратором
+            const assignedTest = testAssignments.find(a => {
+              const assignmentTestId = typeof a.test === 'object' ? a.test?.id : a.testId;
+              return String(assignmentTestId) === String(test.id) && (a.status === 'assigned' || a.status === 'completed');
+            });
             
-            if (!existingRequest || existingRequest.status !== 'approved') {
+            console.log('TestPage - Checking access for test:', test.id);
+            console.log('TestPage - Test assignments:', testAssignments);
+            console.log('TestPage - Assigned test found:', assignedTest);
+            
+            // Проверяем наличие одобренного запроса на запись
+            const existingRequest = testRequests.find(r => {
+              const requestTestId = typeof r.test === 'object' ? r.test?.id : r.testId;
+              return String(requestTestId) === String(test.id);
+            });
+            
+            console.log('TestPage - Existing request:', existingRequest);
+            
+            // Доступ есть, если тест назначен администратором ИЛИ есть одобренный запрос
+            if (!assignedTest && (!existingRequest || existingRequest.status !== 'approved')) {
               // Нет доступа - показываем сообщение
               if (existingRequest && existingRequest.status === 'pending') {
                 toast.info(t('lms.test.requestPending') || 'Запрос на запись уже подан и ожидает подтверждения администратора');
@@ -152,6 +214,8 @@ export function TestPage() {
               setStarting(false);
               return;
             }
+            
+            console.log('TestPage - Access granted');
           }
           
           // Если передан attemptId из state (для продолжения незавершенной попытки)
@@ -291,7 +355,7 @@ export function TestPage() {
       };
       initializeAttempt();
     }
-  }, [test, attemptId, starting, navigate, stateAttemptId, viewResults]);
+  }, [test, attemptId, starting, navigate, stateAttemptId, viewResults, isStandaloneTest, assignmentsLoaded, testAssignments, testRequests, isTestInCourse, t]);
 
   const handleTestComplete = async (answers: Answer[], timeSpent: number, videoBlob?: Blob) => {
     if (!attemptId || !test) return;

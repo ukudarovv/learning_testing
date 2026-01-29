@@ -494,6 +494,7 @@
       "noAssignedTests": "Нет назначенных тестов",
       "assignedByAdmin": "Назначено администратором",
       "revokeTestAssignment": "Отозвать назначение",
+      "revokeTestAssignmentConfirm": "Отозвать назначение теста \"{{test}}\"?",
       "testAssignmentRevoked": "Назначение теста отозвано",
       "revokeTestAssignmentError": "Не удалось отозвать назначение",
       "noTestsSelected": "Выберите хотя бы один тест",

@@ -11,6 +11,7 @@ export function EnrollmentRequests() {
   const { t } = useTranslation();
   const [courseRequests, setCourseRequests] = useState<CourseEnrollmentRequest[]>([]);
   const [testRequests, setTestRequests] = useState<TestEnrollmentRequest[]>([]);
+  const [testAssignments, setTestAssignments] = useState<TestAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
@@ -53,6 +54,7 @@ export function EnrollmentRequests() {
       }
       setCourseRequests([]);
       setTestRequests([]);
+      setTestAssignments([]);
     } finally {
       setLoading(false);
     }
@@ -344,7 +346,7 @@ export function EnrollmentRequests() {
               const userPhone = typeof request.user === 'object' ? request.user?.phone : '';
               
               return (
-                <div key={request.id} className="p-6 hover:bg-gray-50 transition-colors">
+                <div key={`${request.type}-${request.id}`} className="p-6 hover:bg-gray-50 transition-colors">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-3">
@@ -458,7 +460,7 @@ export function EnrollmentRequests() {
                     : 'Администратор';
 
                 return (
-                  <div key={assignment.id} className="p-6 hover:bg-gray-50 transition-colors">
+                  <div key={`assignment-${assignment.id}`} className="p-6 hover:bg-gray-50 transition-colors">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-3">
