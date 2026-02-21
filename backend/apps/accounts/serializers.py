@@ -41,10 +41,16 @@ class UserCreateSerializer(serializers.ModelSerializer):
         return value
     
     def validate(self, data):
-        """Validate SMS verification code if provided"""
-        verification_code = data.get('verification_code')
+        """Validate SMS verification code - required when require_sms_on_registration is True"""
+        verification_code = data.get('verification_code') or ''
         phone = data.get('phone')
-        
+        require_sms = self.context.get('require_sms_on_registration', True)
+
+        if require_sms and (not verification_code or not verification_code.strip()):
+            raise serializers.ValidationError({
+                'verification_code': 'SMS verification is required for registration. Please request and enter the code.'
+            })
+
         if verification_code and phone:
             # Normalize phone number
             normalized_phone = ''.join(filter(str.isdigit, str(phone)))

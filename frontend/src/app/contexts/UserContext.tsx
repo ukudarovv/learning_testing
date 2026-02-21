@@ -7,6 +7,8 @@ interface UserContextType {
   user: User | null;
   loading: boolean;
   login: (phone: string, password: string) => Promise<void>;
+  /** Установить пользователя после регистрации (токены уже сохранены в authService.register) */
+  setUserFromAuth: (user: User) => void;
   logout: () => Promise<void>;
   updateUser: (updates: Partial<User>) => void;
   refreshUser: () => Promise<void>;
@@ -61,6 +63,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const setUserFromAuth = (userData: User) => {
+    setUser(userData);
+    localStorage.setItem('unicover_user', JSON.stringify(userData));
+  };
+
   const logout = async () => {
     try {
       await authService.logout();
@@ -92,7 +99,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <UserContext.Provider value={{ user, loading, login, logout, updateUser, refreshUser }}>
+    <UserContext.Provider value={{ user, loading, login, setUserFromAuth, logout, updateUser, refreshUser }}>
       {children}
     </UserContext.Provider>
   );

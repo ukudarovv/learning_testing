@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import ContentPage
+from .models import ContentPage, SiteConfig
 
 
 class ContentPageSerializer(serializers.ModelSerializer):
@@ -17,3 +17,20 @@ class ContentPageUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = ContentPage
         fields = ['content_ru', 'content_kz', 'content_en']
+
+
+class SiteConfigSerializer(serializers.ModelSerializer):
+    """Serializer for SiteConfig (read)"""
+    
+    class Meta:
+        model = SiteConfig
+        fields = ['id', 'require_sms_on_registration', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class SiteConfigUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for updating SiteConfig"""
+    
+    class Meta:
+        model = SiteConfig
+        fields = ['require_sms_on_registration']

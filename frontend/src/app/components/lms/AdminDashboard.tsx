@@ -25,6 +25,7 @@ import { PartnerEditor } from '../admin/PartnerEditor';
 import { CertificateManagement } from '../admin/CertificateManagement';
 import { ProtocolManagement } from '../admin/ProtocolManagement';
 import { ContentPageEditor } from '../admin/ContentPageEditor';
+import { SiteSettingsEditor } from '../admin/SiteSettingsEditor';
 import { Course, Test, User } from '../../types/lms';
 import { License, licensesService } from '../../services/licenses';
 import { Vacancy, vacanciesService } from '../../services/vacancies';
@@ -60,7 +61,7 @@ function getStatusText(status: string, t: (key: string) => string): string {
 export function AdminDashboard() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [activeSection, setActiveSection] = useState<'overview' | 'courses' | 'users' | 'tests' | 'reports' | 'categories' | 'licenses' | 'license-categories' | 'contacts' | 'extra-attempts' | 'test-attempts' | 'enrollment-requests' | 'protocols' | 'vacancies' | 'vacancy-applications' | 'vacancy-statistics' | 'projects' | 'project-categories' | 'partners' | 'certificates' | 'content-pages'>('overview');
+  const [activeSection, setActiveSection] = useState<'overview' | 'courses' | 'users' | 'tests' | 'reports' | 'categories' | 'licenses' | 'license-categories' | 'contacts' | 'extra-attempts' | 'test-attempts' | 'enrollment-requests' | 'protocols' | 'vacancies' | 'vacancy-applications' | 'vacancy-statistics' | 'projects' | 'project-categories' | 'partners' | 'certificates' | 'content-pages' | 'settings'>('overview');
   const [showUserEditor, setShowUserEditor] = useState(false);
   const [showLicenseEditor, setShowLicenseEditor] = useState(false);
   const [showVacancyEditor, setShowVacancyEditor] = useState(false);
@@ -547,6 +548,17 @@ export function AdminDashboard() {
                   <FileText className="w-5 h-5" />
                   <span className="font-medium">{t('admin.contentPages.title') || 'Контентные страницы'}</span>
                 </button>
+                <button
+                  onClick={() => setActiveSection('settings')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                    activeSection === 'settings'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <Settings className="w-5 h-5" />
+                  <span className="font-medium">{t('admin.settings.title') || 'Настройки системы'}</span>
+                </button>
               </nav>
             </div>
           </div>
@@ -653,6 +665,7 @@ export function AdminDashboard() {
                 }}
               />
             )}
+            {activeSection === 'settings' && <SiteSettingsEditor />}
           </div>
         </div>
       </div>

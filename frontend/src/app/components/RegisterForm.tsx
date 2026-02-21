@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { User, Mail, Lock, UserPlus, Phone, Eye, EyeOff, Hash } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -7,11 +7,12 @@ import { ApiError } from '../services/api';
 import { useUser } from '../contexts/UserContext';
 import { SMSVerification } from './lms/SMSVerification';
 import { smsService } from '../services/smsService';
+import { settingsService } from '../services/settings';
 
 export function RegisterForm() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { login } = useUser();
+  const { setUserFromAuth } = useUser();
   const [formData, setFormData] = useState<RegisterData>({
     phone: '',
     password: '',
@@ -28,6 +29,13 @@ export function RegisterForm() {
   const [showSMSVerification, setShowSMSVerification] = useState(false);
   const [sendingSMS, setSendingSMS] = useState(false);
   const [debugCode, setDebugCode] = useState<string | null>(null);
+  const [requireSmsOnRegistration, setRequireSmsOnRegistration] = useState(true);
+
+  useEffect(() => {
+    settingsService.getSettings()
+      .then((config) => setRequireSmsOnRegistration(config.require_sms_on_registration))
+      .catch(() => setRequireSmsOnRegistration(true)); // Default to true on error
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -60,16 +68,58 @@ export function RegisterForm() {
       return;
     }
 
+    if (requireSmsOnRegistration) {
+      try {
+        setSendingSMS(true);
+        const res = await smsService.sendVerificationCode(formData.phone, 'registration');
+        setDebugCode(res.otp_code ?? null);
+        setShowSMSVerification(true);
+        setError('');
+      } catch (err: any) {
+        setError(err.message || 'Ошибка отправки SMS кода. Попробуйте снова.');
+      } finally {
+        setSendingSMS(false);
+      }
+    } else {
+      await handleDirectRegister();
+    }
+  };
+
+  const handleDirectRegister = async () => {
+    setError('');
+    setLoading(true);
     try {
-      setSendingSMS(true);
-      const res = await smsService.sendVerificationCode(formData.phone, 'registration');
-      setDebugCode(res.otp_code ?? null);
-      setShowSMSVerification(true);
-      setError('');
-    } catch (err: any) {
-      setError(err.message || 'Ошибка отправки SMS кода. Попробуйте снова.');
+      const response = await authService.register(formData);
+      if (response && response.user) {
+        setUserFromAuth(response.user);
+        switch (response.user.role) {
+          case 'student':
+            navigate('/student/dashboard');
+            break;
+          case 'pdek_member':
+          case 'pdek_chairman':
+            navigate('/pdek/dashboard');
+            break;
+          case 'admin':
+            navigate('/admin/dashboard');
+            break;
+          default:
+            navigate('/dashboard');
+        }
+      }
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.data) {
+          const errors = Object.values(err.data).flat();
+          setError(Array.isArray(errors) ? errors.join(', ') : err.message);
+        } else {
+          setError(err.message || t('forms.register.registerError'));
+        }
+      } else {
+        setError(t('forms.register.registerError'));
+      }
     } finally {
-      setSendingSMS(false);
+      setLoading(false);
     }
   };
 
@@ -82,10 +132,9 @@ export function RegisterForm() {
       const registerData = { ...formData, verification_code: code };
       const response = await authService.register(registerData);
       
-      // Автоматически логиним пользователя после регистрации
+      // Автоматически авторизуем пользователя после регистрации (токены уже сохранены в authService.register)
       if (response && response.user) {
-        // Обновляем контекст пользователя
-        login(response.user);
+        setUserFromAuth(response.user);
         
         // Перенаправляем в зависимости от роли
         switch (response.user.role) {
@@ -361,11 +410,13 @@ export function RegisterForm() {
               </p>
             </div>
 
-            <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <p className="text-sm text-blue-800">
-                <strong>{t('forms.register.important')}</strong> {t('forms.register.importantMessage')}
-              </p>
-            </div>
+            {requireSmsOnRegistration && (
+              <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-sm text-blue-800">
+                  <strong>{t('forms.register.important')}</strong> {t('forms.register.importantMessage')}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -656,6 +656,15 @@
       "contentEn": "Content (English)",
       "saveSuccess": "Content successfully saved"
     },
+    "settings": {
+      "title": "System Settings",
+      "description": "When enabled, users must confirm their phone number with an SMS code during registration",
+      "requireSmsOnRegistration": "Require SMS on registration",
+      "requireSmsHint": "When enabled, users must confirm their phone number with an SMS code during registration",
+      "loadError": "Error loading settings",
+      "saveSuccess": "Settings saved",
+      "saveError": "Error saving settings"
+    },
     "overview": {
       "title": "Overview"
     },

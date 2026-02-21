@@ -1,9 +1,15 @@
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import ContentPage
-from .serializers import ContentPageSerializer, ContentPageUpdateSerializer
+from .models import ContentPage, SiteConfig, get_site_config
+from .serializers import (
+    ContentPageSerializer,
+    ContentPageUpdateSerializer,
+    SiteConfigSerializer,
+    SiteConfigUpdateSerializer,
+)
 from .utils import get_request_language
+from apps.accounts.permissions import IsAdmin
 
 
 class ContentPageViewSet(viewsets.ModelViewSet):
@@ -70,3 +76,41 @@ class ContentPageViewSet(viewsets.ModelViewSet):
             'language': lang,
             'updated_at': None,
         }, status=status.HTTP_200_OK)
+
+
+class SiteConfigViewSet(viewsets.ModelViewSet):
+    """ViewSet for site-wide settings (singleton)"""
+    serializer_class = SiteConfigSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def get_queryset(self):
+        return SiteConfig.objects.filter(pk=1)
+
+    def get_serializer_class(self):
+        if self.action in ['update', 'partial_update']:
+            return SiteConfigUpdateSerializer
+        return SiteConfigSerializer
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [permissions.AllowAny()]
+        return [permissions.IsAuthenticated(), IsAdmin()]  # current (update) requires admin
+
+    def list(self, request, *args, **kwargs):
+        config = get_site_config()
+        serializer = self.get_serializer(config)
+        return Response(serializer.data)
+
+    def retrieve(self, request, *args, **kwargs):
+        config = get_site_config()
+        serializer = self.get_serializer(config)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['patch', 'put'])
+    def current(self, request):
+        """Update the singleton site config (admin only)"""
+        config = get_site_config()
+        serializer = SiteConfigUpdateSerializer(config, data=request.data, partial=(request.method == 'PATCH'))
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(SiteConfigSerializer(config).data)

@@ -36,3 +36,30 @@ class ContentPage(models.Model):
         elif lang == 'en':
             return self.content_en or self.content_ru
         return self.content_ru
+
+
+class SiteConfig(models.Model):
+    """Singleton model for site-wide settings"""
+    require_sms_on_registration = models.BooleanField(
+        default=True,
+        verbose_name='Требовать SMS при регистрации'
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата обновления')
+
+    class Meta:
+        db_table = 'site_config'
+        verbose_name = 'Настройки сайта'
+        verbose_name_plural = 'Настройки сайта'
+
+    def __str__(self):
+        return 'Site Configuration'
+
+
+def get_site_config():
+    """Get or create the singleton SiteConfig instance"""
+    config, _ = SiteConfig.objects.get_or_create(
+        pk=1,
+        defaults={'require_sms_on_registration': True}
+    )
+    return config

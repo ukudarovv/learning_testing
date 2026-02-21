@@ -27,6 +27,7 @@ from .serializers import (
 from .permissions import IsAdminOrReadOnly, IsAdmin
 from .sms_service import sms_service
 from django.conf import settings
+from apps.core.models import get_site_config
 import logging
 
 logger = logging.getLogger(__name__)
@@ -72,12 +73,14 @@ class RegisterView(APIView):
     
     def post(self, request):
         """Register new user"""
-        serializer = UserCreateSerializer(data=request.data)
+        site_config = get_site_config()
+        context = {'require_sms_on_registration': site_config.require_sms_on_registration}
+        serializer = UserCreateSerializer(data=request.data, context=context)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         
-        # Mark user as verified after successful registration with SMS code
-        if request.data.get('verification_code'):
+        # Mark user as verified: when SMS required and code provided, or when SMS not required
+        if request.data.get('verification_code') or not site_config.require_sms_on_registration:
             user.verified = True
             user.save()
         
