@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { User, Mail, Lock, UserPlus, Phone, Eye, EyeOff, Hash } from 'lucide-react';
+import { User, Lock, UserPlus, Phone, Eye, EyeOff } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { authService, RegisterData } from '../services/auth';
@@ -39,11 +39,7 @@ export function RegisterForm() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    let next = value;
-    if (name === 'iin') {
-      next = value.replace(/\D/g, '').slice(0, 12);
-    }
-    setFormData(prev => ({ ...prev, [name]: next }));
+    setFormData(prev => ({ ...prev, [name]: value }));
     setError('');
   };
 
@@ -57,14 +53,9 @@ export function RegisterForm() {
       return;
     }
 
-    // Validate required fields
-    if (!formData.phone || !formData.password || !formData.full_name || !formData.email || !formData.iin) {
+    // Validate required fields (email and iin removed from form, not required)
+    if (!formData.phone || !formData.password || !formData.full_name) {
       setError('Заполните все обязательные поля');
-      return;
-    }
-    const iinDigits = formData.iin.replace(/\D/g, '');
-    if (iinDigits.length !== 12) {
-      setError('ИИН должен содержать 12 цифр');
       return;
     }
 
@@ -224,46 +215,6 @@ export function RegisterForm() {
                     required
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none"
                     placeholder={t('forms.register.fullNamePlaceholder')}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="reg-email" className="block text-sm font-medium text-gray-700 mb-2">
-                  Email *
-                </label>
-                <div className="relative">
-                  <Mail className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="email"
-                    id="reg-email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    required
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none"
-                    placeholder={t('forms.register.emailPlaceholder') || 'your@email.com'}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="reg-iin" className="block text-sm font-medium text-gray-700 mb-2">
-                  {t('forms.register.iin')} *
-                </label>
-                <div className="relative">
-                  <Hash className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    id="reg-iin"
-                    name="iin"
-                    value={formData.iin}
-                    onChange={handleChange}
-                    required
-                    inputMode="numeric"
-                    maxLength={12}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none"
-                    placeholder={t('forms.register.iinPlaceholder') || '12 цифр'}
                   />
                 </div>
               </div>

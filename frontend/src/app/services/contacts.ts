@@ -1,4 +1,4 @@
-import { apiClient } from './api';
+import { apiClient, downloadBlob } from './api';
 
 export interface ContactMessage {
   id: string;
@@ -58,6 +58,11 @@ const contactsService = {
 
   async deleteMessage(id: string): Promise<void> {
     return apiClient.delete(`/contacts/${id}/`);
+  },
+
+  async exportMessages(): Promise<void> {
+    const blob = await apiClient.get<Blob>('/contacts/export/', undefined, { responseType: 'blob' });
+    downloadBlob(blob, 'contact_messages.xlsx');
   },
 };
 

@@ -52,6 +52,7 @@
     "support": "Қолдау",
     "partners": "Серіктестер",
     "projects": "Жобалар",
+    "news": "Жаңалықтар",
     "vacancies": "Бос орындар",
     "certificateVerification": "Сертификаттың шынайылығын тексеру"
   },
@@ -98,6 +99,17 @@
       "status": "Мәртебе",
       "noLogo": "Логотип жоқ"
     }
+  },
+  "news": {
+    "badge": "Жаңалықтар",
+    "pageTitle": "Жаңалықтар",
+    "description": "Актуальды жаңалықтар мен оқиғалар",
+    "searchPlaceholder": "Тақырып бойынша іздеу...",
+    "allCategories": "Барлық категориялар",
+    "loading": "Жүктелуде...",
+    "loadError": "Жаңалықтарды жүктеу мүмкін болмады",
+    "notFound": "Жаңалықтар табылмады",
+    "backToList": "Жаңалықтар тізіміне оралу"
   },
   "projects": {
     "badge": "Портфолио",
@@ -376,6 +388,10 @@
     },
     "projects": {
       "title": "Жобалар"
+    },
+    "news": {
+      "title": "Жаңалықтар",
+      "categories": "Жаңалықтар категориялары"
     },
     "users": {
       "title": "Пайдаланушылар",
@@ -661,6 +677,10 @@
       "description": "Қосылған кезде пайдаланушылар тіркелу кезінде телефон нөмірін SMS кодымен растауы керек",
       "requireSmsOnRegistration": "Тіркелуде SMS талап ету",
       "requireSmsHint": "Қосылған кезде пайдаланушылар тіркелу кезінде телефон нөмірін SMS кодымен растауы керек",
+      "requireCourseEnrollmentRequest": "Курсқа қол жеткізу үшін әкімші сұранысын талап ету",
+      "requireCourseEnrollmentRequestHint": "Қосылған кезде студенттер сұраныс жасауы керек, әкімші қол жеткізуді мақұлдайды",
+      "requireTestEnrollmentRequest": "Тестке қол жеткізу үшін әкімші сұранысын талап ету",
+      "requireTestEnrollmentRequestHint": "Қосылған кезде студенттер сұраныс жасауы немесе әкімшіден тапсырма алуы керек",
       "loadError": "Параметрлерді жүктеу қатесі",
       "saveSuccess": "Параметрлер сақталды",
       "saveError": "Параметрлерді сақтау қатесі"
@@ -707,7 +727,10 @@
       "videoDeleted": "Бейнежазу сәтті жойылды",
       "smsSent": "SMS коды жіберілді",
       "videoNotSupported": "Сіздің браузеріңіз бейнені ойнатуды қолдамайды.",
-      "videoNotAvailable": "Бейнежазу қолжетімсіз"
+      "videoNotAvailable": "Бейнежазу қолжетімсіз",
+      "export": "Экспорт",
+      "exportSuccess": "Экспорт орындалды",
+      "exportError": "Экспорт қатесі"
     },
     "protocols": {
       "title": "Хаттамалар",
@@ -733,8 +756,25 @@
       "score": "Балл",
       "result": "Нәтиже",
       "status": "Мәртебе",
+      "file": "Файл",
       "actions": "Әрекеттер",
-      "download": "PDF жүктеп алу",
+      "download": "Жүктеу",
+      "open": "Ашу",
+      "noFile": "Файл жоқ",
+      "upload": "Жүктеу",
+      "replace": "Ауыстыру",
+      "uploadProtocol": "Хаттаманы жүктеу",
+      "selectFile": "Жүктеу үшін файлды таңдаңыз",
+      "protocolFile": "Хаттама файлы",
+      "chooseFile": "Файлды таңдаңыз",
+      "orDrag": "немесе осында тартыңыз",
+      "anyFormat": "PDF, DOC, DOCX, JPG, PNG, XLS, XLSX 10MB дейін",
+      "selected": "Таңдалды",
+      "cancel": "Болдырмау",
+      "uploading": "Жүктелуде...",
+      "uploadSuccess": "Хаттама жүктелді",
+      "uploadError": "Хаттаманы жүктеу қатесі",
+      "downloadPdf": "PDF жүктеу",
       "view": "Көру",
       "viewDetails": "Хаттама мәліметтерін көру",
       "downloadSuccess": "Хаттама жүктелді",
@@ -764,6 +804,9 @@
       "chairmanRole": "ПДЭК төрағасы",
       "memberRole": "ПДЭК мүшесі",
       "awaitingSignature": "Қол қою күтуде",
+      "export": "Экспорт",
+      "exportSuccess": "Экспорт орындалды",
+      "exportError": "Экспорт қатесі",
       "statusLabels": {
         "generated": "Құрылған",
         "pendingPdek": "ПДЭК күтуде",
@@ -912,10 +955,18 @@
         "noStudentsData": "Студенттер туралы деректер жоқ",
         "exportReports": "Есептерді экспорттау",
         "summaryReport": "Жинақталған есеп",
+        "summaryPdf": "Жинақталған PDF",
+        "summaryExcel": "Жинақталған Excel",
         "pdfExcel": "PDF / Excel",
         "testResults": "Тест нәтижелері",
+        "certificatesPdf": "Сертификаттар PDF",
+        "certificatesExcel": "Сертификаттар Excel",
+        "coursesPopularityExport": "Курстар танымалдығы",
         "excel": "Excel",
-        "issuedCertificates": "Берілген сертификаттар"
+        "issuedCertificates": "Берілген сертификаттар",
+        "exportSuccess": "Экспорт орындалды",
+        "exportError": "Экспорт қатесі",
+        "exportList": "Тізімді экспорттау"
       },
       "categories": {
         "management": "Категорияларды басқару",
@@ -994,6 +1045,12 @@
         "projectUpdateSuccess": "Жоба сәтті жаңартылды",
         "projectCreateSuccess": "Жоба сәтті құрылды",
         "projectSaveError": "Жобаны сақтау қатесі",
+        "newsLoadError": "Жаңалықты жүктеу қатесі",
+        "newsTitleRequired": "Жаңалық тақырыбын енгізіңіз",
+        "newsTitleRequiredError": "Жаңалық тақырыбы міндетті",
+        "newsUpdateSuccess": "Жаңалық сәтті жаңартылды",
+        "newsCreateSuccess": "Жаңалық сәтті құрылды",
+        "newsSaveError": "Жаңалықты сақтау қатесі",
         "unknownError": "Белгісіз қате"
       }
     }
@@ -1240,7 +1297,7 @@
       "qrCode": "QR-код: {{code}}",
       "verifyAuthenticity": "Шынайылығын тексеру",
       "protocolNumber": "Протокол №{{number}}",
-      "examDate": "Емтихан күні:",
+      "examDate": "Емтихан күні: {{date}}",
       "result": "Нәтиже:",
       "passed": "Өтті",
       "failed": "Өтпеді",

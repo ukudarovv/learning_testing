@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FileText, Eye, Search, Filter, Calendar, User, CheckCircle, XCircle, Clock, RefreshCw, Video, ChevronDown, ChevronUp, X } from 'lucide-react';
+import { FileText, Eye, Search, Filter, Calendar, User, CheckCircle, XCircle, Clock, RefreshCw, Video, ChevronDown, ChevronUp, X, Download, Upload } from 'lucide-react';
 import { Protocol, TestAttempt } from '../../types/lms';
 import { protocolsService } from '../../services/protocols';
 import { examsService } from '../../services/exams';
@@ -20,6 +20,8 @@ export function ProtocolManagement() {
   const [testAttempt, setTestAttempt] = useState<TestAttempt | null>(null);
   const [loadingAttempt, setLoadingAttempt] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [protocolForUpload, setProtocolForUpload] = useState<Protocol | null>(null);
 
   const fetchProtocols = async () => {
     try {
@@ -167,13 +169,29 @@ export function ProtocolManagement() {
           <h2 className="text-2xl font-bold text-gray-900">{t('admin.protocols.title') || 'Протоколы'}</h2>
           <p className="text-gray-600 mt-1">{t('admin.protocols.subtitle') || 'Управление всеми протоколами экзаменов'}</p>
         </div>
-        <button
-          onClick={fetchProtocols}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <RefreshCw className="w-4 h-4" />
-          {t('admin.protocols.refresh') || 'Обновить'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={async () => {
+              try {
+                await protocolsService.exportProtocols();
+                toast.success(t('admin.protocols.exportSuccess') || 'Экспорт выполнен');
+              } catch (err: any) {
+                toast.error(err.message || (t('admin.protocols.exportError') || 'Ошибка экспорта'));
+              }
+            }}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <Download className="w-4 h-4" />
+            {t('admin.protocols.export') || 'Экспорт'}
+          </button>
+          <button
+            onClick={fetchProtocols}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <RefreshCw className="w-4 h-4" />
+            {t('admin.protocols.refresh') || 'Обновить'}
+          </button>
+        </div>
       </div>
 
       {/* Search and Filters */}
@@ -267,6 +285,9 @@ export function ProtocolManagement() {
                   {t('admin.protocols.status') || 'Статус'}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  {t('admin.protocols.file') || 'Файл'}
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   {t('admin.protocols.actions') || 'Действия'}
                 </th>
               </tr>
@@ -274,7 +295,7 @@ export function ProtocolManagement() {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredProtocols.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={9} className="px-6 py-12 text-center text-gray-500">
                     {searchQuery || statusFilter !== 'all' || resultFilter !== 'all' || dateFilter !== 'all'
                       ? t('admin.protocols.noResults') || 'Протоколы не найдены'
                       : t('admin.protocols.noProtocols') || 'Нет протоколов'}
@@ -340,6 +361,44 @@ export function ProtocolManagement() {
                         {protocol.status === 'pending_pdek' && <Clock className="w-3 h-3" />}
                         {getStatusText(protocol.status)}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        {protocolsService.getFileUrl(protocol) ? (
+                          <>
+                            <a
+                              href={protocolsService.getFileUrl(protocol)!}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 text-blue-600 hover:text-blue-800 text-sm"
+                            >
+                              <FileText className="w-4 h-4" />
+                              {t('admin.protocols.open') || 'Открыть'}
+                            </a>
+                            <a
+                              href={protocolsService.getFileUrl(protocol)!}
+                              download
+                              className="text-blue-600 hover:text-blue-800"
+                              title={t('admin.protocols.download') || 'Скачать'}
+                            >
+                              <Download className="w-4 h-4" />
+                            </a>
+                          </>
+                        ) : (
+                          <span className="text-sm text-gray-400">{t('admin.protocols.noFile') || 'Нет файла'}</span>
+                        )}
+                        <button
+                          onClick={() => {
+                            setProtocolForUpload(protocol);
+                            setShowUploadModal(true);
+                          }}
+                          className="flex items-center gap-1 px-2 py-1 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded"
+                          title={t('admin.protocols.uploadProtocol') || 'Загрузить протокол'}
+                        >
+                          <Upload className="w-4 h-4" />
+                          {protocol.file ? (t('admin.protocols.replace') || 'Заменить') : (t('admin.protocols.upload') || 'Загрузить')}
+                        </button>
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button
@@ -642,6 +701,141 @@ export function ProtocolManagement() {
           </div>
         </div>
       )}
+
+      {/* Upload Protocol Modal */}
+      {showUploadModal && protocolForUpload && (
+        <UploadProtocolModal
+          protocol={protocolForUpload}
+          onClose={() => {
+            setShowUploadModal(false);
+            setProtocolForUpload(null);
+          }}
+          onSuccess={() => {
+            setShowUploadModal(false);
+            setProtocolForUpload(null);
+            fetchProtocols();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+interface UploadProtocolModalProps {
+  protocol: Protocol;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+function UploadProtocolModal({ protocol, onClose, onSuccess }: UploadProtocolModalProps) {
+  const { t } = useTranslation();
+  const [file, setFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!file) {
+      toast.error(t('admin.protocols.selectFile') || 'Выберите файл для загрузки');
+      return;
+    }
+    try {
+      setLoading(true);
+      await protocolsService.uploadProtocolFile(protocol.id, file);
+      toast.success(t('admin.protocols.uploadSuccess') || 'Протокол загружен');
+      onSuccess();
+    } catch (error: any) {
+      console.error('Failed to upload protocol:', error);
+      toast.error(error.message || (t('admin.protocols.uploadError') || 'Ошибка при загрузке протокола'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-1">
+                {t('admin.protocols.uploadProtocol') || 'Загрузить протокол'}
+              </h2>
+              <p className="text-gray-600">
+                {t('admin.protocols.protocolNumber', { number: protocol.number }) || `Протокол №${protocol.number}`}
+              </p>
+              <p className="text-gray-600">
+                {t('admin.protocols.student') || 'Студент'}: <span className="font-semibold">{protocol.userName || '—'}</span>
+              </p>
+              <p className="text-gray-600">
+                {t('admin.protocols.course') || 'Курс/Тест'}: <span className="font-semibold">{protocol.courseName || protocol.testName || '—'}</span>
+              </p>
+            </div>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {t('admin.protocols.protocolFile') || 'Файл протокола'} *
+            </label>
+            <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-gray-400 transition-colors">
+              <div className="space-y-1 text-center">
+                <FileText className="mx-auto h-12 w-12 text-gray-400" />
+                <div className="flex text-sm text-gray-600 justify-center">
+                  <label className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500">
+                    <span>{t('admin.protocols.chooseFile') || 'Выберите файл'}</span>
+                    <input
+                      type="file"
+                      className="sr-only"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) setFile(f);
+                      }}
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx"
+                    />
+                  </label>
+                  <p className="pl-1">{t('admin.protocols.orDrag') || 'или перетащите сюда'}</p>
+                </div>
+                <p className="text-xs text-gray-500">
+                  {t('admin.protocols.anyFormat') || 'PDF, DOC, DOCX, JPG, PNG, XLS, XLSX до 10MB'}
+                </p>
+                {file && (
+                  <p className="text-sm text-gray-900 mt-2">
+                    {t('admin.protocols.selected') || 'Выбран'}: <span className="font-medium">{file.name}</span>
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </form>
+        <div className="p-6 border-t border-gray-200 flex items-center justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+          >
+            {t('admin.protocols.cancel') || 'Отмена'}
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={!file || loading}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {loading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                {t('admin.protocols.uploading') || 'Загрузка...'}
+              </>
+            ) : (
+              <>
+                <Upload className="w-4 h-4" />
+                {t('admin.protocols.upload') || 'Загрузить'}
+              </>
+            )}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

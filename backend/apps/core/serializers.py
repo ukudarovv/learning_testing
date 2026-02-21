@@ -24,7 +24,11 @@ class SiteConfigSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = SiteConfig
-        fields = ['id', 'require_sms_on_registration', 'created_at', 'updated_at']
+        fields = [
+            'id', 'require_sms_on_registration',
+            'require_course_enrollment_request', 'require_test_enrollment_request',
+            'created_at', 'updated_at'
+        ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
 
@@ -33,4 +37,7 @@ class SiteConfigUpdateSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = SiteConfig
-        fields = ['require_sms_on_registration']
+        fields = [
+            'require_sms_on_registration',
+            'require_course_enrollment_request', 'require_test_enrollment_request'
+        ]

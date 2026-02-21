@@ -35,6 +35,8 @@ from apps.accounts.permissions import IsAdmin, IsAdminOrReadOnly
 from apps.exams.models import TestAttempt
 from apps.accounts.models import User
 from apps.core.utils import get_request_language
+from apps.core.models import get_site_config
+from apps.core.export_utils import export_to_excel, create_excel_response
 
 
 class CategoryViewSet(viewsets.ModelViewSet):
@@ -123,6 +125,27 @@ class CourseViewSet(viewsets.ModelViewSet):
         enrollments = CourseEnrollment.objects.filter(course=course).select_related('user')
         serializer = CourseEnrollmentSerializer(enrollments, many=True)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['get'], url_path='enrollments/export')
+    def export_enrollments(self, request, pk=None):
+        """Export course enrollments to Excel (admin only)"""
+        if not request.user.is_authenticated or not getattr(request.user, 'is_admin', False):
+            return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+        course = self.get_object()
+        enrollments = CourseEnrollment.objects.filter(course=course).select_related('user').order_by('-enrolled_at')[:5000]
+        headers = ['Студент', 'Email', 'Телефон', 'Статус', 'Дата записи', 'Завершён']
+        rows = []
+        for e in enrollments:
+            rows.append([
+                e.user.full_name or '',
+                e.user.email or '',
+                e.user.phone or '',
+                e.get_status_display() if hasattr(e, 'get_status_display') else e.status,
+                e.enrolled_at.strftime('%Y-%m-%d %H:%M') if e.enrolled_at else '',
+                e.completed_at.strftime('%Y-%m-%d') if e.completed_at else '—',
+            ])
+        buffer = export_to_excel(headers, rows, f'Студенты_{course.title[:30]}')
+        return create_excel_response(buffer, f'course_{course.id}_enrollments.xlsx')
     
     @action(detail=True, methods=['post'])
     def enroll(self, request, pk=None):
@@ -168,6 +191,19 @@ class CourseViewSet(viewsets.ModelViewSet):
                     'message': 'Already enrolled in this course',
                     'enrollment_id': existing_enrollment.id
                 }, status=status.HTTP_200_OK)
+            
+            site_config = get_site_config()
+            if not site_config.require_course_enrollment_request:
+                # Прямая запись без запроса администратора
+                enrollment = CourseEnrollment.objects.create(
+                    user=request.user,
+                    course=course,
+                    status='assigned'
+                )
+                return Response({
+                    'message': 'Enrolled successfully',
+                    'enrollment_id': enrollment.id
+                }, status=status.HTTP_201_CREATED)
             
             # Создаем запрос на запись
             enrollment_request = CourseEnrollmentRequest.objects.create(
@@ -392,15 +428,24 @@ class CourseViewSet(viewsets.ModelViewSet):
                         status=status.HTTP_403_FORBIDDEN
                     )
             else:
-                # No enrollment and no request - return error
-                return Response(
-                    {
-                        'error': 'Enrollment required',
-                        'message': 'You need to request enrollment for this course',
-                        'request_status': 'not_requested'
-                    },
-                    status=status.HTTP_403_FORBIDDEN
-                )
+                # No enrollment and no request
+                site_config = get_site_config()
+                if not site_config.require_course_enrollment_request:
+                    # Прямой доступ: создаём enrollment автоматически
+                    enrollment = CourseEnrollment.objects.create(
+                        user=request.user,
+                        course=course,
+                        status='assigned'
+                    )
+                else:
+                    return Response(
+                        {
+                            'error': 'Enrollment required',
+                            'message': 'You need to request enrollment for this course',
+                            'request_status': 'not_requested'
+                        },
+                        status=status.HTTP_403_FORBIDDEN
+                    )
         
         # Get lesson progress
         lesson_progress = {

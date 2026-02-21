@@ -147,6 +147,9 @@ export function Header() {
                 <Link to="/projects" className="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600">
                   {t('construction.projects')}
                 </Link>
+                <Link to="/news" className="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600">
+                  {t('navigation.news') || 'Новости'}
+                </Link>
                 <Link to="/construction/vacancies" className="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600">
                   {t('navigation.vacancies')}
                 </Link>
@@ -236,6 +239,12 @@ export function Header() {
                 </Link>
                 <Link to="/construction" className="text-gray-700 hover:text-blue-600 py-2 pl-4 block">
                   {t('construction.completedWorks')}
+                </Link>
+                <Link to="/projects" className="text-gray-700 hover:text-blue-600 py-2 pl-4 block">
+                  {t('construction.projects')}
+                </Link>
+                <Link to="/news" className="text-gray-700 hover:text-blue-600 py-2 pl-4 block">
+                  {t('navigation.news') || 'Новости'}
                 </Link>
                 <a href="/#partners" className="text-gray-700 hover:text-blue-600 py-2 pl-4 block">
                   {t('construction.partners')}

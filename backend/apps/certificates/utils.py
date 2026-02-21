@@ -65,13 +65,18 @@ def generate_certificate_pdf(certificate):
     ))
     story.append(Spacer(1, 0.3*cm))
     
-    story.append(Paragraph(
-        f'успешно прошел(а) обучение по курсу',
-        text_style
-    ))
+    # Course or test (certificate can be for course or standalone test)
+    is_course = certificate.course is not None
+    course_or_test_title = (
+        certificate.course.title if certificate.course
+        else (certificate.test.title if certificate.test else '—')
+    )
+    completion_text = 'успешно прошел(а) обучение по курсу' if is_course else 'успешно прошел(а) тестирование по тесту'
+
+    story.append(Paragraph(completion_text, text_style))
     story.append(Spacer(1, 0.3*cm))
-    
-    # Course name
+
+    # Course/Test name
     course_style = ParagraphStyle(
         'CourseName',
         parent=styles['Heading3'],
@@ -80,10 +85,7 @@ def generate_certificate_pdf(certificate):
         alignment=TA_CENTER,
         spaceAfter=20,
     )
-    story.append(Paragraph(
-        certificate.course.title,
-        course_style
-    ))
+    story.append(Paragraph(course_or_test_title, course_style))
     story.append(Spacer(1, 0.5*cm))
     
     # Certificate details

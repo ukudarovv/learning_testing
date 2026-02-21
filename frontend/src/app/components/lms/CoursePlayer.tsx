@@ -13,7 +13,6 @@ import { SMSVerification } from './SMSVerification';
 import { coursesService } from '../../services/courses';
 import { useUser } from '../../contexts/UserContext';
 import { toast } from 'sonner';
-import { PPTViewer } from './PPTViewer';
 import { PdfViewer } from './PdfViewer';
 
 interface CoursePlayerProps {
@@ -976,7 +975,6 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
                                         <div className={`
                                           ${lesson.type === 'video' ? 'text-purple-600' : ''}
                                           ${lesson.type === 'pdf' ? 'text-red-600' : ''}
-                                          ${lesson.type === 'ppt' ? 'text-orange-600' : ''}
                                           ${lesson.type === 'quiz' ? 'text-green-600' : ''}
                                           ${lesson.type === 'text' ? 'text-blue-600' : ''}
                                         `}>
@@ -1290,6 +1288,7 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
                     <PdfViewer 
                       url={selectedLesson.pdfUrl || selectedLesson.pdf_url || ''} 
                       title="PDF Документ"
+                      allowDownload={false}
                     />
                   )}
                   {selectedLesson.type === 'pdf' && !selectedLesson.pdfUrl && !selectedLesson.pdf_url && (
@@ -1300,18 +1299,11 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
                     </div>
                   )}
 
-                  {selectedLesson.type === 'ppt' && (selectedLesson.pptUrl || selectedLesson.ppt_url) && (
-                    <PPTViewer 
-                      url={selectedLesson.pptUrl || selectedLesson.ppt_url || ''} 
-                      title="PPT Презентация"
-                      lessonId={selectedLesson.id}
-                    />
-                  )}
-                  {selectedLesson.type === 'ppt' && !selectedLesson.pptUrl && !selectedLesson.ppt_url && (
+                  {selectedLesson.type === 'ppt' && (
                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center">
                       <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                       <h3 className="font-bold text-gray-900 mb-2">PPT Презентация</h3>
-                      <p className="text-gray-600">URL PPT файла не указан</p>
+                      <p className="text-gray-600">Тип урока PPT больше не поддерживается</p>
                     </div>
                   )}
 
@@ -1883,8 +1875,6 @@ function getLessonIcon(type: string, className: string = 'w-4 h-4 text-gray-400'
     case 'video':
       return <Video className={className} />;
     case 'pdf':
-      return <FileText className={className} />;
-    case 'ppt':
       return <FileText className={className} />;
     case 'quiz':
       return <CheckCircle className={className} />;

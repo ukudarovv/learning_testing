@@ -5,6 +5,7 @@ from django.utils import timezone
 from django.db.models import Count, Q
 
 from .models import TestAttempt, ExtraAttemptRequest
+from apps.core.export_utils import export_to_excel, create_excel_response
 from .serializers import (
     TestAttemptSerializer,
     TestAttemptCreateSerializer,
@@ -245,6 +246,28 @@ class TestAttemptViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK
         )
     
+    @action(detail=False, methods=['get'])
+    def export(self, request):
+        """Export test attempts to Excel (admin only)"""
+        if not request.user.is_admin:
+            return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+
+        attempts = TestAttempt.objects.all().select_related('test', 'user').order_by('-started_at')[:5000]
+
+        headers = ['Студент', 'Тест', 'Балл', 'Результат', 'Дата начала', 'Дата завершения']
+        rows = []
+        for a in attempts:
+            rows.append([
+                a.user.full_name or a.user.phone or '',
+                a.test.title if a.test else '—',
+                f'{a.score:.1f}' if a.score is not None else '—',
+                'Сдан' if a.passed else 'Не сдан',
+                a.started_at.strftime('%Y-%m-%d %H:%M') if a.started_at else '',
+                a.completed_at.strftime('%Y-%m-%d %H:%M') if a.completed_at else '—',
+            ])
+        buffer = export_to_excel(headers, rows, 'Попытки тестов')
+        return create_excel_response(buffer, 'test_attempts.xlsx')
+
     @action(detail=False, methods=['get'])
     def my_attempts(self, request):
         """Get current user's attempts"""

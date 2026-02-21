@@ -52,6 +52,7 @@
     "support": "Support",
     "partners": "Partners",
     "projects": "Projects",
+    "news": "News",
     "vacancies": "Vacancies",
     "certificateVerification": "Certificate Verification"
   },
@@ -98,6 +99,17 @@
       "status": "Status",
       "noLogo": "No Logo"
     }
+  },
+  "news": {
+    "badge": "News",
+    "pageTitle": "News",
+    "description": "Latest news and events",
+    "searchPlaceholder": "Search by title...",
+    "allCategories": "All Categories",
+    "loading": "Loading...",
+    "loadError": "Failed to load news",
+    "notFound": "No news found",
+    "backToList": "Back to news list"
   },
   "projects": {
     "badge": "Portfolio",
@@ -376,6 +388,10 @@
     },
     "projects": {
       "title": "Projects"
+    },
+    "news": {
+      "title": "News",
+      "categories": "News Categories"
     },
     "users": {
       "title": "Users",
@@ -661,6 +677,10 @@
       "description": "When enabled, users must confirm their phone number with an SMS code during registration",
       "requireSmsOnRegistration": "Require SMS on registration",
       "requireSmsHint": "When enabled, users must confirm their phone number with an SMS code during registration",
+      "requireCourseEnrollmentRequest": "Require admin approval for course access",
+      "requireCourseEnrollmentRequestHint": "When enabled, students must submit a request; admin approves access",
+      "requireTestEnrollmentRequest": "Require admin approval for test access",
+      "requireTestEnrollmentRequestHint": "When enabled, students must submit a request or receive assignment from admin",
       "loadError": "Error loading settings",
       "saveSuccess": "Settings saved",
       "saveError": "Error saving settings"
@@ -707,7 +727,10 @@
       "videoDeleted": "Video recording deleted successfully",
       "smsSent": "SMS code sent",
       "videoNotSupported": "Your browser does not support video playback.",
-      "videoNotAvailable": "Video recording not available"
+      "videoNotAvailable": "Video recording not available",
+      "export": "Export",
+      "exportSuccess": "Export completed",
+      "exportError": "Export error"
     },
     "protocols": {
       "title": "Protocols",
@@ -733,8 +756,25 @@
       "score": "Score",
       "result": "Result",
       "status": "Status",
+      "file": "File",
       "actions": "Actions",
-      "download": "Download PDF",
+      "download": "Download",
+      "open": "Open",
+      "noFile": "No file",
+      "upload": "Upload",
+      "replace": "Replace",
+      "uploadProtocol": "Upload Protocol",
+      "selectFile": "Select file to upload",
+      "protocolFile": "Protocol file",
+      "chooseFile": "Choose file",
+      "orDrag": "or drag here",
+      "anyFormat": "PDF, DOC, DOCX, JPG, PNG, XLS, XLSX up to 10MB",
+      "selected": "Selected",
+      "cancel": "Cancel",
+      "uploading": "Uploading...",
+      "uploadSuccess": "Protocol uploaded",
+      "uploadError": "Error uploading protocol",
+      "downloadPdf": "Download PDF",
       "view": "View",
       "viewDetails": "View Protocol Details",
       "downloadSuccess": "Protocol downloaded",
@@ -764,6 +804,9 @@
       "chairmanRole": "PDEK Chairman",
       "memberRole": "PDEK Member",
       "awaitingSignature": "Awaiting Signature",
+      "export": "Export",
+      "exportSuccess": "Export completed",
+      "exportError": "Export error",
       "statusLabels": {
         "generated": "Generated",
         "pendingPdek": "Pending PDEK",
@@ -912,10 +955,18 @@
         "noStudentsData": "No student data",
         "exportReports": "Export Reports",
         "summaryReport": "Summary Report",
+        "summaryPdf": "Summary PDF",
+        "summaryExcel": "Summary Excel",
         "pdfExcel": "PDF / Excel",
         "testResults": "Test Results",
+        "certificatesPdf": "Certificates PDF",
+        "certificatesExcel": "Certificates Excel",
+        "coursesPopularityExport": "Courses Popularity",
         "excel": "Excel",
-        "issuedCertificates": "Issued Certificates"
+        "issuedCertificates": "Issued Certificates",
+        "exportSuccess": "Export completed",
+        "exportError": "Export error",
+        "exportList": "Export list"
       },
       "categories": {
         "management": "Category Management",
@@ -994,6 +1045,12 @@
         "projectUpdateSuccess": "Project successfully updated",
         "projectCreateSuccess": "Project successfully created",
         "projectSaveError": "Error saving project",
+        "newsLoadError": "Error loading news",
+        "newsTitleRequired": "Enter news title",
+        "newsTitleRequiredError": "News title is required",
+        "newsUpdateSuccess": "News successfully updated",
+        "newsCreateSuccess": "News successfully created",
+        "newsSaveError": "Error saving news",
         "unknownError": "Unknown error"
       }
     }
@@ -1240,7 +1297,7 @@
       "qrCode": "QR Code: {{code}}",
       "verifyAuthenticity": "Verify Authenticity",
       "protocolNumber": "Protocol No. {{number}}",
-      "examDate": "Exam Date:",
+      "examDate": "Exam Date: {{date}}",
       "result": "Result:",
       "passed": "Passed",
       "failed": "Failed",

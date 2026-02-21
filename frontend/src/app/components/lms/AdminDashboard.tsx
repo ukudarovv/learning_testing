@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, BookOpen, FileQuestion, Award, Settings, TrendingUp, Plus, Search, Filter, Download, Edit, Trash2, Eye, X, CheckCircle, XCircle, UserPlus, Tag, FileText, Mail, RotateCcw, Ban, Building2, Handshake, Video } from 'lucide-react';
+import { Users, BookOpen, FileQuestion, Award, Settings, TrendingUp, Plus, Search, Filter, Download, Edit, Trash2, Eye, X, CheckCircle, XCircle, UserPlus, Tag, FileText, Mail, RotateCcw, Ban, Building2, Handshake, Video, Newspaper } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useTranslation } from 'react-i18next';
 import { UserEditor } from '../admin/UserEditor';
@@ -19,6 +19,9 @@ import { VacancyEditor } from '../admin/VacancyEditor';
 import { ProjectManagement } from '../admin/ProjectManagement';
 import { ProjectEditor } from '../admin/ProjectEditor';
 import { ProjectCategoryManagement } from '../admin/ProjectCategoryManagement';
+import { NewsManagement } from '../admin/NewsManagement';
+import { NewsEditor } from '../admin/NewsEditor';
+import { NewsCategoryManagement } from '../admin/NewsCategoryManagement';
 import { LicenseCategoryManagement } from '../admin/LicenseCategoryManagement';
 import { PartnerManagement } from '../admin/PartnerManagement';
 import { PartnerEditor } from '../admin/PartnerEditor';
@@ -30,8 +33,11 @@ import { Course, Test, User } from '../../types/lms';
 import { License, licensesService } from '../../services/licenses';
 import { Vacancy, vacanciesService } from '../../services/vacancies';
 import { Project, ProjectDetail, projectsService } from '../../services/projects';
+import { News } from '../../types/news';
+import { newsService } from '../../services/news';
 import { Partner, partnersService } from '../../services/partners';
 import { useAnalytics, useEnrollmentTrend, useTestResultsDistribution, useCoursesPopularity, useTopStudents } from '../../hooks/useAnalytics';
+import { analyticsService } from '../../services/analytics';
 import { useCourses } from '../../hooks/useCourses';
 import { useTests } from '../../hooks/useTests';
 import { coursesService } from '../../services/courses';
@@ -61,17 +67,19 @@ function getStatusText(status: string, t: (key: string) => string): string {
 export function AdminDashboard() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [activeSection, setActiveSection] = useState<'overview' | 'courses' | 'users' | 'tests' | 'reports' | 'categories' | 'licenses' | 'license-categories' | 'contacts' | 'extra-attempts' | 'test-attempts' | 'enrollment-requests' | 'protocols' | 'vacancies' | 'vacancy-applications' | 'vacancy-statistics' | 'projects' | 'project-categories' | 'partners' | 'certificates' | 'content-pages' | 'settings'>('overview');
+  const [activeSection, setActiveSection] = useState<'overview' | 'courses' | 'users' | 'tests' | 'reports' | 'categories' | 'licenses' | 'license-categories' | 'contacts' | 'extra-attempts' | 'test-attempts' | 'enrollment-requests' | 'protocols' | 'vacancies' | 'vacancy-applications' | 'vacancy-statistics' | 'projects' | 'project-categories' | 'news' | 'news-categories' | 'partners' | 'certificates' | 'content-pages' | 'settings'>('overview');
   const [showUserEditor, setShowUserEditor] = useState(false);
   const [showLicenseEditor, setShowLicenseEditor] = useState(false);
   const [showVacancyEditor, setShowVacancyEditor] = useState(false);
   const [showProjectEditor, setShowProjectEditor] = useState(false);
+  const [showNewsEditor, setShowNewsEditor] = useState(false);
   const [showPartnerEditor, setShowPartnerEditor] = useState(false);
   const [showContentPageEditor, setShowContentPageEditor] = useState(false);
   const [editingContentPageType, setEditingContentPageType] = useState<'terms' | 'privacy' | null>(null);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [vacanciesRefreshTrigger, setVacanciesRefreshTrigger] = useState(0);
   const [projectsRefreshTrigger, setProjectsRefreshTrigger] = useState(0);
+  const [newsRefreshTrigger, setNewsRefreshTrigger] = useState(0);
   const [partnersRefreshTrigger, setPartnersRefreshTrigger] = useState(0);
   const [selectedCourseForStudents, setSelectedCourseForStudents] = useState<any>(null);
   const [coursesRefetch, setCoursesRefetch] = useState<(() => void) | null>(null);
@@ -250,6 +258,48 @@ export function AdminDashboard() {
     } catch (error: any) {
       toast.error(`${t('admin.dashboard.messages.projectSaveError')}: ${error.message || t('admin.dashboard.messages.unknownError')}`);
       console.error('Failed to save project:', error);
+      throw error;
+    }
+  };
+
+  const handleCreateNews = () => {
+    setEditingItem(null);
+    setShowNewsEditor(true);
+  };
+
+  const handleEditNews = async (news: News) => {
+    try {
+      const newsDetail = await newsService.getNewsItem(news.id);
+      setEditingItem(newsDetail);
+      setShowNewsEditor(true);
+    } catch (error: any) {
+      toast.error(`${t('admin.dashboard.messages.newsLoadError') || 'Ошибка загрузки новости'}: ${error.message || t('admin.dashboard.messages.unknownError')}`);
+      console.error('Failed to load news details:', error);
+    }
+  };
+
+  const handleSaveNews = async (news: Partial<News>, imageFile?: File): Promise<News> => {
+    try {
+      if (!news.title?.trim()) {
+        toast.error(t('admin.dashboard.messages.newsTitleRequired') || 'Заголовок новости обязателен');
+        throw new Error(t('admin.dashboard.messages.newsTitleRequiredError') || 'Title required');
+      }
+
+      let savedNews: News;
+      if (editingItem) {
+        savedNews = await newsService.updateNews(editingItem.id, news, imageFile);
+        toast.success(t('admin.dashboard.messages.newsUpdateSuccess') || 'Новость успешно обновлена');
+      } else {
+        savedNews = await newsService.createNews(news, imageFile);
+        toast.success(t('admin.dashboard.messages.newsCreateSuccess') || 'Новость успешно создана');
+      }
+      setShowNewsEditor(false);
+      setEditingItem(null);
+      setNewsRefreshTrigger(prev => prev + 1);
+      return savedNews;
+    } catch (error: any) {
+      toast.error(`${t('admin.dashboard.messages.newsSaveError') || 'Ошибка сохранения новости'}: ${error.message || t('admin.dashboard.messages.unknownError')}`);
+      console.error('Failed to save news:', error);
       throw error;
     }
   };
@@ -527,6 +577,28 @@ export function AdminDashboard() {
                   <span className="font-medium">{t('admin.categories.title')}</span>
                 </button>
                 <button
+                  onClick={() => setActiveSection('news')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                    activeSection === 'news'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <Newspaper className="w-5 h-5" />
+                  <span className="font-medium">{t('admin.news.title') || 'Новости'}</span>
+                </button>
+                <button
+                  onClick={() => setActiveSection('news-categories')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                    activeSection === 'news-categories'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <Tag className="w-5 h-5" />
+                  <span className="font-medium">{t('admin.news.categories') || 'Категории новостей'}</span>
+                </button>
+                <button
                   onClick={() => setActiveSection('partners')}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                     activeSection === 'partners'
@@ -646,6 +718,16 @@ export function AdminDashboard() {
             {activeSection === 'project-categories' && (
               <ProjectCategoryManagement refreshTrigger={projectsRefreshTrigger} />
             )}
+            {activeSection === 'news' && (
+              <NewsManagement
+                onCreate={handleCreateNews}
+                onEdit={handleEditNews}
+                refreshTrigger={newsRefreshTrigger}
+              />
+            )}
+            {activeSection === 'news-categories' && (
+              <NewsCategoryManagement refreshTrigger={newsRefreshTrigger} />
+            )}
             {activeSection === 'partners' && (
               <PartnerManagement
                 onCreate={handleCreatePartner}
@@ -707,6 +789,16 @@ export function AdminDashboard() {
           onSave={handleSaveProject}
           onCancel={() => {
             setShowProjectEditor(false);
+            setEditingItem(null);
+          }}
+        />
+      )}
+      {showNewsEditor && (
+        <NewsEditor
+          news={editingItem}
+          onSave={handleSaveNews}
+          onCancel={() => {
+            setShowNewsEditor(false);
             setEditingItem(null);
           }}
         />
@@ -1364,6 +1456,7 @@ function TestsSection({
 
 function ReportsSection() {
   const { t } = useTranslation();
+  const [exporting, setExporting] = useState<string | null>(null);
   const { stats, loading: statsLoading } = useAnalytics();
   const { data: enrollmentData, loading: enrollmentLoading } = useEnrollmentTrend();
   const { data: testResultsData, loading: testResultsLoading } = useTestResultsDistribution();
@@ -1383,8 +1476,75 @@ function ReportsSection() {
     );
   }
 
+  const handleExport = async (type: string, fn: () => Promise<void>) => {
+    try {
+      setExporting(type);
+      await fn();
+      toast.success(t('admin.dashboard.reports.exportSuccess') || 'Экспорт выполнен');
+    } catch (err: any) {
+      toast.error(err.message || (t('admin.dashboard.reports.exportError') || 'Ошибка экспорта'));
+    } finally {
+      setExporting(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* Report Export Buttons */}
+      <div className="bg-white rounded-lg shadow-md p-4">
+        <h3 className="text-lg font-bold text-gray-900 mb-3">{t('admin.dashboard.reports.exportReports') || 'Экспорт отчётов'}</h3>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => handleExport('summary-pdf', () => analyticsService.exportSummaryReport('pdf'))}
+            disabled={!!exporting}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+          >
+            <Download className="w-4 h-4" />
+            {t('admin.dashboard.reports.summaryPdf') || 'Сводный PDF'}
+          </button>
+          <button
+            onClick={() => handleExport('summary-xlsx', () => analyticsService.exportSummaryReport('xlsx'))}
+            disabled={!!exporting}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+          >
+            <Download className="w-4 h-4" />
+            {t('admin.dashboard.reports.summaryExcel') || 'Сводный Excel'}
+          </button>
+          <button
+            onClick={() => handleExport('test-results', () => analyticsService.exportTestResults())}
+            disabled={!!exporting}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+          >
+            <Download className="w-4 h-4" />
+            {t('admin.dashboard.reports.testResults') || 'Результаты тестов'}
+          </button>
+          <button
+            onClick={() => handleExport('certs-pdf', () => analyticsService.exportCertificates('pdf'))}
+            disabled={!!exporting}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+          >
+            <Download className="w-4 h-4" />
+            {t('admin.dashboard.reports.certificatesPdf') || 'Сертификаты PDF'}
+          </button>
+          <button
+            onClick={() => handleExport('certs-xlsx', () => analyticsService.exportCertificates('xlsx'))}
+            disabled={!!exporting}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+          >
+            <Download className="w-4 h-4" />
+            {t('admin.dashboard.reports.certificatesExcel') || 'Сертификаты Excel'}
+          </button>
+          <button
+            onClick={() => handleExport('courses-popularity', () => analyticsService.exportCoursesPopularity())}
+            disabled={!!exporting}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+          >
+            <Download className="w-4 h-4" />
+            {t('admin.dashboard.reports.coursesPopularityExport') || 'Популярность курсов'}
+          </button>
+        </div>
+      </div>
+
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-white rounded-lg shadow-md p-6">
@@ -1478,10 +1638,6 @@ function ReportsSection() {
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold text-gray-900">{t('admin.dashboard.reports.coursesPopularity')}</h3>
-          <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
-            <Download className="w-4 h-4" />
-            {t('admin.dashboard.reports.export')}
-          </button>
         </div>
         {coursesPopularity.length === 0 ? (
           <div className="text-center py-12 text-gray-500">
@@ -2105,12 +2261,28 @@ function CourseStudentsModal({ course, onClose }: { course: any, onClose: () => 
               </h2>
               <p className="text-gray-600">{course.title}</p>
             </div>
-            <button 
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <X className="w-6 h-6" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={async () => {
+                  try {
+                    await coursesService.exportCourseEnrollments(course.id);
+                    toast.success(t('admin.dashboard.reports.exportSuccess') || 'Экспорт выполнен');
+                  } catch (err: any) {
+                    toast.error(err.message || (t('admin.dashboard.reports.exportError') || 'Ошибка экспорта'));
+                  }
+                }}
+                className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                {t('admin.dashboard.reports.exportList') || 'Экспорт списка'}
+              </button>
+              <button 
+                onClick={onClose}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
           </div>
 
           {/* Stats */}

@@ -3,13 +3,17 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
-from django.http import HttpResponse
+from django.http import HttpResponse, FileResponse
 from django.utils import timezone
+import mimetypes
+import os
 
 from .models import Protocol, ProtocolSignature
+from apps.core.export_utils import export_to_excel, create_excel_response
 from .serializers import (
     ProtocolSerializer,
     ProtocolCreateSerializer,
+    ProtocolUpdateSerializer,
     ProtocolSignatureSerializer,
     OTPRequestSerializer,
     OTPSignSerializer,
@@ -21,7 +25,7 @@ from apps.accounts.models import User
 
 class ProtocolViewSet(viewsets.ModelViewSet):
     """Protocol ViewSet"""
-    queryset = Protocol.objects.select_related('student', 'course', 'attempt', 'enrollment').prefetch_related('signatures__signer').all()
+    queryset = Protocol.objects.select_related('student', 'course', 'test', 'attempt', 'enrollment', 'uploaded_by').prefetch_related('signatures__signer').all()
     serializer_class = ProtocolSerializer
     permission_classes = [IsAdminOrReadOnly]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
@@ -29,6 +33,14 @@ class ProtocolViewSet(viewsets.ModelViewSet):
     search_fields = ['number', 'student__full_name', 'student__phone', 'course__title']
     ordering_fields = ['created_at', 'exam_date']
     ordering = ['-created_at']
+    
+    def get_queryset(self):
+        """Students see only their protocols; admin and PDEK see all"""
+        queryset = super().get_queryset()
+        user = self.request.user
+        if user.is_authenticated and user.role == 'student' and not user.is_admin:
+            queryset = queryset.filter(student=user)
+        return queryset
     
     def get_permissions(self):
         """Allow PDEK members to request and sign protocols"""
@@ -42,6 +54,8 @@ class ProtocolViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == 'create':
             return ProtocolCreateSerializer
+        if self.action in ['update', 'partial_update']:
+            return ProtocolUpdateSerializer
         return ProtocolSerializer
     
     def retrieve(self, request, *args, **kwargs):
@@ -301,13 +315,45 @@ class ProtocolViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['get'])
     def pdf(self, request, pk=None):
-        """Download protocol PDF"""
+        """Download protocol - uploaded file if exists, else generated PDF"""
         protocol = self.get_object()
         
-        # Generate PDF
-        buffer = generate_protocol_pdf(protocol)
+        if protocol.file and protocol.file.name:
+            # Serve uploaded file
+            content_type, _ = mimetypes.guess_type(protocol.file.name)
+            if not content_type:
+                content_type = 'application/octet-stream'
+            filename = os.path.basename(protocol.file.name)
+            response = FileResponse(protocol.file.open('rb'), content_type=content_type)
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            return response
         
+        # Generate PDF when no uploaded file
+        buffer = generate_protocol_pdf(protocol)
         response = HttpResponse(buffer.read(), content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="protocol_{protocol.number}.pdf"'
         return response
+
+    @action(detail=False, methods=['get'])
+    def export(self, request):
+        """Export protocols list to Excel"""
+        protocols = self.filter_queryset(self.get_queryset()).select_related(
+            'student', 'course', 'test'
+        ).order_by('-created_at')[:5000]
+
+        headers = ['Номер', 'Студент', 'Курс/Тест', 'Дата экзамена', 'Балл', 'Результат', 'Статус']
+        rows = []
+        for p in protocols:
+            course_or_test = p.course.title if p.course else (p.test.title if p.test else '—')
+            rows.append([
+                p.number,
+                p.student.full_name or p.student.phone or '',
+                course_or_test,
+                p.exam_date.strftime('%Y-%m-%d %H:%M') if p.exam_date else '',
+                f'{p.score:.1f}' if p.score is not None else '—',
+                'Сдан' if p.result == 'passed' else 'Не сдан',
+                p.get_status_display() if hasattr(p, 'get_status_display') else p.status,
+            ])
+        buffer = export_to_excel(headers, rows, 'Протоколы')
+        return create_excel_response(buffer, 'protocols.xlsx')
 

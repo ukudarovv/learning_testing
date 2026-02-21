@@ -346,6 +346,9 @@ export interface Protocol {
   signatures?: Signature[];
   rejection_reason?: string; // Backend format
   rejectionReason?: string; // Frontend format (for compatibility)
+  file?: string; // Uploaded file path/URL
+  uploaded_by?: { id: string; full_name?: string };
+  uploaded_at?: string;
   created_at?: string;
   updated_at?: string;
 }

@@ -1,4 +1,4 @@
-import { apiClient } from './api';
+import { apiClient, downloadBlob } from './api';
 import { Certificate, CertificateTemplate, PendingCertificate } from '../types/lms';
 
 const certificatesService = {
@@ -264,6 +264,11 @@ const certificatesService = {
 
   async deleteCertificate(certificateId: string): Promise<void> {
     await apiClient.delete(`/certificates/${certificateId}/`);
+  },
+
+  async exportCertificates(): Promise<void> {
+    const blob = await apiClient.get<Blob>('/certificates/export/', undefined, { responseType: 'blob' });
+    downloadBlob(blob, 'certificates.xlsx');
   },
 };
 

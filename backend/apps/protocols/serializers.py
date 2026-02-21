@@ -26,6 +26,8 @@ class ProtocolSerializer(serializers.ModelSerializer):
     test = TestSerializer(read_only=True)
     attempt = TestAttemptSerializer(read_only=True, allow_null=True)
     signatures = ProtocolSignatureSerializer(many=True, read_only=True)
+    uploaded_by = UserSerializer(read_only=True)
+    file = serializers.FileField(read_only=True)
     
     class Meta:
         model = Protocol
@@ -33,9 +35,32 @@ class ProtocolSerializer(serializers.ModelSerializer):
             'id', 'number', 'student', 'course', 'test', 'attempt', 'enrollment',
             'exam_date', 'score', 'passing_score', 'result',
             'status', 'rejection_reason', 'signatures',
+            'file', 'uploaded_by', 'uploaded_at',
             'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'number', 'created_at', 'updated_at']
+
+
+class ProtocolUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for updating protocol (file upload)"""
+    file = serializers.FileField(required=False, allow_null=True)
+    
+    class Meta:
+        model = Protocol
+        fields = ['file']
+    
+    def update(self, instance, validated_data):
+        request = self.context.get('request')
+        if request and hasattr(request, 'FILES') and 'file' in request.FILES:
+            validated_data['file'] = request.FILES['file']
+        
+        if request and hasattr(request, 'user'):
+            if 'file' in validated_data:
+                instance.uploaded_by = request.user
+                from django.utils import timezone
+                instance.uploaded_at = timezone.now()
+        
+        return super().update(instance, validated_data)
 
 
 class ProtocolCreateSerializer(serializers.ModelSerializer):

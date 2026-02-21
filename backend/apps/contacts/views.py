@@ -5,6 +5,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 
 from .models import ContactMessage
+from apps.core.export_utils import export_to_excel, create_excel_response
 from .serializers import (
     ContactMessageSerializer,
     ContactMessageCreateSerializer,
@@ -39,4 +40,24 @@ class ContactMessageViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Create new message with default status"""
         serializer.save(status='new')
+
+    @action(detail=False, methods=['get'])
+    def export(self, request):
+        """Export contact messages to Excel"""
+        messages = self.filter_queryset(self.get_queryset()).order_by('-created_at')[:5000]
+        headers = ['Имя', 'Компания', 'Email', 'Телефон', 'Направление', 'Сообщение', 'Статус', 'Дата']
+        rows = []
+        for m in messages:
+            rows.append([
+                m.name,
+                m.company or '',
+                m.email,
+                m.phone,
+                m.get_direction_display() if hasattr(m, 'get_direction_display') else m.direction or '',
+                (m.message or '')[:500],
+                m.get_status_display() if hasattr(m, 'get_status_display') else m.status,
+                m.created_at.strftime('%Y-%m-%d %H:%M') if m.created_at else '',
+            ])
+        buffer = export_to_excel(headers, rows, 'Контакты')
+        return create_excel_response(buffer, 'contact_messages.xlsx')
 

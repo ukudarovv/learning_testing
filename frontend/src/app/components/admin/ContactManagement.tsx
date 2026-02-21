@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Mail, Eye, Trash2, CheckCircle, Archive, X, Search, Filter } from 'lucide-react';
+import { Mail, Eye, Trash2, CheckCircle, Archive, X, Search, Filter, Download } from 'lucide-react';
 import { contactsService, ContactMessage } from '../../services/contacts';
 import { toast } from 'sonner';
 
@@ -124,9 +124,25 @@ export function ContactManagement({ refreshTrigger }: ContactManagementProps) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900">Сообщения обратной связи</h2>
-        <p className="text-gray-600 mt-1">Управление сообщениями от пользователей</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Сообщения обратной связи</h2>
+          <p className="text-gray-600 mt-1">Управление сообщениями от пользователей</p>
+        </div>
+        <button
+          onClick={async () => {
+            try {
+              await contactsService.exportMessages();
+              toast.success('Экспорт выполнен');
+            } catch (err: any) {
+              toast.error(err.message || 'Ошибка экспорта');
+            }
+          }}
+          className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+        >
+          <Download className="w-4 h-4" />
+          Экспорт
+        </button>
       </div>
 
       {/* Filters */}

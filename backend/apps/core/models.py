@@ -44,6 +44,14 @@ class SiteConfig(models.Model):
         default=True,
         verbose_name='Требовать SMS при регистрации'
     )
+    require_course_enrollment_request = models.BooleanField(
+        default=True,
+        verbose_name='Требовать запрос для курсов'
+    )
+    require_test_enrollment_request = models.BooleanField(
+        default=True,
+        verbose_name='Требовать запрос для тестов'
+    )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата обновления')
 
@@ -60,6 +68,10 @@ def get_site_config():
     """Get or create the singleton SiteConfig instance"""
     config, _ = SiteConfig.objects.get_or_create(
         pk=1,
-        defaults={'require_sms_on_registration': True}
+        defaults={
+            'require_sms_on_registration': True,
+            'require_course_enrollment_request': True,
+            'require_test_enrollment_request': True,
+        }
     )
     return config

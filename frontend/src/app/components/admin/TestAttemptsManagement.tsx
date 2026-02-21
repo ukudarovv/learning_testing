@@ -267,13 +267,29 @@ export function TestAttemptsManagement() {
             {t('admin.testAttempts.subtitle') || 'Просмотр всех видеозаписей прохождения тестов'}
           </p>
         </div>
-        <button
-          onClick={fetchAttempts}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <RefreshCw className="w-4 h-4" />
-          {t('common.refresh') || 'Обновить'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={async () => {
+              try {
+                await examsService.exportTestAttempts();
+                toast.success(t('admin.testAttempts.exportSuccess') || 'Экспорт выполнен');
+              } catch (err: any) {
+                toast.error(err.message || (t('admin.testAttempts.exportError') || 'Ошибка экспорта'));
+              }
+            }}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <Download className="w-4 h-4" />
+            {t('admin.testAttempts.export') || 'Экспорт'}
+          </button>
+          <button
+            onClick={fetchAttempts}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <RefreshCw className="w-4 h-4" />
+            {t('common.refresh') || 'Обновить'}
+          </button>
+        </div>
       </div>
 
       {/* Filters */}

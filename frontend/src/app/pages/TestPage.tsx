@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { useEnrollmentRequests } from '../hooks/useEnrollmentRequests';
 import { testsService } from '../services/tests';
+import { settingsService } from '../services/settings';
 import { TestAssignment } from '../types/lms';
 
 export function TestPage() {
@@ -35,6 +36,8 @@ export function TestPage() {
   const [testTimeSpent, setTestTimeSpent] = useState(0);
   const [testAttempts, setTestAttempts] = useState<TestAttempt[]>([]);
   const [creatingRequest, setCreatingRequest] = useState(false);
+  const [requireTestEnrollmentRequest, setRequireTestEnrollmentRequest] = useState(true);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
   
   // Получаем courseId и attemptId из state (для финального теста)
   const courseId = (location.state as any)?.courseId;
@@ -110,6 +113,19 @@ export function TestPage() {
     }
   }, [viewResults, stateAttemptId, testCompleted, testAttemptResult, testId, navigate]);
 
+  // Загружаем настройки доступа к тестам
+  useEffect(() => {
+    settingsService.getSettings()
+      .then((data) => {
+        setRequireTestEnrollmentRequest(data.require_test_enrollment_request ?? true);
+        setSettingsLoaded(true);
+      })
+      .catch(() => {
+        setRequireTestEnrollmentRequest(true);
+        setSettingsLoaded(true);
+      });
+  }, []);
+
   // Загружаем назначенные тесты
   useEffect(() => {
     const fetchAssignments = async () => {
@@ -174,16 +190,17 @@ export function TestPage() {
       return;
     }
     
-    // Ждем загрузки назначенных тестов перед проверкой доступа
-    // Для standalone тестов ждем завершения загрузки назначений
-    if (test && !attemptId && !starting && (!isStandaloneTest || assignmentsLoaded)) {
+    // Ждем загрузки назначенных тестов и настроек перед проверкой доступа
+    // Для standalone тестов ждем завершения загрузки назначений и настроек
+    if (test && !attemptId && !starting && (!isStandaloneTest || (assignmentsLoaded && settingsLoaded))) {
       const initializeAttempt = async () => {
         try {
           setStarting(true);
           
           // Проверяем доступ для тестов (кроме тестов внутри курса)
           // Тесты внутри курса доступны через курс и не требуют отдельного запроса
-          if (!isTestInCourse && test.id) {
+          // При отключённой настройке require_test_enrollment_request — пропускаем проверку
+          if (!isTestInCourse && test.id && requireTestEnrollmentRequest) {
             // Проверяем наличие назначенного теста администратором
             const assignedTest = testAssignments.find(a => {
               const assignmentTestId = typeof a.test === 'object' ? a.test?.id : a.testId;

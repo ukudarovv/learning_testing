@@ -8,6 +8,7 @@ from django.db.models import Count, Q
 from datetime import timedelta
 
 from .models import Vacancy, VacancyApplication
+from apps.core.export_utils import export_to_excel, create_excel_response
 from .serializers import (
     VacancySerializer, VacancyCreateUpdateSerializer,
     VacancyApplicationSerializer, VacancyApplicationCreateSerializer
@@ -120,6 +121,24 @@ class VacancyViewSet(viewsets.ModelViewSet):
             'status_distribution': status_distribution
         })
 
+    @action(detail=False, methods=['get'])
+    def export(self, request):
+        """Export vacancies list to Excel"""
+        vacancies = self.filter_queryset(self.get_queryset()).order_by('-created_at')[:5000]
+        headers = ['Название', 'Статус', 'Тип занятости', 'Местоположение', 'Язык', 'Дата создания']
+        rows = []
+        for v in vacancies:
+            rows.append([
+                v.title,
+                v.get_status_display() if hasattr(v, 'get_status_display') else v.status,
+                v.employment_type or '',
+                v.location or '',
+                v.language or '',
+                v.created_at.strftime('%Y-%m-%d %H:%M') if v.created_at else '',
+            ])
+        buffer = export_to_excel(headers, rows, 'Вакансии')
+        return create_excel_response(buffer, 'vacancies.xlsx')
+
 
 class VacancyApplicationViewSet(viewsets.ModelViewSet):
     """Vacancy Application ViewSet"""
@@ -161,4 +180,23 @@ class VacancyApplicationViewSet(viewsets.ModelViewSet):
             )
         else:
             serializer.save()
+
+    @action(detail=False, methods=['get'])
+    def export(self, request):
+        """Export vacancy applications to Excel"""
+        applications = self.filter_queryset(self.get_queryset()).select_related('vacancy').order_by('-created_at')[:5000]
+        headers = ['Вакансия', 'ФИО', 'Телефон', 'Email', 'Сообщение', 'Статус', 'Дата']
+        rows = []
+        for a in applications:
+            rows.append([
+                a.vacancy.title if a.vacancy else '—',
+                a.full_name,
+                a.phone or '',
+                a.email or '',
+                (a.message or '')[:300],
+                a.get_status_display() if hasattr(a, 'get_status_display') else a.status,
+                a.created_at.strftime('%Y-%m-%d %H:%M') if a.created_at else '',
+            ])
+        buffer = export_to_excel(headers, rows, 'Заявки на вакансии')
+        return create_excel_response(buffer, 'vacancy_applications.xlsx')
 

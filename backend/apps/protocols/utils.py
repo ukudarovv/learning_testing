@@ -31,11 +31,18 @@ def generate_protocol_pdf(protocol):
     story.append(Paragraph(f'№ {protocol.number}', styles['Heading2']))
     story.append(Spacer(1, 0.5*cm))
     
+    # Course/Test title (protocol can be for course or standalone test)
+    course_or_test_title = (
+        protocol.course.title if protocol.course
+        else (protocol.test.title if protocol.test else '—')
+    )
+    course_or_test_label = 'Курс:' if protocol.course else 'Тест:'
+
     # Protocol details
     data = [
         ['Студент:', protocol.student.full_name or protocol.student.phone],
         ['ИИН:', protocol.student.iin or 'Не указан'],
-        ['Курс:', protocol.course.title],
+        [course_or_test_label, course_or_test_title],
         ['Дата экзамена:', protocol.exam_date.strftime('%d.%m.%Y %H:%M')],
         ['Балл:', f'{protocol.score:.1f}%'],
         ['Проходной балл:', f'{protocol.passing_score:.1f}%'],

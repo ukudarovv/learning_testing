@@ -4,14 +4,24 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Count, Avg, Q, Sum
 from django.utils import timezone
+from django.http import HttpResponse
 from datetime import timedelta
 from collections import defaultdict
+from io import BytesIO
+
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.lib.units import cm
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.enums import TA_CENTER
 
 from apps.accounts.models import User
 from apps.courses.models import Course, CourseEnrollment
 from apps.exams.models import TestAttempt
 from apps.certificates.models import Certificate
 from apps.accounts.permissions import IsAdmin
+from apps.core.export_utils import export_to_excel, create_excel_response
 
 
 class AnalyticsViewSet(viewsets.ViewSet):
@@ -164,4 +174,168 @@ class AnalyticsViewSet(viewsets.ViewSet):
             student['rank'] = i
         
         return Response(top_students[:10])
+
+    def _get_stats_data(self):
+        """Get stats data for reports"""
+        total_students = User.objects.filter(role='student').count()
+        active_students = User.objects.filter(
+            role='student',
+            enrollments__status__in=['in_progress', 'exam_available']
+        ).distinct().count()
+        active_courses = Course.objects.filter(status__in=['assigned', 'in_progress']).count()
+        completed_courses = CourseEnrollment.objects.filter(status='completed').count()
+        total_attempts = TestAttempt.objects.filter(completed_at__isnull=False).count()
+        passed_attempts = TestAttempt.objects.filter(completed_at__isnull=False, passed=True).count()
+        success_rate = (passed_attempts / total_attempts * 100) if total_attempts > 0 else 0
+        avg_score = TestAttempt.objects.filter(
+            completed_at__isnull=False,
+            score__isnull=False
+        ).aggregate(avg=Avg('score'))['avg'] or 0
+        total_certificates = Certificate.objects.count()
+        this_month = timezone.now().replace(day=1)
+        certificates_this_month = Certificate.objects.filter(issued_at__gte=this_month).count()
+        return {
+            'total_students': total_students,
+            'active_students': active_students,
+            'active_courses': active_courses,
+            'completed_courses': completed_courses,
+            'success_rate': round(success_rate, 2),
+            'avg_score': round(avg_score, 2),
+            'total_certificates': total_certificates,
+            'certificates_this_month': certificates_this_month,
+        }
+
+    @action(detail=False, methods=['get'], url_path='summary_report')
+    def summary_report(self, request):
+        """Export summary report as PDF or Excel"""
+        fmt = request.query_params.get('format', 'xlsx').lower()
+        if fmt not in ('pdf', 'xlsx'):
+            return Response({'error': 'Invalid format. Use pdf or xlsx'}, status=400)
+
+        stats = self._get_stats_data()
+        if fmt == 'xlsx':
+            headers = ['Показатель', 'Значение']
+            rows = [
+                ['Всего студентов', stats['total_students']],
+                ['Активных студентов', stats['active_students']],
+                ['Активных курсов', stats['active_courses']],
+                ['Завершено курсов', stats['completed_courses']],
+                ['Процент сдачи (%)', stats['success_rate']],
+                ['Средний балл', stats['avg_score']],
+                ['Всего сертификатов', stats['total_certificates']],
+                ['Сертификатов за месяц', stats['certificates_this_month']],
+            ]
+            buffer = export_to_excel(headers, rows, 'Сводный отчет')
+            return create_excel_response(buffer, 'summary_report.xlsx')
+
+        # PDF
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4)
+        story = []
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=18, alignment=TA_CENTER)
+        story.append(Paragraph('Сводный отчет', title_style))
+        story.append(Spacer(1, 0.5*cm))
+        data = [['Показатель', 'Значение']] + [
+            ['Всего студентов', str(stats['total_students'])],
+            ['Активных студентов', str(stats['active_students'])],
+            ['Активных курсов', str(stats['active_courses'])],
+            ['Завершено курсов', str(stats['completed_courses'])],
+            ['Процент сдачи (%)', str(stats['success_rate'])],
+            ['Средний балл', str(stats['avg_score'])],
+            ['Всего сертификатов', str(stats['total_certificates'])],
+            ['Сертификатов за месяц', str(stats['certificates_this_month'])],
+        ]
+        table = Table(data, colWidths=[8*cm, 6*cm])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#E0E0E0')),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ]))
+        story.append(table)
+        doc.build(story)
+        buffer.seek(0)
+        response = HttpResponse(buffer.read(), content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename="summary_report.pdf"'
+        return response
+
+    @action(detail=False, methods=['get'], url_path='test_results_export')
+    def test_results_export(self, request):
+        """Export test results to Excel"""
+        attempts = TestAttempt.objects.filter(
+            completed_at__isnull=False
+        ).select_related('user', 'test').order_by('-completed_at')[:5000]
+
+        headers = ['Студент', 'Тест', 'Балл', 'Проходной балл', 'Результат', 'Дата прохождения']
+        rows = []
+        for a in attempts:
+            rows.append([
+                a.user.full_name or a.user.phone or '',
+                a.test.title if a.test else '—',
+                f'{a.score:.1f}' if a.score is not None else '—',
+                f'{a.passing_score:.1f}' if a.passing_score is not None else '—',
+                'Сдан' if a.passed else 'Не сдан',
+                a.completed_at.strftime('%Y-%m-%d %H:%M') if a.completed_at else '',
+            ])
+        buffer = export_to_excel(headers, rows, 'Результаты тестов')
+        return create_excel_response(buffer, 'test_results.xlsx')
+
+    @action(detail=False, methods=['get'], url_path='certificates_export')
+    def certificates_export(self, request):
+        """Export certificates list as PDF or Excel"""
+        fmt = request.query_params.get('format', 'xlsx').lower()
+        if fmt not in ('pdf', 'xlsx'):
+            return Response({'error': 'Invalid format. Use pdf or xlsx'}, status=400)
+
+        certs = Certificate.objects.select_related('student', 'course', 'test').order_by('-issued_at')[:1000]
+        headers = ['Номер', 'Студент', 'Курс/Тест', 'Дата выдачи']
+        rows = []
+        for c in certs:
+            course_or_test = c.course.title if c.course else (c.test.title if c.test else '—')
+            rows.append([
+                c.number,
+                c.student.full_name or c.student.phone or '',
+                course_or_test,
+                c.issued_at.strftime('%Y-%m-%d %H:%M') if c.issued_at else '',
+            ])
+
+        if fmt == 'xlsx':
+            buffer = export_to_excel(headers, rows, 'Сертификаты')
+            return create_excel_response(buffer, 'certificates.xlsx')
+
+        # PDF
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4)
+        story = []
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=18, alignment=TA_CENTER)
+        story.append(Paragraph('Выданные сертификаты', title_style))
+        story.append(Spacer(1, 0.5*cm))
+        data = [headers] + rows
+        table = Table(data, colWidths=[4*cm, 5*cm, 6*cm, 3*cm])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#E0E0E0')),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+        ]))
+        story.append(table)
+        doc.build(story)
+        buffer.seek(0)
+        response = HttpResponse(buffer.read(), content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename="certificates.pdf"'
+        return response
+
+    @action(detail=False, methods=['get'], url_path='courses_popularity_export')
+    def courses_popularity_export(self, request):
+        """Export courses popularity to Excel"""
+        courses = Course.objects.annotate(
+            students=Count('enrollments', distinct=True)
+        ).order_by('-students')
+
+        headers = ['Курс', 'Количество студентов']
+        rows = [[c.title, c.students] for c in courses]
+        buffer = export_to_excel(headers, rows, 'Популярность курсов')
+        return create_excel_response(buffer, 'courses_popularity.xlsx')
 

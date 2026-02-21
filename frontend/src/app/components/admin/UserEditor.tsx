@@ -66,7 +66,6 @@ export function UserEditor({ user, onSave, onCancel }: UserEditorProps) {
     { value: 'student', label: t('forms.login.studentRole') },
     { value: 'pdek_member', label: t('forms.login.pdekMemberRole') },
     { value: 'pdek_chairman', label: t('forms.login.pdekChairmanRole') },
-    { value: 'teacher', label: t('admin.users.teacher') },
     { value: 'admin', label: t('forms.login.adminRole') },
   ];
 
@@ -176,7 +175,7 @@ export function UserEditor({ user, onSave, onCancel }: UserEditorProps) {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email *
+                    Email <span className="text-gray-500 font-normal">({t('common.optional')})</span>
                   </label>
                   <input
                     type="email"
@@ -184,7 +183,6 @@ export function UserEditor({ user, onSave, onCancel }: UserEditorProps) {
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     placeholder="email@example.com"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
                   />
                 </div>
 

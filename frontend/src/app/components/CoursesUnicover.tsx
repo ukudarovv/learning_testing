@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { coursesService } from '../services/courses';
 import { categoriesService, Category } from '../services/categories';
 import { testsService } from '../services/tests';
+import { settingsService } from '../services/settings';
 import { Course, Test, TestAssignment } from '../types/lms';
 import { useUser } from '../contexts/UserContext';
 import { useTranslation } from 'react-i18next';
@@ -32,6 +33,8 @@ export function CoursesUnicover() {
   const [loading, setLoading] = useState(true);
   const [enrollingCourseId, setEnrollingCourseId] = useState<string | null>(null);
   const [testAssignments, setTestAssignments] = useState<TestAssignment[]>([]);
+  const [requireCourseEnrollmentRequest, setRequireCourseEnrollmentRequest] = useState(true);
+  const [requireTestEnrollmentRequest, setRequireTestEnrollmentRequest] = useState(true);
   
   // Получаем текущий язык интерфейса
   const currentInterfaceLanguage = i18n.language || localStorage.getItem('language') || 'ru';
@@ -135,6 +138,19 @@ export function CoursesUnicover() {
     };
     fetchData();
   }, [languageToUse, user]);
+
+  // Загружаем настройки доступа к курсам и тестам
+  useEffect(() => {
+    settingsService.getSettings()
+      .then((data) => {
+        setRequireCourseEnrollmentRequest(data.require_course_enrollment_request ?? true);
+        setRequireTestEnrollmentRequest(data.require_test_enrollment_request ?? true);
+      })
+      .catch(() => {
+        setRequireCourseEnrollmentRequest(true);
+        setRequireTestEnrollmentRequest(true);
+      });
+  }, []);
   
   // Сбрасываем выбранный язык фильтра при изменении языка интерфейса
   useEffect(() => {
@@ -300,6 +316,12 @@ export function CoursesUnicover() {
 
     if (user.role !== 'student') {
       toast.info(t('education.courses.studentsOnly'));
+      return;
+    }
+
+    // При отключённой настройке — прямой доступ к тесту
+    if (!requireTestEnrollmentRequest) {
+      navigate(`/student/test/${testId}`);
       return;
     }
 

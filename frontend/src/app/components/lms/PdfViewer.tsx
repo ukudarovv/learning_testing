@@ -14,9 +14,10 @@ pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.vers
 interface PdfViewerProps {
   url: string;
   title?: string;
+  allowDownload?: boolean;
 }
 
-export function PdfViewer({ url, title = 'PDF Документ' }: PdfViewerProps) {
+export function PdfViewer({ url, title = 'PDF Документ', allowDownload = false }: PdfViewerProps) {
   const [numPages, setNumPages] = useState<number | null>(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [scale, setScale] = useState(1.5);
@@ -133,15 +134,17 @@ export function PdfViewer({ url, title = 'PDF Документ' }: PdfViewerProp
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="font-bold text-gray-900">{title}</h3>
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-          >
-            <Download className="w-4 h-4" />
-            Скачать PDF
-          </a>
+          {allowDownload && (
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+            >
+              <Download className="w-4 h-4" />
+              Скачать PDF
+            </a>
+          )}
         </div>
         <div className="border border-gray-300 rounded-lg overflow-hidden bg-gray-100" style={{ height: '800px', position: 'relative' }}>
           <div className="flex items-center justify-center h-full">
@@ -160,15 +163,17 @@ export function PdfViewer({ url, title = 'PDF Документ' }: PdfViewerProp
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="font-bold text-gray-900">{title}</h3>
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-          >
-            <Download className="w-4 h-4" />
-            Скачать PDF
-          </a>
+          {allowDownload && (
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+            >
+              <Download className="w-4 h-4" />
+              Скачать PDF
+            </a>
+          )}
         </div>
         <div className="bg-red-50 border border-red-200 rounded-lg p-6">
           <div className="flex items-start gap-3">
@@ -176,15 +181,17 @@ export function PdfViewer({ url, title = 'PDF Документ' }: PdfViewerProp
             <div className="flex-1">
               <h3 className="font-semibold text-red-900 mb-2">Не удалось загрузить PDF</h3>
               <p className="text-sm text-red-800 mb-4">{error}</p>
-              <a
-                href={url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
-              >
-                <Download className="w-4 h-4" />
-                Скачать PDF для просмотра
-              </a>
+              {allowDownload && (
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+                >
+                  <Download className="w-4 h-4" />
+                  Скачать PDF для просмотра
+                </a>
+              )}
             </div>
           </div>
         </div>
@@ -202,15 +209,17 @@ export function PdfViewer({ url, title = 'PDF Документ' }: PdfViewerProp
               Страница {pageNumber} из {numPages}
             </span>
           )}
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-          >
-            <Download className="w-4 h-4" />
-            Скачать PDF
-          </a>
+          {allowDownload && (
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+            >
+              <Download className="w-4 h-4" />
+              Скачать PDF
+            </a>
+          )}
         </div>
       </div>
 

@@ -16,6 +16,7 @@ from .serializers import (
 )
 from .utils import generate_certificate_pdf
 from apps.accounts.permissions import IsAdminOrReadOnly
+from apps.core.export_utils import export_to_excel, create_excel_response
 from apps.courses.models import CourseEnrollment
 
 
@@ -33,7 +34,7 @@ class CertificateTemplateViewSet(viewsets.ModelViewSet):
 
 class CertificateViewSet(viewsets.ModelViewSet):
     """Certificate ViewSet"""
-    queryset = Certificate.objects.select_related('student', 'course', 'protocol', 'template', 'uploaded_by').all()
+    queryset = Certificate.objects.select_related('student', 'course', 'test', 'protocol', 'template', 'uploaded_by').all()
     serializer_class = CertificateSerializer
     permission_classes = [IsAdminOrReadOnly]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
@@ -64,6 +65,25 @@ class CertificateViewSet(viewsets.ModelViewSet):
         context['request'] = self.request
         return context
     
+    @action(detail=False, methods=['get'])
+    def export(self, request):
+        """Export certificates list to Excel"""
+        certificates = self.filter_queryset(self.get_queryset()).order_by('-issued_at')[:5000]
+
+        headers = ['Номер', 'Студент', 'Курс/Тест', 'Дата выдачи', 'Действителен до']
+        rows = []
+        for c in certificates:
+            course_or_test = c.course.title if c.course else (c.test.title if c.test else '—')
+            rows.append([
+                c.number,
+                c.student.full_name or c.student.phone or '',
+                course_or_test,
+                c.issued_at.strftime('%Y-%m-%d %H:%M') if c.issued_at else '',
+                c.valid_until.strftime('%Y-%m-%d') if c.valid_until else '—',
+            ])
+        buffer = export_to_excel(headers, rows, 'Сертификаты')
+        return create_excel_response(buffer, 'certificates.xlsx')
+
     @action(detail=True, methods=['get'])
     def pdf(self, request, pk=None):
         """Download certificate PDF"""

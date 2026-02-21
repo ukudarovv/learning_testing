@@ -1,4 +1,4 @@
-import { apiClient } from './api';
+import { apiClient, downloadBlob } from './api';
 
 export interface AnalyticsStats {
   total_students: number;
@@ -56,6 +56,36 @@ const analyticsService = {
 
   async getTopStudents(): Promise<TopStudent[]> {
     return apiClient.get<TopStudent[]>('/analytics/top_students/');
+  },
+
+  async exportSummaryReport(format: 'pdf' | 'xlsx'): Promise<void> {
+    const blob = await apiClient.get<Blob>(`/analytics/summary_report/?format=${format}`, undefined, {
+      responseType: 'blob',
+    });
+    const ext = format === 'pdf' ? 'pdf' : 'xlsx';
+    downloadBlob(blob, `summary_report.${ext}`);
+  },
+
+  async exportTestResults(): Promise<void> {
+    const blob = await apiClient.get<Blob>('/analytics/test_results_export/', undefined, {
+      responseType: 'blob',
+    });
+    downloadBlob(blob, 'test_results.xlsx');
+  },
+
+  async exportCertificates(format: 'pdf' | 'xlsx'): Promise<void> {
+    const blob = await apiClient.get<Blob>(`/analytics/certificates_export/?format=${format}`, undefined, {
+      responseType: 'blob',
+    });
+    const ext = format === 'pdf' ? 'pdf' : 'xlsx';
+    downloadBlob(blob, `certificates.${ext}`);
+  },
+
+  async exportCoursesPopularity(): Promise<void> {
+    const blob = await apiClient.get<Blob>('/analytics/courses_popularity_export/', undefined, {
+      responseType: 'blob',
+    });
+    downloadBlob(blob, 'courses_popularity.xlsx');
   },
 };
 

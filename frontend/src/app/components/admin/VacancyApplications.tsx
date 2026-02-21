@@ -125,6 +125,20 @@ export function VacancyApplications() {
           <h2 className="text-3xl font-bold text-gray-900">Отклики на вакансии</h2>
           <p className="text-gray-600 mt-1">Просмотр и управление откликами</p>
         </div>
+        <button
+          onClick={async () => {
+            try {
+              await vacanciesService.exportApplications();
+              toast.success('Экспорт выполнен');
+            } catch (err: any) {
+              toast.error(err.message || 'Ошибка экспорта');
+            }
+          }}
+          className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+        >
+          <Download className="w-4 h-4" />
+          Экспорт
+        </button>
       </div>
 
       {/* Statistics Cards */}

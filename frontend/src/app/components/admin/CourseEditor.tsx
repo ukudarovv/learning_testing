@@ -556,7 +556,6 @@ function LessonEditorModal({ lesson, onSave, onCancel, availableTests = [], load
     { value: 'text', label: t('admin.courses.lessonTypes.text'), icon: FileText },
     { value: 'video', label: t('admin.courses.lessonTypes.video'), icon: Video },
     { value: 'pdf', label: t('admin.courses.lessonTypes.pdf'), icon: FileText },
-    { value: 'ppt', label: t('admin.courses.lessonTypes.ppt'), icon: FileText },
     { value: 'quiz', label: t('admin.courses.lessonTypes.quiz'), icon: CheckCircle },
   ];
 
@@ -570,17 +569,10 @@ function LessonEditorModal({ lesson, onSave, onCancel, availableTests = [], load
 
     const fileName = file.name.toLowerCase();
     const isPdf = file.type === 'application/pdf' || fileName.endsWith('.pdf');
-    const isPpt = file.type === 'application/vnd.ms-powerpoint' || 
-                  file.type === 'application/vnd.openxmlformats-officedocument.presentationml.presentation' ||
-                  fileName.endsWith('.ppt') || fileName.endsWith('.pptx');
 
     // Проверяем тип файла в зависимости от типа урока
     if (formData.type === 'pdf' && !isPdf) {
       alert(t('admin.courses.pdfOnly') || 'Пожалуйста, выберите PDF файл');
-      return;
-    }
-    if (formData.type === 'ppt' && !isPpt) {
-      alert('Пожалуйста, выберите PPT или PPTX файл');
       return;
     }
 
@@ -608,8 +600,6 @@ function LessonEditorModal({ lesson, onSave, onCancel, availableTests = [], load
         
         if (formData.type === 'pdf') {
           setFormData({ ...formData, pdfUrl: fullUrl });
-        } else if (formData.type === 'ppt') {
-          setFormData({ ...formData, pptUrl: fullUrl, ppt_url: fullUrl });
         }
         
         alert(t('admin.courses.fileUploaded') || 'Файл успешно загружен');
@@ -849,82 +839,6 @@ function LessonEditorModal({ lesson, onSave, onCancel, availableTests = [], load
                         ✓ {t('admin.courses.fileUploaded') || 'Файл загружен'}
                       </p>
                     )}
-                  </div>
-
-                  <div>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={formData.allowDownload || false}
-                        onChange={(e) => setFormData({ ...formData, allowDownload: e.target.checked })}
-                        className="rounded"
-                      />
-                      <span className="text-sm text-gray-700">{t('admin.courses.allowDownloadPdf')}</span>
-                    </label>
-                  </div>
-                </div>
-              )}
-
-              {formData.type === 'ppt' && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      {t('admin.courses.pptUrl') || 'PPT URL'} *
-                    </label>
-                    <input
-                      type="url"
-                      value={formData.pptUrl || formData.ppt_url || ''}
-                      onChange={(e) => setFormData({ ...formData, pptUrl: e.target.value, ppt_url: e.target.value })}
-                      placeholder="https://..."
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      {t('admin.courses.uploadPpt') || 'Загрузить PPT файл'}
-                    </label>
-                    <div className="flex items-center gap-3">
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept=".ppt,.pptx,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            handleFileChange(e);
-                          }
-                        }}
-                        className="hidden"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleFileSelect}
-                        disabled={uploading}
-                        className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <Upload className="w-4 h-4" />
-                        {uploading ? (t('admin.courses.uploading') || 'Загрузка...') : t('admin.courses.selectFile')}
-                      </button>
-                      <span className="text-sm text-gray-500">{t('admin.courses.orEnterUrl')}</span>
-                    </div>
-                    {(formData.pptUrl || formData.ppt_url) && (
-                      <p className="text-xs text-green-600 mt-2">
-                        ✓ {t('admin.courses.fileUploaded') || 'Файл загружен'}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={formData.allowDownload || false}
-                        onChange={(e) => setFormData({ ...formData, allowDownload: e.target.checked })}
-                        className="rounded"
-                      />
-                      <span className="text-sm text-gray-700">{t('admin.courses.allowDownloadPpt') || 'Разрешить скачивание'}</span>
-                    </label>
                   </div>
                 </div>
               )}

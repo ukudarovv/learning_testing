@@ -121,6 +121,25 @@ export function CertificateManagement() {
 
   return (
     <div className="space-y-6">
+      {/* Header with Export */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-gray-900">Сертификаты</h2>
+        <button
+          onClick={async () => {
+            try {
+              await certificatesService.exportCertificates();
+              toast.success('Экспорт выполнен');
+            } catch (err: any) {
+              toast.error(err.message || 'Ошибка экспорта');
+            }
+          }}
+          className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+        >
+          <Download className="w-4 h-4" />
+          Экспорт списка
+        </button>
+      </div>
+
       {/* Tabs */}
       <div className="bg-white rounded-lg shadow-md">
           <div className="border-b border-gray-200">

@@ -1,4 +1,4 @@
-import { apiClient } from './api';
+import { apiClient, downloadBlob } from './api';
 import { Course, CourseEnrollment, CourseEnrollmentRequest } from '../types/lms';
 import { PaginatedResponse, PaginationParams } from '../types/pagination';
 
@@ -329,6 +329,13 @@ const coursesService = {
 
   async getCourseStudents(courseId: string): Promise<CourseEnrollment[]> {
     return apiClient.get<CourseEnrollment[]>(`/courses/${courseId}/students/`);
+  },
+
+  async exportCourseEnrollments(courseId: string): Promise<void> {
+    const blob = await apiClient.get<Blob>(`/courses/${courseId}/enrollments/export/`, undefined, {
+      responseType: 'blob',
+    });
+    downloadBlob(blob, `course_${courseId}_enrollments.xlsx`);
   },
 
   async enrollStudents(courseId: string, userIds: string[]): Promise<void> {

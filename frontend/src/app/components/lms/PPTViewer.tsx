@@ -7,9 +7,10 @@ interface PPTViewerProps {
   url: string;
   title?: string;
   lessonId?: string | number;
+  allowDownload?: boolean;
 }
 
-export function PPTViewer({ url, title = 'PPT Презентация', lessonId }: PPTViewerProps) {
+export function PPTViewer({ url, title = 'PPT Презентация', lessonId, allowDownload = false }: PPTViewerProps) {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -114,15 +115,17 @@ export function PPTViewer({ url, title = 'PPT Презентация', lessonId 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="font-bold text-gray-900">{title}</h3>
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium"
-          >
-            <Download className="w-4 h-4" />
-            Скачать PPT
-          </a>
+          {allowDownload && (
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium"
+            >
+              <Download className="w-4 h-4" />
+              Скачать PPT
+            </a>
+          )}
         </div>
         <div className="border border-gray-300 rounded-lg overflow-hidden bg-gray-100" style={{ height: '800px', position: 'relative' }}>
           <div className="flex items-center justify-center h-full">
@@ -143,15 +146,17 @@ export function PPTViewer({ url, title = 'PPT Презентация', lessonId 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="font-bold text-gray-900">{title}</h3>
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium"
-          >
-            <Download className="w-4 h-4" />
-            Скачать PPT
-          </a>
+          {allowDownload && (
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium"
+            >
+              <Download className="w-4 h-4" />
+              Скачать PPT
+            </a>
+          )}
         </div>
         
         <div className={`border rounded-lg p-6 ${isServiceUnavailable ? 'bg-orange-50 border-orange-200' : 'bg-red-50 border-red-200'}`}>
@@ -168,21 +173,23 @@ export function PPTViewer({ url, title = 'PPT Презентация', lessonId 
                 <div className="bg-white rounded-lg p-4 mb-4 border border-orange-200">
                   <p className="text-sm text-orange-900">
                     Для просмотра презентаций в браузере необходимо установить LibreOffice на сервере.
-                    В качестве альтернативы используйте кнопку "Скачать PPT" для просмотра файла на вашем устройстве.
+                    {allowDownload && ' В качестве альтернативы используйте кнопку "Скачать PPT" для просмотра файла на вашем устройстве.'}
                   </p>
                 </div>
               )}
-              <div className="flex gap-2">
-                <a
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium"
-                >
-                  <Download className="w-4 h-4" />
-                  Скачать файл для просмотра
-                </a>
-              </div>
+              {allowDownload && (
+                <div className="flex gap-2">
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium"
+                  >
+                    <Download className="w-4 h-4" />
+                    Скачать файл для просмотра
+                  </a>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -196,17 +203,19 @@ export function PPTViewer({ url, title = 'PPT Презентация', lessonId 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="font-bold text-gray-900">{title}</h3>
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium"
-          >
-            <Download className="w-4 h-4" />
-            Скачать оригинальный PPT
-          </a>
+          {allowDownload && (
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium"
+            >
+              <Download className="w-4 h-4" />
+              Скачать оригинальный PPT
+            </a>
+          )}
         </div>
-        <PdfViewer url={pdfUrl} title={title} />
+        <PdfViewer url={pdfUrl} title={title} allowDownload={allowDownload} />
       </div>
     );
   }
@@ -216,15 +225,17 @@ export function PPTViewer({ url, title = 'PPT Презентация', lessonId 
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="font-bold text-gray-900">{title}</h3>
-        <a
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium"
-        >
-          <Download className="w-4 h-4" />
-          Скачать PPT
-        </a>
+        {allowDownload && (
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium"
+          >
+            <Download className="w-4 h-4" />
+            Скачать PPT
+          </a>
+        )}
       </div>
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <div className="flex items-start gap-3">
@@ -232,7 +243,9 @@ export function PPTViewer({ url, title = 'PPT Презентация', lessonId 
           <div className="flex-1">
             <p className="text-sm text-blue-900 font-medium mb-1">Информация</p>
             <p className="text-xs text-blue-800">
-              Используйте кнопку "Скачать PPT" для просмотра презентации на вашем устройстве.
+              {allowDownload
+                ? 'Используйте кнопку "Скачать PPT" для просмотра презентации на вашем устройстве.'
+                : 'Просмотр презентации в браузере недоступен.'}
             </p>
           </div>
         </div>

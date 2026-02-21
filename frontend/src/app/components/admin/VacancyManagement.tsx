@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Plus, Edit, Trash2, Eye, Filter, X } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Eye, Filter, X, Download } from 'lucide-react';
 import { vacanciesService, Vacancy } from '../../services/vacancies';
 import { toast } from 'sonner';
 
@@ -89,13 +89,29 @@ export function VacancyManagement({ onCreate, onEdit, refreshTrigger }: VacancyM
           <h2 className="text-2xl font-bold text-gray-900">Управление вакансиями</h2>
           <p className="text-gray-600 mt-1">Создание и редактирование вакансий</p>
         </div>
-        <button
-          onClick={onCreate}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Создать вакансию</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={async () => {
+              try {
+                await vacanciesService.exportVacancies();
+                toast.success('Экспорт выполнен');
+              } catch (err: any) {
+                toast.error(err.message || 'Ошибка экспорта');
+              }
+            }}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <Download className="w-4 h-4" />
+            Экспорт
+          </button>
+          <button
+            onClick={onCreate}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Создать вакансию</span>
+          </button>
+        </div>
       </div>
 
       {/* Filters */}

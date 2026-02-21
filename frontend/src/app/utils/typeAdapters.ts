@@ -113,6 +113,9 @@ export function adaptProtocol(backendProtocol: any): Protocol {
     status: backendProtocol.status,
     signatures: (backendProtocol.signatures || []).map((sig: any) => adaptSignature(sig)),
     rejectionReason: backendProtocol.rejection_reason || backendProtocol.rejectionReason,
+    file: backendProtocol.file || undefined,
+    uploaded_by: backendProtocol.uploaded_by,
+    uploaded_at: backendProtocol.uploaded_at,
   };
   
   console.log('adaptProtocol - adapted result:', adapted);

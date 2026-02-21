@@ -1,4 +1,4 @@
-import { apiClient } from './api';
+import { apiClient, downloadBlob } from './api';
 import { Protocol } from '../types/lms';
 import { adaptProtocol } from '../utils/typeAdapters';
 
@@ -67,6 +67,43 @@ const protocolsService = {
     }
     
     return response.blob();
+  },
+
+  async uploadProtocolFile(protocolId: string, file: File): Promise<Protocol> {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const url = `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/protocols/${protocolId}/`;
+    const token = apiClient.getToken();
+    const response = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || errorData.message || errorData.error || 'Failed to upload protocol file');
+    }
+    
+    const data = await response.json();
+    return adaptProtocol(data);
+  },
+
+  getFileUrl(protocol: Protocol): string | null {
+    const path = protocol.file;
+    if (!path || (typeof path === 'string' && !path.trim())) return null;
+    const pathStr = typeof path === 'string' ? path : String(path);
+    if (pathStr.startsWith('http')) return pathStr;
+    const baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:8000/api').replace(/\/api\/?$/, '') || 'http://localhost:8000';
+    return `${baseUrl}${pathStr.startsWith('/') ? pathStr : '/' + pathStr}`;
+  },
+
+  async exportProtocols(): Promise<void> {
+    const blob = await apiClient.get<Blob>('/protocols/export/', undefined, { responseType: 'blob' });
+    downloadBlob(blob, 'protocols.xlsx');
   },
 };
 

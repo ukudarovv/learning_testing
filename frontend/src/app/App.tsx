@@ -13,6 +13,8 @@ import { DashboardPage } from './pages/DashboardPage';
 import { ContactsPage } from './pages/ContactsPage';
 import { ProjectsPage } from './pages/ProjectsPage';
 import { ProjectDetailPage } from './pages/ProjectDetailPage';
+import { NewsPage } from './pages/NewsPage';
+import { NewsDetailPage } from './pages/NewsDetailPage';
 import { StudentDashboardPage } from './pages/StudentDashboardPage';
 import { StudentCoursesPage } from './pages/StudentCoursesPage';
 import { StudentHistoryPage } from './pages/StudentHistoryPage';
@@ -46,6 +48,8 @@ export default function App() {
         <Route path="/education" element={<EducationPage />} />
         <Route path="/projects" element={<ProjectsPage />} />
         <Route path="/projects/:id" element={<ProjectDetailPage />} />
+        <Route path="/news" element={<NewsPage />} />
+        <Route path="/news/:id" element={<NewsDetailPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/password-reset" element={<PasswordResetPage />} />

@@ -1,4 +1,4 @@
-import { apiClient } from './api';
+import { apiClient, downloadBlob } from './api';
 import { TestAttempt, ExtraAttemptRequest } from '../types/lms';
 
 const examsService = {
@@ -170,6 +170,11 @@ const examsService = {
   // Test termination
   async terminateTestAttempt(attemptId: string, reason: string): Promise<TestAttempt> {
     return apiClient.post<TestAttempt>(`/exams/${attemptId}/terminate/`, { reason });
+  },
+
+  async exportTestAttempts(): Promise<void> {
+    const blob = await apiClient.get<Blob>('/exams/export/', undefined, { responseType: 'blob' });
+    downloadBlob(blob, 'test_attempts.xlsx');
   },
 };
 

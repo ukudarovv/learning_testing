@@ -31,6 +31,10 @@ class Protocol(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='generated')
     rejection_reason = models.TextField(blank=True)
     
+    file = models.FileField(upload_to='protocols/files/', null=True, blank=True, help_text='Uploaded protocol file in any format')
+    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='uploaded_protocols', on_delete=models.SET_NULL, null=True, blank=True, help_text='Admin who uploaded the file')
+    uploaded_at = models.DateTimeField(null=True, blank=True, help_text='When the file was uploaded')
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     

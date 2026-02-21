@@ -1,23 +1,29 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Award, FileText, Download, ExternalLink, Calendar, Search } from 'lucide-react';
-import { Certificate } from '../../types/lms';
+import { Award, FileText, Download, ExternalLink, Calendar, Search, ClipboardList } from 'lucide-react';
+import { Certificate, Protocol } from '../../types/lms';
 import { certificatesService } from '../../services/certificates';
+import { protocolsService } from '../../services/protocols';
 import { toast } from 'sonner';
 
 export function DocumentsView() {
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [certificates, setCertificates] = useState<Certificate[]>([]);
+  const [protocols, setProtocols] = useState<Protocol[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const certsData = await certificatesService.getCertificates();
+        const [certsData, protocolsData] = await Promise.all([
+          certificatesService.getCertificates(),
+          protocolsService.getProtocols(),
+        ]);
         setCertificates(certsData);
+        setProtocols(protocolsData);
       } catch (error) {
         console.error('Failed to fetch documents:', error);
         toast.error(t('lms.documents.loadError'));
@@ -31,6 +37,13 @@ export function DocumentsView() {
   const filteredCertificates = certificates.filter(cert => {
     const courseOrTestName = cert.courseName || cert.course?.title || cert.test?.title || cert.testName || '';
     const number = cert.number || '';
+    const query = searchQuery.toLowerCase();
+    return courseOrTestName.toLowerCase().includes(query) || number.toLowerCase().includes(query);
+  });
+
+  const filteredProtocols = protocols.filter(protocol => {
+    const courseOrTestName = protocol.courseName || protocol.testName || '';
+    const number = protocol.number || '';
     const query = searchQuery.toLowerCase();
     return courseOrTestName.toLowerCase().includes(query) || number.toLowerCase().includes(query);
   });
@@ -60,30 +73,65 @@ export function DocumentsView() {
           </div>
         </div>
 
-        {/* Certificates */}
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           </div>
         ) : (
-          <div className="space-y-4">
-            {filteredCertificates.length === 0 ? (
-              <div className="bg-white rounded-lg shadow-md p-12 text-center">
-                <Award className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-xl font-bold text-gray-900 mb-2">
-                  {searchQuery ? t('lms.documents.noCertificatesSearch') : t('lms.documents.noCertificates')}
-                </h3>
-                <p className="text-gray-600">
-                  {searchQuery 
-                    ? t('lms.documents.noCertificatesSearchDesc')
-                    : t('lms.documents.noCertificatesDesc')}
-                </p>
-              </div>
-            ) : (
-              filteredCertificates.map(cert => (
-                <CertificateCard key={cert.id} certificate={cert} />
-              ))
-            )}
+          <div className="space-y-8">
+            {/* Certificates Section */}
+            <div>
+              <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <Award className="w-6 h-6 text-yellow-600" />
+                {t('lms.documents.certificates') || 'Сертификаты'}
+              </h2>
+              {filteredCertificates.length === 0 ? (
+                <div className="bg-white rounded-lg shadow-md p-12 text-center">
+                  <Award className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">
+                    {searchQuery ? t('lms.documents.noCertificatesSearch') : t('lms.documents.noCertificates')}
+                  </h3>
+                  <p className="text-gray-600">
+                    {searchQuery 
+                      ? t('lms.documents.noCertificatesSearchDesc')
+                      : t('lms.documents.noCertificatesDesc')}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredCertificates.map(cert => (
+                    <CertificateCard key={cert.id} certificate={cert} />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Protocols Section */}
+            <div>
+              <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <ClipboardList className="w-6 h-6 text-blue-600" />
+                {t('lms.documents.protocols') || 'Протоколы'}
+              </h2>
+              {filteredProtocols.length === 0 ? (
+                <div className="bg-white rounded-lg shadow-md p-12 text-center">
+                  <ClipboardList className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">
+                    {searchQuery ? t('lms.documents.noProtocolsSearch') : t('lms.documents.noProtocols')}
+                  </h3>
+                  <p className="text-gray-600">
+                    {searchQuery 
+                      ? t('lms.documents.noProtocolsSearchDesc')
+                      : t('lms.documents.noProtocolsDesc')}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredProtocols.map(protocol => (
+                    <ProtocolCard key={protocol.id} protocol={protocol} />
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -230,6 +278,121 @@ function CertificateCard({ certificate }: { certificate: Certificate }) {
             <ExternalLink className="w-4 h-4" />
             {t('lms.documents.verifyAuthenticity')}
           </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProtocolCard({ protocol }: { protocol: Protocol }) {
+  const { t } = useTranslation();
+  const fileUrl = protocolsService.getFileUrl(protocol);
+
+  const formatDate = (date: Date | string | undefined): string => {
+    if (!date) return '—';
+    try {
+      const dateObj = date instanceof Date ? date : new Date(date);
+      return dateObj.toLocaleDateString('ru-RU', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return '—';
+    }
+  };
+
+  const handleDownload = async () => {
+    try {
+      if (fileUrl) {
+        const response = await fetch(fileUrl, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          },
+        });
+        if (!response.ok) throw new Error('Failed to download file');
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `protocol_${protocol.number}.${blob.type.includes('pdf') ? 'pdf' : blob.type.split('/')[1] || 'pdf'}`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        const blob = await protocolsService.downloadProtocolPDF(protocol.id);
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `protocol_${protocol.number}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }
+      toast.success(t('lms.documents.downloadSuccess'));
+    } catch (error: any) {
+      toast.error(error.message || t('lms.documents.downloadError'));
+    }
+  };
+
+  const courseOrTestName = protocol.courseName || protocol.testName || '—';
+
+  return (
+    <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+      <div className="p-6">
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex items-start gap-4">
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+              <ClipboardList className="w-8 h-8 text-white" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-gray-900 mb-1">{courseOrTestName}</h3>
+              <p className="text-sm text-gray-600 mb-2">{t('lms.documents.protocolNumber', { number: protocol.number }) || `Протокол №${protocol.number}`}</p>
+              <div className="flex flex-wrap gap-3 text-sm">
+                <div className="flex items-center gap-1 text-gray-600">
+                  <Calendar className="w-4 h-4" />
+                  <span>{t('lms.documents.examDate', { date: formatDate(protocol.examDate) }) || `Дата экзамена: ${formatDate(protocol.examDate)}`}</span>
+                </div>
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${protocol.result === 'passed' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                  {protocol.result === 'passed' ? (t('lms.documents.passed') || 'Сдан') : (t('lms.documents.failed') || 'Не сдан')}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          {fileUrl ? (
+            <>
+              <a
+                href={fileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <FileText className="w-4 h-4" />
+                {t('lms.documents.openFile')}
+              </a>
+              <button
+                onClick={handleDownload}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                {t('lms.documents.download')}
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={handleDownload}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Download className="w-4 h-4" />
+              {t('lms.documents.downloadPdf')}
+            </button>
+          )}
         </div>
       </div>
     </div>

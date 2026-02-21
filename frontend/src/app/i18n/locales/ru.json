@@ -53,6 +53,7 @@
     "support": "Поддержка",
     "partners": "Партнеры",
     "projects": "Проекты",
+    "news": "Новости",
     "vacancies": "Вакансии",
     "certificateVerification": "Проверка подлинности сертификата"
   },
@@ -99,6 +100,17 @@
       "status": "Статус",
       "noLogo": "Нет логотипа"
     }
+  },
+  "news": {
+    "badge": "Новости",
+    "pageTitle": "Новости",
+    "description": "Актуальные новости и события",
+    "searchPlaceholder": "Поиск по заголовку...",
+    "allCategories": "Все категории",
+    "loading": "Загрузка...",
+    "loadError": "Не удалось загрузить новости",
+    "notFound": "Новости не найдены",
+    "backToList": "Вернуться к списку новостей"
   },
   "projects": {
     "badge": "Портфолио",
@@ -383,6 +395,10 @@
     },
     "projects": {
       "title": "Проекты"
+    },
+    "news": {
+      "title": "Новости",
+      "categories": "Категории новостей"
     },
     "users": {
       "title": "Пользователи",
@@ -677,6 +693,10 @@
       "description": "При включении пользователи должны подтвердить номер телефона SMS-кодом при регистрации",
       "requireSmsOnRegistration": "Требовать SMS при регистрации",
       "requireSmsHint": "При включении пользователи должны подтвердить номер телефона SMS-кодом при регистрации",
+      "requireCourseEnrollmentRequest": "Требовать запрос администратора для доступа к курсам",
+      "requireCourseEnrollmentRequestHint": "При включении студенты должны подать запрос, администратор одобряет доступ",
+      "requireTestEnrollmentRequest": "Требовать запрос администратора для доступа к тестам",
+      "requireTestEnrollmentRequestHint": "При включении студенты должны подать запрос или получить назначение от администратора",
       "loadError": "Ошибка загрузки настроек",
       "saveSuccess": "Настройки сохранены",
       "saveError": "Ошибка сохранения настроек"
@@ -734,7 +754,10 @@
       "attempts": "Попытки",
       "allLimits": "Все лимиты",
       "limitReached": "Лимит исчерпан",
-      "pendingRequest": "Ожидает запрос на дополнительные попытки"
+      "pendingRequest": "Ожидает запрос на дополнительные попытки",
+      "export": "Экспорт",
+      "exportSuccess": "Экспорт выполнен",
+      "exportError": "Ошибка экспорта"
     },
     "protocols": {
       "title": "Протоколы",
@@ -760,8 +783,25 @@
       "score": "Балл",
       "result": "Результат",
       "status": "Статус",
+      "file": "Файл",
       "actions": "Действия",
-      "download": "Скачать PDF",
+      "download": "Скачать",
+      "open": "Открыть",
+      "noFile": "Нет файла",
+      "upload": "Загрузить",
+      "replace": "Заменить",
+      "uploadProtocol": "Загрузить протокол",
+      "selectFile": "Выберите файл для загрузки",
+      "protocolFile": "Файл протокола",
+      "chooseFile": "Выберите файл",
+      "orDrag": "или перетащите сюда",
+      "anyFormat": "PDF, DOC, DOCX, JPG, PNG, XLS, XLSX до 10MB",
+      "selected": "Выбран",
+      "cancel": "Отмена",
+      "uploading": "Загрузка...",
+      "uploadSuccess": "Протокол загружен",
+      "uploadError": "Ошибка при загрузке протокола",
+      "downloadPdf": "Скачать PDF",
       "view": "Просмотр",
       "viewDetails": "Просмотр деталей протокола",
       "downloadSuccess": "Протокол скачан",
@@ -797,7 +837,10 @@
         "signedMembers": "Подписан членами",
         "signedChairman": "Подписан председателем",
         "rejected": "Отклонен"
-      }
+      },
+      "export": "Экспорт",
+      "exportSuccess": "Экспорт выполнен",
+      "exportError": "Ошибка экспорта"
     },
     "dashboard": {
       "title": "Панель администратора",
@@ -939,10 +982,18 @@
         "noStudentsData": "Нет данных о студентах",
         "exportReports": "Экспорт отчетов",
         "summaryReport": "Сводный отчет",
+        "summaryPdf": "Сводный PDF",
+        "summaryExcel": "Сводный Excel",
         "pdfExcel": "PDF / Excel",
         "testResults": "Результаты тестов",
+        "certificatesPdf": "Сертификаты PDF",
+        "certificatesExcel": "Сертификаты Excel",
+        "coursesPopularityExport": "Популярность курсов",
         "excel": "Excel",
-        "issuedCertificates": "Выданные сертификаты"
+        "issuedCertificates": "Выданные сертификаты",
+        "exportSuccess": "Экспорт выполнен",
+        "exportError": "Ошибка экспорта",
+        "exportList": "Экспорт списка"
       },
       "categories": {
         "management": "Управление категориями",
@@ -1021,6 +1072,12 @@
         "projectUpdateSuccess": "Проект успешно обновлен",
         "projectCreateSuccess": "Проект успешно создан",
         "projectSaveError": "Ошибка сохранения проекта",
+        "newsLoadError": "Ошибка загрузки новости",
+        "newsTitleRequired": "Введите заголовок новости",
+        "newsTitleRequiredError": "Заголовок новости обязателен",
+        "newsUpdateSuccess": "Новость успешно обновлена",
+        "newsCreateSuccess": "Новость успешно создана",
+        "newsSaveError": "Ошибка сохранения новости",
         "unknownError": "Неизвестная ошибка"
       }
     }
@@ -1297,7 +1354,7 @@
       "qrCode": "QR-код: {{code}}",
       "verifyAuthenticity": "Проверить подлинность",
       "protocolNumber": "Протокол №{{number}}",
-      "examDate": "Дата экзамена:",
+      "examDate": "Дата экзамена: {{date}}",
       "result": "Результат:",
       "passed": "Сдал",
       "failed": "Не сдал",

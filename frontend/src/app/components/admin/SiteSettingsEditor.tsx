@@ -10,12 +10,16 @@ export function SiteSettingsEditor() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [requireSmsOnRegistration, setRequireSmsOnRegistration] = useState(true);
+  const [requireCourseEnrollmentRequest, setRequireCourseEnrollmentRequest] = useState(true);
+  const [requireTestEnrollmentRequest, setRequireTestEnrollmentRequest] = useState(true);
 
   useEffect(() => {
     settingsService.getSettings()
       .then((data) => {
         setConfig(data);
         setRequireSmsOnRegistration(data.require_sms_on_registration);
+        setRequireCourseEnrollmentRequest(data.require_course_enrollment_request ?? true);
+        setRequireTestEnrollmentRequest(data.require_test_enrollment_request ?? true);
       })
       .catch(() => toast.error(t('admin.settings.loadError') || 'Ошибка загрузки настроек'))
       .finally(() => setLoading(false));
@@ -26,6 +30,8 @@ export function SiteSettingsEditor() {
     try {
       const updated = await settingsService.updateSettings({
         require_sms_on_registration: requireSmsOnRegistration,
+        require_course_enrollment_request: requireCourseEnrollmentRequest,
+        require_test_enrollment_request: requireTestEnrollmentRequest,
       });
       setConfig(updated);
       toast.success(t('admin.settings.saveSuccess') || 'Настройки сохранены');
@@ -73,6 +79,44 @@ export function SiteSettingsEditor() {
               </span>
               <p className="text-sm text-gray-500 mt-1">
                 {t('admin.settings.requireSmsHint') || 'При включении пользователи должны подтвердить номер телефона SMS-кодом при регистрации'}
+              </p>
+            </div>
+          </label>
+        </div>
+
+        <div className="flex items-start gap-4 mt-4">
+          <label className="flex items-center gap-3 cursor-pointer flex-1">
+            <input
+              type="checkbox"
+              checked={requireCourseEnrollmentRequest}
+              onChange={(e) => setRequireCourseEnrollmentRequest(e.target.checked)}
+              className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <div>
+              <span className="font-medium text-gray-900">
+                {t('admin.settings.requireCourseEnrollmentRequest') || 'Требовать запрос администратора для доступа к курсам'}
+              </span>
+              <p className="text-sm text-gray-500 mt-1">
+                {t('admin.settings.requireCourseEnrollmentRequestHint') || 'При включении студенты должны подать запрос, администратор одобряет доступ'}
+              </p>
+            </div>
+          </label>
+        </div>
+
+        <div className="flex items-start gap-4 mt-4">
+          <label className="flex items-center gap-3 cursor-pointer flex-1">
+            <input
+              type="checkbox"
+              checked={requireTestEnrollmentRequest}
+              onChange={(e) => setRequireTestEnrollmentRequest(e.target.checked)}
+              className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <div>
+              <span className="font-medium text-gray-900">
+                {t('admin.settings.requireTestEnrollmentRequest') || 'Требовать запрос администратора для доступа к тестам'}
+              </span>
+              <p className="text-sm text-gray-500 mt-1">
+                {t('admin.settings.requireTestEnrollmentRequestHint') || 'При включении студенты должны подать запрос или получить назначение от администратора'}
               </p>
             </div>
           </label>

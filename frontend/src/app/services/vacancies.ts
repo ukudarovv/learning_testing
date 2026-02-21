@@ -1,4 +1,4 @@
-import { apiClient } from './api';
+import { apiClient, downloadBlob } from './api';
 
 export interface Vacancy {
   id: string;
@@ -190,6 +190,18 @@ const vacanciesService = {
 
   async updateApplication(id: string, application: Partial<VacancyApplication>): Promise<VacancyApplication> {
     return apiClient.patch<VacancyApplication>(`/vacancies/applications/${id}/`, application);
+  },
+
+  async exportVacancies(): Promise<void> {
+    const blob = await apiClient.get<Blob>('/vacancies/export/', undefined, { responseType: 'blob' });
+    downloadBlob(blob, 'vacancies.xlsx');
+  },
+
+  async exportApplications(): Promise<void> {
+    const blob = await apiClient.get<Blob>('/vacancies/applications/export/', undefined, {
+      responseType: 'blob',
+    });
+    downloadBlob(blob, 'vacancy_applications.xlsx');
   },
 };
 
