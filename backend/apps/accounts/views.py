@@ -142,6 +142,13 @@ class UserViewSet(viewsets.ModelViewSet):
         elif self.action in ['update', 'partial_update']:
             return UserUpdateSerializer
         return UserSerializer
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        # При создании пользователя через админку SMS не требуется
+        if self.action == 'create':
+            context['require_sms_on_registration'] = False
+        return context
     
     def create(self, request, *args, **kwargs):
         """Override create to return generated password if applicable"""
