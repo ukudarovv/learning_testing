@@ -263,7 +263,14 @@ if SENDGRID_API_KEY:
     EMAIL_HOST_PASSWORD = SENDGRID_API_KEY
     DEFAULT_FROM_EMAIL = SENDGRID_FROM_EMAIL or os.getenv('DEFAULT_FROM_EMAIL', 'noreply@unicover.kz')
 else:
-    EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+    # Если EMAIL_HOST задан в .env — используем SMTP. Иначе console (письма только в лог)
+    _email_host = os.getenv('EMAIL_HOST', '')
+    _default_backend = (
+        'django.core.mail.backends.smtp.EmailBackend'
+        if _email_host
+        else 'django.core.mail.backends.console.EmailBackend'
+    )
+    EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', _default_backend)
     EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
     EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
     EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
