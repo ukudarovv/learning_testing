@@ -455,6 +455,7 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
 
   const handleSMSVerified = async (otp: string) => {
     if (!course.id) return;
+    if (loadingOTP) return;
 
     try {
       setLoadingOTP(true);

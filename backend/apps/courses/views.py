@@ -686,6 +686,16 @@ class CourseViewSet(viewsets.ModelViewSet):
             return Response(error_response, status=status.HTTP_400_BAD_REQUEST)
         
         logger.info(f"OTP verification successful for course {course.id}, user {request.user.id}")
+
+        # Протокол уже создан (повторное нажатие) — возвращаем существующий
+        from apps.protocols.models import Protocol
+        existing = Protocol.objects.filter(enrollment=enrollment).first()
+        if existing:
+            logger.info(f"Protocol already exists for enrollment {enrollment.id}, returning existing protocol {existing.id}")
+            return Response({
+                'message': 'Course completion verified. Protocol already created for PDEK review.',
+                'protocol_id': existing.id
+            }, status=status.HTTP_200_OK)
         
         # Get final test attempt if exists
         final_test_attempt = None

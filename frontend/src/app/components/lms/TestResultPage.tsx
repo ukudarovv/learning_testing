@@ -148,6 +148,7 @@ export function TestResultPage({
 
   const handleSMSVerified = async (otp: string) => {
     if (!test?.id) return;
+    if (loadingOTP) return;
 
     try {
       setLoadingOTP(true);

@@ -5,7 +5,7 @@ import { smsService, SMSPurpose } from '../../services/smsService';
 
 interface SMSVerificationProps {
   phone: string;
-  onVerified: (otp: string) => void;
+  onVerified: (otp: string) => void | Promise<void>;
   onCancel: () => void;
   title?: string;
   description?: string;
@@ -81,11 +81,11 @@ export function SMSVerification({
     setIsVerifying(true);
     setError('');
 
-    // Просто передаем код на проверку в родительский компонент
-    // Родительский компонент вызовет API для проверки
-    onVerified(code);
-
-    setIsVerifying(false);
+    try {
+      await Promise.resolve(onVerified(code));
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
   const handleResend = async () => {

@@ -301,6 +301,16 @@ class TestViewSet(viewsets.ModelViewSet):
             return Response(error_response, status=status.HTTP_400_BAD_REQUEST)
         
         logger.info(f"OTP verification successful for test {test.id}, user {request.user.id}")
+
+        # Протокол уже создан (повторное нажатие) — возвращаем существующий
+        from apps.protocols.models import Protocol
+        existing = Protocol.objects.filter(attempt=test_attempt).first()
+        if existing:
+            logger.info(f"Protocol already exists for attempt {test_attempt.id}, returning existing protocol {existing.id}")
+            return Response({
+                'message': 'Test completion verified. Protocol already created for PDEK review.',
+                'protocol_id': existing.id
+            }, status=status.HTTP_200_OK)
         
         # Create Protocol
         from apps.protocols.models import Protocol, ProtocolSignature
