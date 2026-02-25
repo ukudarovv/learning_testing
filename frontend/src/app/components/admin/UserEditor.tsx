@@ -137,9 +137,6 @@ export function UserEditor({ user, onSave, onCancel }: UserEditorProps) {
       setSaving(false);
     }
   };
-    // Модальное окно SMS закроется автоматически при закрытии UserEditor
-    // Если будет ошибка, UserEditor останется открытым, и SMSVerification тоже
-  };
 
   const handleResendSMS = async () => {
     try {
