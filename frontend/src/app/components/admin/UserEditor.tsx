@@ -7,7 +7,7 @@ import { SMSVerification } from '../lms/SMSVerification';
 
 interface UserEditorProps {
   user?: User;
-  onSave: (user: Partial<User>) => void;
+  onSave: (user: Partial<User>) => void | Promise<void>;
   onCancel: () => void;
 }
 
@@ -30,6 +30,7 @@ export function UserEditor({ user, onSave, onCancel }: UserEditorProps) {
   const [phoneChanged, setPhoneChanged] = useState(false);
   const [showSMSVerification, setShowSMSVerification] = useState(false);
   const [sendingSMS, setSendingSMS] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [verificationCode, setVerificationCode] = useState<string | null>(null);
 
@@ -112,19 +113,30 @@ export function UserEditor({ user, onSave, onCancel }: UserEditorProps) {
       return;
     }
 
-    // Если номер не изменился или создаем нового пользователя, сохраняем напрямую
-    onSave(formData);
+    if (saving) return;
+    setSaving(true);
+    try {
+      await onSave(formData);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSMSVerified = async (code: string) => {
     setVerificationCode(code);
     setError('');
-    // Сохраняем с кодом верификации
-    const userDataWithCode = {
-      ...formData,
-      verification_code: code,
-    };
-    onSave(userDataWithCode);
+    if (saving) return;
+    setSaving(true);
+    try {
+      const userDataWithCode = {
+        ...formData,
+        verification_code: code,
+      };
+      await onSave(userDataWithCode);
+    } finally {
+      setSaving(false);
+    }
+  };
     // Модальное окно SMS закроется автоматически при закрытии UserEditor
     // Если будет ошибка, UserEditor останется открытым, и SMSVerification тоже
   };
@@ -384,11 +396,11 @@ export function UserEditor({ user, onSave, onCancel }: UserEditorProps) {
           </button>
           <button
             onClick={handleSave}
-            disabled={sendingSMS}
+            disabled={sendingSMS || saving}
             className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Save className="w-4 h-4" />
-            {sendingSMS ? (t('admin.users.sendingSMS') || 'Отправка SMS...') : t('common.save')}
+            {sendingSMS ? (t('admin.users.sendingSMS') || 'Отправка SMS...') : saving ? (t('common.saving') || 'Сохранение...') : t('common.save')}
           </button>
         </div>
       </div>

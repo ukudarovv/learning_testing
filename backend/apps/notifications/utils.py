@@ -1,4 +1,5 @@
 import logging
+import threading
 from django.core.mail import send_mass_mail, send_mail
 from django.conf import settings
 from django.utils import timezone
@@ -7,6 +8,11 @@ from apps.courses.models import Course
 from typing import List, Optional
 
 logger = logging.getLogger(__name__)
+
+# Защита от двойной отправки (двойной клик, два вызова подряд)
+_registration_email_sent: dict = {}
+_registration_email_lock = threading.Lock()
+_DEDUP_SECONDS = 120
 
 
 def send_registration_email(
@@ -37,6 +43,16 @@ def send_registration_email(
     """
     if not user.email or not user.email.strip():
         return False
+
+    # Не отправлять повторно одному адресу в течение DEDUP_SECONDS (защита от двойного клика)
+    email_key = user.email.strip().lower()
+    now = timezone.now()
+    with _registration_email_lock:
+        last = _registration_email_sent.get(email_key)
+        if last and (now - last).total_seconds() < _DEDUP_SECONDS:
+            logger.info(f"Registration email skipped (duplicate within {_DEDUP_SECONDS}s): {user.email}")
+            return True  # считаем успехом, письмо уже ушло
+        _registration_email_sent[email_key] = now
     
     program_name = program_name or getattr(settings, 'REGISTRATION_PROGRAM_NAME', 'Обучение на платформе UNICOVER')
     start_date = start_date or timezone.now().strftime('%d.%m.%Y')
@@ -91,7 +107,7 @@ def send_registration_email(
 '''.strip()
     
     from_email = settings.DEFAULT_FROM_EMAIL
-    
+
     try:
         result = send_mail(
             subject=subject,
@@ -108,7 +124,7 @@ def send_registration_email(
             logger.warning(f"Registration email failed to send to {user.email} (send_mail returned 0)")
             return False
     except Exception as e:
-        logger.exception(f"Failed to send registration email to {user.email}: {e}")
+        logger.exception(f"Registration email ERROR to {user.email}: {e}")
         if not fail_silently:
             raise
         return False
