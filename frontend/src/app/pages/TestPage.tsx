@@ -47,7 +47,10 @@ export function TestPage() {
   // Проверяем, является ли тест частью курса (если передан courseId, то тест внутри курса)
   // Тесты внутри курса не требуют запроса на запись, они доступны через курс
   const isTestInCourse = !!courseId;
+  // isStandaloneTest: пользователь пришёл не из курса (нет courseId)
   const isStandaloneTest = !isTestInCourse;
+  // Для SMS-верификации нужен именно standalone-тест по модели: is_standalone=false (Training Programs)
+  const isStandaloneForOTP = isStandaloneTest && (test?.is_standalone === false || test?.isStandalone === false);
   
   // Обрабатываем просмотр результатов завершенной попытки
   useEffect(() => {
@@ -444,7 +447,7 @@ export function TestPage() {
           attemptsUsed={testAttempts.length}
           attemptsTotal={testToShow.max_attempts || testToShow.maxAttempts || 3}
           timeSpent={testTimeSpent}
-          isStandalone={isStandaloneTest}
+          isStandalone={isStandaloneForOTP}
           onRetry={() => {
             setTestResult(null);
             setTestAttemptResult(null);

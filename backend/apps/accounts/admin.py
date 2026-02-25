@@ -1,6 +1,10 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import User, SMSVerificationCode
+from apps.notifications.utils import send_registration_email
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @admin.register(User)
@@ -26,6 +30,17 @@ class UserAdmin(BaseUserAdmin):
     )
     
     readonly_fields = ('created_at', 'updated_at', 'date_joined', 'last_login')
+
+    def save_model(self, request, obj, form, change):
+        """При создании студента отправляем письмо с данными для входа"""
+        super().save_model(request, obj, form, change)
+        if not change and obj.role == 'student' and obj.email:
+            password = form.cleaned_data.get('password1', '')
+            if password:
+                try:
+                    send_registration_email(obj, password, fail_silently=True)
+                except Exception as e:
+                    logger.warning(f"Failed to send registration email to {obj.email}: {e}")
 
 
 @admin.register(SMSVerificationCode)

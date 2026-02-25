@@ -1075,16 +1075,33 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
                               </p>
                             )}
 
-                            {/* Запрос дополнительной попытки */}
-                            {!finalTestPassed && isExamAvailable && (
-                              <button
-                                onClick={() => setShowFinalTestExtraAttemptModal(true)}
-                                className="inline-flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
-                              >
-                                <Send className="w-4 h-4" />
-                                Запросить попытку
-                              </button>
-                            )}
+                            {/* Запрос дополнительной попытки — только когда лимит исчерпан */}
+                            {!finalTestPassed && isExamAvailable && (() => {
+                              const maxAttempts = finalTestData?.maxAttempts || finalTestData?.max_attempts || 3;
+                              const approvedCount = finalTestExtraAttemptRequests.filter(r => r.status === 'approved').length;
+                              const hasPendingRequest = finalTestExtraAttemptRequests.some(r => r.status === 'pending');
+                              const maxAllowed = maxAttempts + approvedCount;
+                              const attemptsExhausted = finalTestAttempts.length >= maxAllowed;
+                              if (attemptsExhausted && hasPendingRequest) {
+                                return (
+                                  <p className="text-sm text-amber-700 bg-amber-50 px-4 py-2 rounded-lg">
+                                    {t('lms.coursePlayer.extraAttemptRequestPending') || 'Запрос на дополнительную попытку на рассмотрении.'}
+                                  </p>
+                                );
+                              }
+                              if (attemptsExhausted && !hasPendingRequest) {
+                                return (
+                                  <button
+                                    onClick={() => setShowFinalTestExtraAttemptModal(true)}
+                                    className="inline-flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
+                                  >
+                                    <Send className="w-4 h-4" />
+                                    Запросить попытку
+                                  </button>
+                                );
+                              }
+                              return null;
+                            })()}
 
                             {/* Просмотр результатов прошлых попыток */}
                             {finalTestAttempts.filter(attempt => attempt.completed_at || attempt.completedAt).length > 0 && (

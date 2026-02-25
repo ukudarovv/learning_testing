@@ -28,6 +28,17 @@ class IsAdminOrPublicReadOnly(permissions.BasePermission):
         return request.user and request.user.is_authenticated and request.user.is_admin
 
 
+class IsAdminOrPdekOrReadOnly(permissions.BasePermission):
+    """Разрешение: админ — полный доступ; ПДЭК и студенты — чтение протоколов"""
+    
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        if request.method in permissions.SAFE_METHODS:
+            return True  # Чтение: любой авторизованный (admin, pdek, student)
+        return request.user.is_admin
+
+
 class IsOwnerOrAdmin(permissions.BasePermission):
     """Permission for object owner or admin"""
     

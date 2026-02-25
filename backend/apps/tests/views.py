@@ -239,8 +239,8 @@ class TestViewSet(viewsets.ModelViewSet):
         
         otp_code = serializer.validated_data['otp_code']
         
-        # Check if test is standalone
-        if not test.is_standalone or not test.category:
+        # Check if test is standalone (must have category and is_standalone=False - displayed on Training Programs page)
+        if test.is_standalone or not test.category:
             return Response(
                 {'error': 'This test is not a standalone test'},
                 status=status.HTTP_400_BAD_REQUEST
@@ -343,6 +343,10 @@ class TestViewSet(viewsets.ModelViewSet):
                 title='Новый протокол для подписания',
                 message=f'Протокол {protocol.number} для теста "{test.title}" готов к подписанию'
             )
+        
+        # Send email notification to PDEK members
+        from apps.notifications.utils import send_protocol_pdek_notification
+        send_protocol_pdek_notification(protocol)
         
         return Response({
             'message': 'Test completion verified. Protocol created for PDEK review.',

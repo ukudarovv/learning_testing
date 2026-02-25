@@ -22,12 +22,11 @@ const protocolsService = {
         protocolsArray = data.data;
       } else if (Array.isArray(data.protocols)) {
         protocolsArray = data.protocols;
+      } else {
+        console.warn('Unexpected response format for protocols, returning empty array:', data);
       }
-    }
-    
-    if (protocolsArray.length === 0) {
+    } else {
       console.warn('Unexpected response format for protocols, returning empty array:', data);
-      return [];
     }
     
     // Адаптируем протоколы для фронтенда
@@ -35,12 +34,8 @@ const protocolsService = {
   },
 
   async getProtocol(id: string): Promise<Protocol> {
-    console.log('getProtocol - fetching protocol with id:', id);
     const data = await apiClient.get<any>(`/protocols/${id}/`);
-    console.log('getProtocol - received data:', data);
-    const adapted = adaptProtocol(data);
-    console.log('getProtocol - adapted protocol:', adapted);
-    return adapted;
+    return adaptProtocol(data);
   },
 
   async requestSignature(protocolId: string): Promise<{ message: string; otp_expires_at?: string; otp_code?: string; debug?: boolean }> {
@@ -52,21 +47,27 @@ const protocolsService = {
     return adaptProtocol(data);
   },
 
-  async downloadProtocolPDF(id: string): Promise<Blob> {
-    const response = await fetch(
-      `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/protocols/${id}/pdf/`,
-      {
-        headers: {
-          'Authorization': `Bearer ${apiClient.getToken()}`,
-        },
-      }
-    );
-    
-    if (!response.ok) {
-      throw new Error('Failed to download protocol');
+  /** Скачивает загруженный админом файл протокола (любой формат: PDF, DOCX и т.д.) */
+  async downloadProtocolFile(protocol: Protocol): Promise<{ blob: Blob; filename: string }> {
+    const fileUrl = this.getFileUrl(protocol);
+    if (!fileUrl) {
+      throw new Error('Файл протокола не загружен');
     }
-    
-    return response.blob();
+
+    const response = await fetch(fileUrl, {
+      headers: {
+        'Authorization': `Bearer ${apiClient.getToken()}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Не удалось загрузить файл протокола');
+    }
+
+    const blob = await response.blob();
+    const path = typeof protocol.file === 'string' ? protocol.file : String(protocol.file || '');
+    const filename = path.split('/').pop() || `protocol_${protocol.id}.pdf`;
+    return { blob, filename };
   },
 
   async uploadProtocolFile(protocolId: string, file: File): Promise<Protocol> {

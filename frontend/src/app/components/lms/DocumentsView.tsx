@@ -286,7 +286,7 @@ function CertificateCard({ certificate }: { certificate: Certificate }) {
 
 function ProtocolCard({ protocol }: { protocol: Protocol }) {
   const { t } = useTranslation();
-  const fileUrl = protocolsService.getFileUrl(protocol);
+  const hasUploadedFile = !!(protocol.file && String(protocol.file).trim());
 
   const formatDate = (date: Date | string | undefined): string => {
     if (!date) return '—';
@@ -306,36 +306,18 @@ function ProtocolCard({ protocol }: { protocol: Protocol }) {
 
   const handleDownload = async () => {
     try {
-      if (fileUrl) {
-        const response = await fetch(fileUrl, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-          },
-        });
-        if (!response.ok) throw new Error('Failed to download file');
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `protocol_${protocol.number}.${blob.type.includes('pdf') ? 'pdf' : blob.type.split('/')[1] || 'pdf'}`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      } else {
-        const blob = await protocolsService.downloadProtocolPDF(protocol.id);
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `protocol_${protocol.number}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      }
-      toast.success(t('lms.documents.downloadSuccess'));
+      const { blob, filename } = await protocolsService.downloadProtocolFile(protocol);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success(t('lms.documents.protocolDownloadSuccess') || t('lms.documents.downloadSuccess'));
     } catch (error: any) {
-      toast.error(error.message || t('lms.documents.downloadError'));
+      toast.error(error.message || t('lms.documents.protocolDownloadError') || t('lms.documents.downloadError'));
     }
   };
 
@@ -364,36 +346,15 @@ function ProtocolCard({ protocol }: { protocol: Protocol }) {
             </div>
           </div>
         </div>
-        <div className="flex flex-wrap gap-3">
-          {fileUrl ? (
-            <>
-              <a
-                href={fileUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <FileText className="w-4 h-4" />
-                {t('lms.documents.openFile')}
-              </a>
-              <button
-                onClick={handleDownload}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-              >
-                <Download className="w-4 h-4" />
-                {t('lms.documents.download')}
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={handleDownload}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <Download className="w-4 h-4" />
-              {t('lms.documents.downloadPdf')}
-            </button>
-          )}
-        </div>
+        {hasUploadedFile && (
+          <button
+            onClick={handleDownload}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Download className="w-4 h-4" />
+            {t('lms.documents.download')}
+          </button>
+        )}
       </div>
     </div>
   );

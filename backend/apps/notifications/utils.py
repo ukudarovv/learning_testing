@@ -1,8 +1,117 @@
+import logging
 from django.core.mail import send_mass_mail, send_mail
 from django.conf import settings
+from django.utils import timezone
 from apps.accounts.models import User
 from apps.courses.models import Course
 from typing import List, Optional
+
+logger = logging.getLogger(__name__)
+
+
+def send_registration_email(
+    user: User,
+    password: str,
+    program_name: str = None,
+    start_date: str = None,
+    platform_url: str = None,
+    coordinator_phone: str = None,
+    coordinator_email: str = None,
+    fail_silently: bool = True
+) -> bool:
+    """
+    Отправка письма при регистрации студента с данными для входа.
+    
+    Args:
+        user: Зарегистрированный пользователь (студент)
+        password: Пароль пользователя (для отображения в письме)
+        program_name: Название программы (по умолчанию "Обучение на платформе UNICOVER")
+        start_date: Дата начала (по умолчанию сегодня)
+        platform_url: Ссылка на платформу (из FRONTEND_URL)
+        coordinator_phone: Телефон координатора
+        coordinator_email: Email координатора
+        fail_silently: Не выбрасывать исключение при ошибке отправки
+    
+    Returns:
+        True если письмо отправлено успешно
+    """
+    if not user.email or not user.email.strip():
+        return False
+    
+    program_name = program_name or getattr(settings, 'REGISTRATION_PROGRAM_NAME', 'Обучение на платформе UNICOVER')
+    start_date = start_date or timezone.now().strftime('%d.%m.%Y')
+    platform_url = platform_url or getattr(settings, 'FRONTEND_URL', 'https://unicover.kz')
+    coordinator_phone = coordinator_phone or getattr(settings, 'REGISTRATION_COORDINATOR_PHONE', '')
+    coordinator_email = coordinator_email or getattr(settings, 'REGISTRATION_COORDINATOR_EMAIL', '')
+    
+    login = user.phone or user.email
+    
+    message = f'''Уважаемые слушатели!
+
+Напоминаем, что обучение по программе «{program_name}» начинается {start_date}.
+
+Просим пройти обучение по следующей ссылке:
+«{platform_url}»
+
+Для входа используйте следующие данные:
+Логин: {login}
+Пароль: {password}
+
+Рекомендуем авторизоваться заранее и проверить корректность доступа к платформе.
+
+В случае возникновения технических вопросов вы можете обратиться к координатору программы по телефону {coordinator_phone} или по электронной почте {coordinator_email}.
+
+Желаем успешного обучения!
+
+С уважением,
+ТОО "Unicover"
+'''.strip()
+    
+    subject = f'Регистрация на платформе UNICOVER'
+    
+    # HTML-версия для лучшей доставляемости (меньше шанс попасть в спам)
+    html_message = f'''
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px;">
+<p>Уважаемые слушатели!</p>
+<p>Напоминаем, что обучение по программе «{program_name}» начинается {start_date}.</p>
+<p>Просим пройти обучение по следующей ссылке:<br>
+<a href="{platform_url}" style="color: #2563eb;">{platform_url}</a></p>
+<p><strong>Данные для входа:</strong><br>
+Логин: {login}<br>
+Пароль: {password}</p>
+<p>Рекомендуем авторизоваться заранее и проверить корректность доступа к платформе.</p>
+<p>В случае возникновения технических вопросов вы можете обратиться к координатору программы по телефону {coordinator_phone} или по электронной почте {coordinator_email}.</p>
+<p>Желаем успешного обучения!</p>
+<p>С уважением,<br>ТОО "Unicover"</p>
+</body>
+</html>
+'''.strip()
+    
+    from_email = settings.DEFAULT_FROM_EMAIL
+    
+    try:
+        result = send_mail(
+            subject=subject,
+            message=message,
+            from_email=from_email,
+            recipient_list=[user.email],
+            html_message=html_message,
+            fail_silently=fail_silently
+        )
+        if result:
+            logger.info(f"Registration email sent to {user.email} from {from_email}")
+            return True
+        else:
+            logger.warning(f"Registration email failed to send to {user.email} (send_mail returned 0)")
+            return False
+    except Exception as e:
+        logger.exception(f"Failed to send registration email to {user.email}: {e}")
+        if not fail_silently:
+            raise
+        return False
 
 
 def send_bulk_email(
@@ -41,16 +150,22 @@ def send_bulk_email(
         sent_count = 0
         for email in recipient_list:
             try:
-                send_mail(
+                from_email = settings.DEFAULT_FROM_EMAIL
+                result = send_mail(
                     subject=subject,
                     message=message,
-                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    from_email=from_email,
                     recipient_list=[email],
                     html_message=html_message,
                     fail_silently=fail_silently
                 )
-                sent_count += 1
+                if result:
+                    sent_count += 1
+                    logger.info(f"Email sent to {email}")
+                else:
+                    logger.warning(f"Email to {email} returned 0 (not sent)")
             except Exception as e:
+                logger.exception(f"Failed to send email to {email}: {e}")
                 if not fail_silently:
                     raise e
         return sent_count
@@ -168,4 +283,96 @@ def send_course_reminder(
         message=message,
         recipient_list=recipient_list
     )
+
+
+def send_protocol_pdek_notification(protocol, fail_silently: bool = True) -> int:
+    """
+    Отправка email членам и председателям ПДЭК о новом протоколе для подписания.
+
+    Args:
+        protocol: Протокол (Protocol instance)
+        fail_silently: Не выбрасывать исключение при ошибке отправки
+
+    Returns:
+        Количество отправленных писем
+    """
+    pdek_users = User.objects.filter(
+        role__in=['pdek_member', 'pdek_chairman'],
+        email__isnull=False
+    ).exclude(email='')
+
+    recipient_list = list(pdek_users.values_list('email', flat=True))
+    
+    # Логируем, кто получит письмо и кто пропущен (нет email)
+    all_pdek = User.objects.filter(role__in=['pdek_member', 'pdek_chairman'])
+    skipped = [u for u in all_pdek if not (u.email and str(u.email).strip())]
+    if skipped:
+        logger.warning(
+            f"Protocol {protocol.number}: PDEK users without email (no notification sent): "
+            f"{[(u.full_name or u.phone, u.role) for u in skipped]}"
+        )
+    
+    if not recipient_list:
+        logger.warning(f"Protocol {protocol.number}: No PDEK users with email, skipping notification")
+        return 0
+
+    logger.info(f"Protocol {protocol.number}: Sending notification to: {recipient_list}")
+
+    student_name = protocol.student.full_name or protocol.student.phone or '—'
+    course_or_test = (
+        protocol.course.title if protocol.course
+        else (protocol.test.title if protocol.test else '—')
+    )
+    platform_url = getattr(settings, 'FRONTEND_URL', 'https://unicover.kz')
+    dashboard_url = f"{platform_url.rstrip('/')}/pdek/dashboard"
+
+    subject = f'Новый протокол №{protocol.number} ожидает подписания'
+
+    message = f'''Здравствуйте!
+
+Новый протокол №{protocol.number} ожидает подписания.
+
+Студент: {student_name}
+Курс/тест: {course_or_test}
+Дата экзамена: {protocol.exam_date.strftime('%d.%m.%Y') if protocol.exam_date else '—'}
+
+Перейдите по ссылке для подписания:
+{dashboard_url}
+
+С уважением,
+ТОО "Unicover"
+'''.strip()
+
+    html_message = f'''
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px;">
+<p>Здравствуйте!</p>
+<p>Новый протокол <strong>№{protocol.number}</strong> ожидает подписания.</p>
+<p><strong>Студент:</strong> {student_name}<br>
+<strong>Курс/тест:</strong> {course_or_test}<br>
+<strong>Дата экзамена:</strong> {protocol.exam_date.strftime('%d.%m.%Y') if protocol.exam_date else '—'}</p>
+<p><a href="{dashboard_url}" style="color: #2563eb;">Перейти к подписанию</a></p>
+<p>С уважением,<br>ТОО "Unicover"</p>
+</body>
+</html>
+'''.strip()
+
+    try:
+        sent = send_bulk_email(
+            subject=subject,
+            message=message,
+            recipient_list=recipient_list,
+            html_message=html_message,
+            fail_silently=fail_silently
+        )
+        if sent:
+            logger.info(f"Protocol PDEK notification sent to {sent} recipients for protocol {protocol.number}")
+        return sent
+    except Exception as e:
+        logger.exception(f"Failed to send protocol PDEK notification for {protocol.number}: {e}")
+        if not fail_silently:
+            raise
+        return 0
 

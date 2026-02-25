@@ -28,6 +28,7 @@ from .permissions import IsAdminOrReadOnly, IsAdmin
 from .sms_service import sms_service
 from django.conf import settings
 from apps.core.models import get_site_config
+from apps.notifications.utils import send_registration_email
 import logging
 
 logger = logging.getLogger(__name__)
@@ -83,6 +84,15 @@ class RegisterView(APIView):
         if request.data.get('verification_code') or not site_config.require_sms_on_registration:
             user.verified = True
             user.save()
+        
+        # Отправка письма при регистрации студента с данными для входа
+        if user.role == 'student' and user.email:
+            password = request.data.get('password', '')
+            if password:
+                try:
+                    send_registration_email(user, password, fail_silently=True)
+                except Exception as e:
+                    logger.warning(f"Failed to send registration email to {user.email}: {e}")
         
         tokens = TokenSerializer.get_tokens_for_user(user)
         return Response(tokens, status=status.HTTP_201_CREATED)
@@ -155,6 +165,19 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+        
+        # Отправка письма при создании студента администратором
+        if user.role == 'student' and user.email:
+            password = request.data.get('password') or getattr(user, '_generated_password', '')
+            logger.info(f"Create student: email={user.email}, has_password={bool(password)}, has_generated={hasattr(user, '_generated_password')}")
+            if password:
+                try:
+                    sent = send_registration_email(user, password, fail_silently=True)
+                    logger.info(f"Registration email sent={sent} to {user.email}")
+                except Exception as e:
+                    logger.warning(f"Failed to send registration email to {user.email}: {e}")
+            else:
+                logger.warning(f"No password for registration email to {user.email}")
         
         # Если пароль был сгенерирован, возвращаем его в ответе
         response_data = UserSerializer(user).data

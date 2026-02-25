@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { User, Lock, UserPlus, Phone, Eye, EyeOff } from 'lucide-react';
+import { User, Lock, UserPlus, Phone, Mail, Eye, EyeOff } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { authService, RegisterData } from '../services/auth';
@@ -53,8 +53,8 @@ export function RegisterForm() {
       return;
     }
 
-    // Validate required fields (email and iin removed from form, not required)
-    if (!formData.phone || !formData.password || !formData.full_name) {
+    // Validate required fields
+    if (!formData.phone || !formData.password || !formData.full_name || !formData.email?.trim()) {
       setError('Заполните все обязательные поля');
       return;
     }
@@ -239,6 +239,25 @@ export function RegisterForm() {
                 <p className="text-xs text-gray-500 mt-1">
                   {t('forms.register.phoneHint')}
                 </p>
+              </div>
+
+              <div>
+                <label htmlFor="reg-email" className="block text-sm font-medium text-gray-700 mb-2">
+                  {t('forms.register.email')} *
+                </label>
+                <div className="relative">
+                  <Mail className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="email"
+                    id="reg-email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    required
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none"
+                    placeholder={t('forms.register.emailPlaceholder')}
+                  />
+                </div>
               </div>
 
               <div>

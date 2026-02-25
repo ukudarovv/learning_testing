@@ -454,26 +454,6 @@ export function TestEditor({ test, onSave, onCancel }: TestEditorProps) {
                 <label className="flex items-center gap-2">
                   <input
                     type="checkbox"
-                    checked={formData.shuffleQuestions}
-                    onChange={(e) => setFormData({ ...formData, shuffleQuestions: e.target.checked })}
-                    className="rounded"
-                  />
-                  <span className="text-sm text-gray-700">{t('admin.tests.shuffleQuestions')}</span>
-                </label>
-
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.showResults}
-                    onChange={(e) => setFormData({ ...formData, showResults: e.target.checked })}
-                    className="rounded"
-                  />
-                  <span className="text-sm text-gray-700">{t('admin.tests.showResults')}</span>
-                </label>
-
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
                     checked={formData.requiresVideoRecording || formData.requires_video_recording || false}
                     onChange={(e) => setFormData({ 
                       ...formData, 

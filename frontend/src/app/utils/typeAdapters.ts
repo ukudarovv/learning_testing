@@ -23,14 +23,8 @@ export function adaptQuestion(backendQuestion: any): Question {
  * Преобразование протокола из backend в frontend формат
  */
 export function adaptProtocol(backendProtocol: any): Protocol {
-  console.log('adaptProtocol - raw backend data:', backendProtocol);
-  console.log('adaptProtocol - student:', backendProtocol.student);
-  console.log('adaptProtocol - course:', backendProtocol.course);
-  console.log('adaptProtocol - attempt:', backendProtocol.attempt);
-  
   // Проверяем, не является ли протокол уже адаптированным (если есть userName, значит уже адаптирован)
   if (backendProtocol.userName && !backendProtocol.student) {
-    console.log('adaptProtocol - protocol already adapted, returning as is');
     return backendProtocol as Protocol;
   }
   
@@ -79,15 +73,6 @@ export function adaptProtocol(backendProtocol: any): Protocol {
   // Для standalone тестов используем название теста в качестве courseName
   const displayCourseName = courseTitle || testTitle || null;
   
-  console.log('adaptProtocol - extracted data:', {
-    studentFullName,
-    studentIIN,
-    studentPhone,
-    courseTitle,
-    testTitle,
-    displayCourseName,
-  });
-  
   const adapted = {
     id: String(backendProtocol.id),
     number: backendProtocol.number,
@@ -117,8 +102,6 @@ export function adaptProtocol(backendProtocol: any): Protocol {
     uploaded_by: backendProtocol.uploaded_by,
     uploaded_at: backendProtocol.uploaded_at,
   };
-  
-  console.log('adaptProtocol - adapted result:', adapted);
   
   return adapted;
 }

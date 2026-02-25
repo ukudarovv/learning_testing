@@ -20,7 +20,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
     """Serializer for user registration"""
     password = serializers.CharField(write_only=True, required=False, allow_blank=True, min_length=8)
     verification_code = serializers.CharField(write_only=True, required=False, allow_blank=True)
-    email = serializers.EmailField(required=False, allow_blank=True, default='')
+    email = serializers.EmailField(required=True)
     iin = serializers.CharField(required=False, allow_blank=True, max_length=12, default='')
 
     class Meta:
@@ -88,9 +88,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
         if 'role' not in validated_data or not validated_data.get('role'):
             validated_data['role'] = 'student'
         
-        # Пустые email и iin сохраняем как None
-        if not validated_data.get('email', '').strip():
-            validated_data['email'] = None
+        # Пустой iin сохраняем как None
         if not validated_data.get('iin', '').strip():
             validated_data['iin'] = None
         

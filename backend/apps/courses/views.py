@@ -753,6 +753,10 @@ class CourseViewSet(viewsets.ModelViewSet):
                 message=f'Протокол {protocol.number} для курса "{course.title}" готов к подписанию'
             )
         
+        # Send email notification to PDEK members
+        from apps.notifications.utils import send_protocol_pdek_notification
+        send_protocol_pdek_notification(protocol)
+        
         return Response({
             'message': 'Course completion verified. Protocol created for PDEK review.',
             'protocol_id': protocol.id

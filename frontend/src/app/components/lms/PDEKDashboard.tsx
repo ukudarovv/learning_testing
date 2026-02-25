@@ -25,10 +25,21 @@ export function PDEKDashboard() {
   // Получаем протоколы через API
   const { protocols, loading: protocolsLoading, refetch } = useProtocols();
   
-  // Фильтруем протоколы для подписания
-  const pendingProtocols = protocols.filter(p => 
-    p.status === 'pending_pdek' || (isChairman && p.status === 'signed_members')
-  );
+  // Протоколы, ожидающие подписи текущего пользователя (ещё не подписал)
+  const pendingProtocols = protocols.filter(p => {
+    const needsUserSignature = p.status === 'pending_pdek' || (isChairman && p.status === 'signed_members');
+    if (!needsUserSignature) return false;
+
+    // Исключаем протоколы, которые пользователь уже подписал
+    if (!currentUser?.id) return true;
+    const currentUserId = String(currentUser.id);
+    const userSignature = p.signatures?.find(s => {
+      const signatureUserId = s.signer?.id ? String(s.signer.id) : s.userId ? String(s.userId) : null;
+      return signatureUserId === currentUserId;
+    });
+    const alreadySigned = userSignature && (userSignature.otp_verified === true || userSignature.otpVerified === true);
+    return !alreadySigned;
+  });
 
   const signedProtocols = protocols.filter(p => {
     if (!currentUser || !currentUser.id) {
@@ -46,28 +57,7 @@ export function PDEKDashboard() {
     // Проверяем оба варианта названия поля (otp_verified и otpVerified)
     const isVerified = userSignature && (userSignature.otp_verified === true || userSignature.otpVerified === true);
     
-    if (isVerified) {
-      console.log('Found signed protocol:', p.number, 'by user:', currentUserId, 'signature:', userSignature);
-    }
-    
     return !!isVerified;
-  });
-  
-  console.log('Protocols summary:', {
-    total: protocols.length,
-    pending: pendingProtocols.length,
-    signed: signedProtocols.length,
-    currentUserId: currentUser?.id,
-    protocols: protocols.map(p => ({
-      number: p.number,
-      signaturesCount: p.signatures?.length || 0,
-      signatures: p.signatures?.map(s => ({
-        userId: s.userId,
-        signerId: s.signer?.id,
-        otp_verified: s.otp_verified,
-        otpVerified: s.otpVerified,
-      })),
-    })),
   });
 
   const handleSignRequest = async (protocol: Protocol) => {
@@ -226,24 +216,17 @@ export function PDEKDashboard() {
                     <div className="flex gap-3">
                     <button
                       onClick={async () => {
-                        // Загружаем полные данные протокола при открытии модального окна
                         try {
-                          console.log('Loading protocol details for:', protocol.id, 'current protocol data:', protocol);
                           const fullProtocol = await protocolsService.getProtocol(protocol.id);
-                          console.log('Full protocol received:', fullProtocol);
-                          // Данные уже адаптированы в getProtocol, используем их напрямую
                           setSelectedProtocol(fullProtocol);
                           
-                          // Загружаем данные попытки теста, если есть attemptId
                           const attemptId = fullProtocol.attemptId 
                             ? String(fullProtocol.attemptId) 
                             : (fullProtocol.attempt?.id ? String(fullProtocol.attempt.id) : null);
-                          console.log('Attempt ID from protocol:', attemptId, 'fullProtocol:', fullProtocol);
                           if (attemptId) {
                             setLoadingAttempt(true);
                             try {
                               const attempt = await examsService.getTestAttempt(attemptId);
-                              console.log('Loaded test attempt:', attempt);
                               setTestAttempt(attempt);
                             } catch (error) {
                               console.error('Failed to load test attempt:', error);
@@ -252,12 +235,10 @@ export function PDEKDashboard() {
                               setLoadingAttempt(false);
                             }
                           } else {
-                            console.log('No attemptId found in protocol');
                             setTestAttempt(null);
                           }
                         } catch (error) {
                           console.error('Failed to load protocol details:', error);
-                          // Fallback к протоколу из списка
                           setSelectedProtocol(protocol);
                           setTestAttempt(null);
                         }
@@ -301,24 +282,17 @@ export function PDEKDashboard() {
                     </div>
                     <button
                       onClick={async () => {
-                        // Загружаем полные данные протокола при открытии модального окна
                         try {
-                          console.log('Loading protocol details for:', protocol.id, 'current protocol data:', protocol);
                           const fullProtocol = await protocolsService.getProtocol(protocol.id);
-                          console.log('Full protocol received:', fullProtocol);
-                          // Данные уже адаптированы в getProtocol, используем их напрямую
                           setSelectedProtocol(fullProtocol);
                           
-                          // Загружаем данные попытки теста, если есть attemptId
                           const attemptId = fullProtocol.attemptId 
                             ? String(fullProtocol.attemptId) 
                             : (fullProtocol.attempt?.id ? String(fullProtocol.attempt.id) : null);
-                          console.log('Attempt ID from protocol:', attemptId, 'fullProtocol:', fullProtocol);
                           if (attemptId) {
                             setLoadingAttempt(true);
                             try {
                               const attempt = await examsService.getTestAttempt(attemptId);
-                              console.log('Loaded test attempt:', attempt);
                               setTestAttempt(attempt);
                             } catch (error) {
                               console.error('Failed to load test attempt:', error);
@@ -327,12 +301,10 @@ export function PDEKDashboard() {
                               setLoadingAttempt(false);
                             }
                           } else {
-                            console.log('No attemptId found in protocol');
                             setTestAttempt(null);
                           }
                         } catch (error) {
                           console.error('Failed to load protocol details:', error);
-                          // Fallback к протоколу из списка
                           setSelectedProtocol(protocol);
                           setTestAttempt(null);
                         }
@@ -359,13 +331,7 @@ export function PDEKDashboard() {
       </div>
 
       {/* Protocol Details Modal */}
-      {selectedProtocol && (() => {
-        console.log('Rendering protocol modal with data:', selectedProtocol);
-        console.log('Protocol student data:', selectedProtocol.userName, selectedProtocol.userIIN, selectedProtocol.userPhone);
-        console.log('Protocol course data:', selectedProtocol.courseName);
-        console.log('Protocol exam date:', selectedProtocol.examDate);
-        console.log('Protocol passing score:', selectedProtocol.passingScore);
-        return (
+      {selectedProtocol && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-2xl ring-4 ring-white ring-opacity-50 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200">
@@ -609,8 +575,7 @@ export function PDEKDashboard() {
             </div>
           </div>
         </div>
-        );
-      })()}
+      )}
 
       {/* SMS Verification Modal */}
       {showSMSModal && protocolToSign && (

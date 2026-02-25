@@ -18,8 +18,7 @@ from .serializers import (
     OTPRequestSerializer,
     OTPSignSerializer,
 )
-from .utils import generate_protocol_pdf
-from apps.accounts.permissions import IsAdmin, IsAdminOrReadOnly
+from apps.accounts.permissions import IsAdmin, IsAdminOrReadOnly, IsAdminOrPdekOrReadOnly
 from apps.accounts.models import User
 
 
@@ -27,7 +26,7 @@ class ProtocolViewSet(viewsets.ModelViewSet):
     """Protocol ViewSet"""
     queryset = Protocol.objects.select_related('student', 'course', 'test', 'attempt', 'enrollment', 'uploaded_by').prefetch_related('signatures__signer').all()
     serializer_class = ProtocolSerializer
-    permission_classes = [IsAdminOrReadOnly]
+    permission_classes = [IsAdminOrPdekOrReadOnly]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['status', 'result']
     search_fields = ['number', 'student__full_name', 'student__phone', 'course__title']
@@ -38,18 +37,18 @@ class ProtocolViewSet(viewsets.ModelViewSet):
         """Students see only their protocols; admin and PDEK see all"""
         queryset = super().get_queryset()
         user = self.request.user
-        if user.is_authenticated and user.role == 'student' and not user.is_admin:
+        if not user.is_authenticated:
+            return queryset.none()
+        if user.role == 'student' and not user.is_admin:
             queryset = queryset.filter(student=user)
+        # Admin и PDEK видят все протоколы
         return queryset
     
     def get_permissions(self):
-        """Allow PDEK members to request and sign protocols"""
-        # Allow authenticated users to request signature and sign protocols
-        # (role check is done inside the action methods)
+        """Allow PDEK members to list, retrieve, request signature and sign protocols"""
         if self.action in ['request_signature', 'sign']:
             return [permissions.IsAuthenticated()]
-        # Default permissions for other actions (IsAdminOrReadOnly)
-        return [IsAdminOrReadOnly()]
+        return [IsAdminOrPdekOrReadOnly()]
     
     def get_serializer_class(self):
         if self.action == 'create':
@@ -102,12 +101,19 @@ class ProtocolViewSet(viewsets.ModelViewSet):
                         signer=member,
                         role='chairman' if member.role == 'pdek_chairman' else 'member'
                     )
-                
+
+                # Уведомление членов ПДЭК по email
+                from apps.notifications.utils import send_protocol_pdek_notification
+                send_protocol_pdek_notification(protocol)
+
                 return Response(ProtocolSerializer(protocol).data, status=status.HTTP_201_CREATED)
             except TestAttempt.DoesNotExist:
                 pass
         
         protocol = serializer.save()
+        # Уведомление членов ПДЭК по email
+        from apps.notifications.utils import send_protocol_pdek_notification
+        send_protocol_pdek_notification(protocol)
         return Response(ProtocolSerializer(protocol).data, status=status.HTTP_201_CREATED)
     
     @action(detail=True, methods=['post'])
@@ -129,7 +135,8 @@ class ProtocolViewSet(viewsets.ModelViewSet):
         # Get or create signature
         signature, created = ProtocolSignature.objects.get_or_create(
             protocol=protocol,
-            signer=request.user
+            signer=request.user,
+            defaults={'role': 'chairman' if request.user.role == 'pdek_chairman' else 'member'}
         )
         
         # Always generate new OTP, even if signature already exists
@@ -315,11 +322,10 @@ class ProtocolViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['get'])
     def pdf(self, request, pk=None):
-        """Download protocol - uploaded file if exists, else generated PDF"""
+        """Download protocol - only uploaded file by admin, no auto-generation"""
         protocol = self.get_object()
         
         if protocol.file and protocol.file.name:
-            # Serve uploaded file
             content_type, _ = mimetypes.guess_type(protocol.file.name)
             if not content_type:
                 content_type = 'application/octet-stream'
@@ -328,11 +334,10 @@ class ProtocolViewSet(viewsets.ModelViewSet):
             response['Content-Disposition'] = f'attachment; filename="{filename}"'
             return response
         
-        # Generate PDF when no uploaded file
-        buffer = generate_protocol_pdf(protocol)
-        response = HttpResponse(buffer.read(), content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename="protocol_{protocol.number}.pdf"'
-        return response
+        return Response(
+            {'detail': 'Файл протокола не загружен. Обратитесь к администратору.'},
+            status=status.HTTP_404_NOT_FOUND
+        )
 
     @action(detail=False, methods=['get'])
     def export(self, request):

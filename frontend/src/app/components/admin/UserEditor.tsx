@@ -21,7 +21,7 @@ export function UserEditor({ user, onSave, onCancel }: UserEditorProps) {
     iin: '',
     city: '',
     organization: '',
-    verified: false,
+    verified: true,
     language: 'ru',
     password: '',
   });
@@ -44,7 +44,7 @@ export function UserEditor({ user, onSave, onCancel }: UserEditorProps) {
         iin: user.iin || '',
         city: user.city || '',
         organization: user.organization || '',
-        verified: user.verified !== undefined ? user.verified : false,
+        verified: user.verified !== undefined ? user.verified : true,
         is_active: user.is_active !== undefined ? user.is_active : true,
         language: user.language || 'ru',
       });
@@ -103,6 +103,12 @@ export function UserEditor({ user, onSave, onCancel }: UserEditorProps) {
       } finally {
         setSendingSMS(false);
       }
+      return;
+    }
+
+    // Валидация обязательных полей
+    if (!formData.email?.trim()) {
+      setError(t('admin.users.emailRequired') || 'Email обязателен');
       return;
     }
 
@@ -175,7 +181,7 @@ export function UserEditor({ user, onSave, onCancel }: UserEditorProps) {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email <span className="text-gray-500 font-normal">({t('common.optional')})</span>
+                    Email *
                   </label>
                   <input
                     type="email"
@@ -183,6 +189,7 @@ export function UserEditor({ user, onSave, onCancel }: UserEditorProps) {
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     placeholder="email@example.com"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
                   />
                 </div>
 

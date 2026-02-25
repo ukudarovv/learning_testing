@@ -7,11 +7,11 @@ from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load environment variables from backend/.env
+load_dotenv(BASE_DIR / '.env')
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-change-this-in-production')
@@ -186,8 +186,8 @@ REST_FRAMEWORK = {
 
 # JWT Settings
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),   # 24 часа
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=30),  # 30 дней
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'UPDATE_LAST_LOGIN': True,
@@ -249,14 +249,37 @@ SMSC_SENDER = os.getenv('SMSC_SENDER', 'UNICOVER')
 SMSC_API_URL = os.getenv('SMSC_API_URL', 'https://smsc.kz/sys/send.php')
 
 # Email Settings
-EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
-EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
-EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
-EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
-EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@unicover.kz')
+# SendGrid: стабильная доставка в Gmail, list.ru и др. Бесплатно 100 писем/день.
+# Если задан SENDGRID_API_KEY — используем SendGrid SMTP вместо mail.aqlant.com
+SENDGRID_API_KEY = os.getenv('SENDGRID_API_KEY', '')
+SENDGRID_FROM_EMAIL = os.getenv('SENDGRID_FROM_EMAIL', '')  # Должен быть верифицирован в SendGrid
+
+if SENDGRID_API_KEY:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = 'smtp.sendgrid.net'
+    EMAIL_PORT = 587
+    EMAIL_USE_TLS = True
+    EMAIL_HOST_USER = 'apikey'
+    EMAIL_HOST_PASSWORD = SENDGRID_API_KEY
+    DEFAULT_FROM_EMAIL = SENDGRID_FROM_EMAIL or os.getenv('DEFAULT_FROM_EMAIL', 'noreply@unicover.kz')
+else:
+    EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+    EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
+    EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
+    EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
+    EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+    EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+    DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@unicover.kz')
+
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
+
+# Registration email (рассылка при регистрации студента)
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'https://unicover.kz')
+REGISTRATION_PROGRAM_NAME = os.getenv('REGISTRATION_PROGRAM_NAME', 'Обучение на платформе UNICOVER')
+REGISTRATION_COORDINATOR_PHONE = os.getenv('REGISTRATION_COORDINATOR_PHONE', '')
+REGISTRATION_COORDINATOR_EMAIL = os.getenv('REGISTRATION_COORDINATOR_EMAIL', '')
+# Адрес отправителя (для SendGrid — верифицированный в панели; для SMTP — обычно совпадает с логином)
+REGISTRATION_FROM_EMAIL = os.getenv('REGISTRATION_FROM_EMAIL', '') or DEFAULT_FROM_EMAIL
 
 # Celery Configuration (optional for async tasks)
 CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0')
@@ -284,6 +307,10 @@ LOGGING = {
             'level': 'INFO',
         },
         'apps.protocols': {
+            'handlers': ['console'],
+            'level': 'INFO',
+        },
+        'apps.notifications': {
             'handlers': ['console'],
             'level': 'INFO',
         },
