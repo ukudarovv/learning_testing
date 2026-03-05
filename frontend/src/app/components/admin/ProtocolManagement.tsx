@@ -555,15 +555,27 @@ export function ProtocolManagement() {
                   <div className="space-y-3">
                     {selectedProtocol.signatures.map((sig, index) => (
                       <div key={sig.userId || sig.id || `sig-${index}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div>
+                        <div className="flex-1">
                           <p className="font-medium">{sig.userName || '—'}</p>
                           <p className="text-sm text-gray-600">
                             {sig.role === 'chairman' 
                               ? (t('admin.protocols.chairmanRole') || 'Председатель ПДЭК')
                               : (t('admin.protocols.memberRole') || 'Член ПДЭК')}
+                            {sig.signType === 'eds' && (
+                              <span className="ml-2 text-emerald-600">(ЭЦП)</span>
+                            )}
                           </p>
                           {sig.phone && (
                             <p className="text-xs text-gray-500 mt-1">{sig.phone}</p>
+                          )}
+                          {sig.signType === 'eds' && sig.edsCertificateInfo && (
+                            <div className="mt-2 p-2 bg-white rounded border border-emerald-100 text-xs">
+                              <p className="font-medium text-gray-700 mb-1">Сертификат:</p>
+                              {sig.edsCertificateInfo.full_name && <p>{sig.edsCertificateInfo.full_name}</p>}
+                              {sig.edsCertificateInfo.iin && <p>ИИН: {sig.edsCertificateInfo.iin}</p>}
+                              {sig.edsCertificateInfo.serial_number && <p>Серийный №: {sig.edsCertificateInfo.serial_number}</p>}
+                              {sig.edsCertificateInfo.issuer && <p>УЦ: {sig.edsCertificateInfo.issuer}</p>}
+                            </div>
                           )}
                         </div>
                         <div className="text-right">

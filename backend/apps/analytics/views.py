@@ -2,10 +2,10 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.db.models import Count, Avg, Q, Sum
+from django.db.models import Count, Avg, Sum
 from django.utils import timezone
 from django.http import HttpResponse
-from datetime import timedelta
+from datetime import timedelta, datetime
 from collections import defaultdict
 from io import BytesIO
 
@@ -17,11 +17,11 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER
 
 from apps.accounts.models import User
-from apps.courses.models import Course, CourseEnrollment
+from apps.courses.models import Course, CourseEnrollment, LessonProgress, Lesson
 from apps.exams.models import TestAttempt
 from apps.certificates.models import Certificate
 from apps.accounts.permissions import IsAdmin
-from apps.core.export_utils import export_to_excel, create_excel_response
+from apps.core.export_utils import export_to_excel, export_to_excel_multi_sheet, create_excel_response
 
 
 class AnalyticsViewSet(viewsets.ViewSet):
@@ -270,11 +270,12 @@ class AnalyticsViewSet(viewsets.ViewSet):
         headers = ['Студент', 'Тест', 'Балл', 'Проходной балл', 'Результат', 'Дата прохождения']
         rows = []
         for a in attempts:
+            passing_score = a.test.passing_score if a.test else None
             rows.append([
                 a.user.full_name or a.user.phone or '',
                 a.test.title if a.test else '—',
                 f'{a.score:.1f}' if a.score is not None else '—',
-                f'{a.passing_score:.1f}' if a.passing_score is not None else '—',
+                f'{passing_score:.1f}' if passing_score is not None else '—',
                 'Сдан' if a.passed else 'Не сдан',
                 a.completed_at.strftime('%Y-%m-%d %H:%M') if a.completed_at else '',
             ])
@@ -338,4 +339,122 @@ class AnalyticsViewSet(viewsets.ViewSet):
         rows = [[c.title, c.students] for c in courses]
         buffer = export_to_excel(headers, rows, 'Популярность курсов')
         return create_excel_response(buffer, 'courses_popularity.xlsx')
+
+    @action(detail=False, methods=['get'], url_path='learning_exam_report')
+    def learning_exam_report(self, request):
+        """Export detailed report on learning process and exam results to Excel"""
+        course_id = request.query_params.get('course_id')
+        user_id = request.query_params.get('user_id')
+        date_from = request.query_params.get('date_from')
+        date_to = request.query_params.get('date_to')
+
+        enrollments_qs = CourseEnrollment.objects.select_related('user', 'course').order_by('-enrolled_at')[:5000]
+        lesson_progress_qs = LessonProgress.objects.select_related(
+            'enrollment__user', 'enrollment__course', 'lesson__module'
+        ).filter(completed=True).order_by('enrollment', 'lesson__module__order', 'lesson__order')[:10000]
+        attempts_qs = TestAttempt.objects.filter(
+            completed_at__isnull=False
+        ).select_related('user', 'test').order_by('user', 'test', 'started_at')[:5000]
+
+        if course_id:
+            enrollments_qs = enrollments_qs.filter(course_id=course_id)
+            lesson_progress_qs = lesson_progress_qs.filter(enrollment__course_id=course_id)
+            attempts_qs = attempts_qs.filter(test__final_courses__id=course_id)
+        if user_id:
+            enrollments_qs = enrollments_qs.filter(user_id=user_id)
+            lesson_progress_qs = lesson_progress_qs.filter(enrollment__user_id=user_id)
+            attempts_qs = attempts_qs.filter(user_id=user_id)
+        if date_from:
+            try:
+                dt_from = datetime.strptime(date_from, '%Y-%m-%d')
+                if timezone.is_naive(dt_from):
+                    dt_from = timezone.make_aware(dt_from)
+                enrollments_qs = enrollments_qs.filter(enrolled_at__gte=dt_from)
+                lesson_progress_qs = lesson_progress_qs.filter(completed_at__gte=dt_from)
+                attempts_qs = attempts_qs.filter(completed_at__gte=dt_from)
+            except ValueError:
+                pass
+        if date_to:
+            try:
+                dt_to = datetime.strptime(date_to, '%Y-%m-%d')
+                if timezone.is_naive(dt_to):
+                    dt_to = timezone.make_aware(dt_to)
+                dt_to = dt_to.replace(hour=23, minute=59, second=59, microsecond=999999)
+                enrollments_qs = enrollments_qs.filter(enrolled_at__lte=dt_to)
+                lesson_progress_qs = lesson_progress_qs.filter(completed_at__lte=dt_to)
+                attempts_qs = attempts_qs.filter(completed_at__lte=dt_to)
+            except ValueError:
+                pass
+
+        # Sheet 1: Learning process
+        enrollments = list(enrollments_qs)
+        learning_headers = [
+            'Студент', 'Email', 'Телефон', 'Курс', 'Дата записи', 'Прогресс %',
+            'Статус', 'Завершено уроков', 'Всего уроков', 'Дата завершения'
+        ]
+        learning_rows = []
+        for e in enrollments:
+            total_lessons = Lesson.objects.filter(module__course=e.course).count()
+            completed_lessons = LessonProgress.objects.filter(enrollment=e, completed=True).count()
+            learning_rows.append([
+                e.user.full_name or '',
+                e.user.email or '',
+                e.user.phone or '',
+                e.course.title,
+                e.enrolled_at,
+                e.progress,
+                e.get_status_display() if hasattr(e, 'get_status_display') else e.status,
+                completed_lessons,
+                total_lessons,
+                e.completed_at,
+            ])
+
+        # Sheet 2: Lesson progress
+        lesson_progress_list = list(lesson_progress_qs)
+        lesson_headers = ['Студент', 'Курс', 'Модуль', 'Урок', 'Завершён', 'Дата завершения']
+        lesson_rows = []
+        for lp in lesson_progress_list:
+            lesson_rows.append([
+                lp.enrollment.user.full_name or lp.enrollment.user.phone or '',
+                lp.enrollment.course.title,
+                lp.lesson.module.title if lp.lesson.module else '—',
+                lp.lesson.title,
+                'Да' if lp.completed else 'Нет',
+                lp.completed_at,
+            ])
+
+        # Sheet 3: Exam results
+        attempts = list(attempts_qs)
+        attempt_counts = defaultdict(int)
+        exam_headers = [
+            'Студент', 'Тест', 'Курс', 'Попытка №', 'Балл', 'Проходной балл',
+            'Результат', 'Дата начала', 'Дата завершения'
+        ]
+        exam_rows = []
+        for a in attempts:
+            key = (a.user_id, a.test_id)
+            attempt_counts[key] += 1
+            attempt_num = attempt_counts[key]
+            course = a.test.final_courses.first() if a.test else None
+            course_title = course.title if course else '—'
+            passing_score = a.test.passing_score if a.test else None
+            exam_rows.append([
+                a.user.full_name or a.user.phone or '',
+                a.test.title if a.test else '—',
+                course_title,
+                attempt_num,
+                f'{a.score:.1f}' if a.score is not None else '—',
+                f'{passing_score:.1f}' if passing_score is not None else '—',
+                'Сдан' if a.passed else 'Не сдан',
+                a.started_at,
+                a.completed_at,
+            ])
+
+        sheets_data = [
+            ('Процесс обучения', learning_headers, learning_rows),
+            ('Прогресс по урокам', lesson_headers, lesson_rows),
+            ('Результаты экзаменов', exam_headers, exam_rows),
+        ]
+        buffer = export_to_excel_multi_sheet(sheets_data)
+        return create_excel_response(buffer, 'learning_exam_report.xlsx')
 

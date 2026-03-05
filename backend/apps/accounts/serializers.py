@@ -11,6 +11,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'phone', 'email', 'iin', 'full_name', 'role',
             'verified', 'is_active', 'language', 'city', 'organization',
+            'protocol_sign_method',
             'created_at', 'updated_at', 'date_joined'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'date_joined']
@@ -107,14 +108,14 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
 
 class UserUpdateSerializer(serializers.ModelSerializer):
-    """Serializer for updating user"""
+    """Serializer for admin updating user - includes protocol_sign_method for PDEK"""
     password = serializers.CharField(write_only=True, required=False, allow_blank=True)
     phone = serializers.CharField(required=False, max_length=20)
     verification_code = serializers.CharField(write_only=True, required=False, allow_blank=True)
     
     class Meta:
         model = User
-        fields = ['phone', 'full_name', 'email', 'iin', 'language', 'city', 'organization', 'role', 'verified', 'is_active', 'password', 'verification_code']
+        fields = ['phone', 'full_name', 'email', 'iin', 'language', 'city', 'organization', 'role', 'verified', 'is_active', 'password', 'verification_code', 'protocol_sign_method']
     
     def validate_password(self, value):
         """Validate password if provided"""
@@ -181,6 +182,12 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         
         instance.save()
         return instance
+
+
+class UserProfileUpdateSerializer(UserUpdateSerializer):
+    """Serializer for user self-profile update (auth/me) - excludes admin-only fields like protocol_sign_method"""
+    class Meta(UserUpdateSerializer.Meta):
+        fields = ['phone', 'full_name', 'email', 'iin', 'language', 'city', 'organization', 'password', 'verification_code']
 
 
 class LoginSerializer(serializers.Serializer):

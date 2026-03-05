@@ -87,6 +87,7 @@ export interface User {
   is_active?: boolean; // Backend format
   isActive?: boolean; // Frontend format (for compatibility)
   language: 'ru' | 'kz' | 'en';
+  protocol_sign_method?: 'sms' | 'eds' | 'both'; // PDEK: preferred signing method
   created_at?: string;
   updated_at?: string;
 }
@@ -363,6 +364,15 @@ export interface Signature {
   signedAt?: Date | string; // Frontend format
   otp_verified?: boolean; // Backend format
   otpVerified?: boolean; // Frontend format (for compatibility)
+  signType?: 'otp' | 'eds'; // OTP (SMS) or EDS (ЭЦП)
+  edsCertificateInfo?: {
+    iin?: string;
+    full_name?: string;
+    serial_number?: string;
+    issuer?: string;
+    valid_from?: string;
+    valid_to?: string;
+  };
 }
 
 export interface CertificateTemplate {

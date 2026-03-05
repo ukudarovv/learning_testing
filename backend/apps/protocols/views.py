@@ -17,6 +17,7 @@ from .serializers import (
     ProtocolSignatureSerializer,
     OTPRequestSerializer,
     OTPSignSerializer,
+    EDSSignSerializer,
 )
 from apps.accounts.permissions import IsAdmin, IsAdminOrReadOnly, IsAdminOrPdekOrReadOnly
 from apps.accounts.models import User
@@ -46,7 +47,7 @@ class ProtocolViewSet(viewsets.ModelViewSet):
     
     def get_permissions(self):
         """Allow PDEK members to list, retrieve, request signature and sign protocols"""
-        if self.action in ['request_signature', 'sign']:
+        if self.action in ['request_signature', 'sign', 'sign_eds']:
             return [permissions.IsAuthenticated()]
         return [IsAdminOrPdekOrReadOnly()]
     
@@ -235,16 +236,20 @@ class ProtocolViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Refresh protocol and signatures from DB to get latest data
-        protocol.refresh_from_db()
+        self._apply_signature_and_update_protocol(protocol, signature)
         
-        # Check if all PDEK members have signed
+        return Response(
+            ProtocolSerializer(protocol).data,
+            status=status.HTTP_200_OK
+        )
+    
+    def _apply_signature_and_update_protocol(self, protocol, signature):
+        """Update protocol status and create certificate if chairman signed."""
+        protocol.refresh_from_db()
         all_signed = protocol.signatures.filter(otp_verified=True).count()
         total_signatures = protocol.signatures.count()
         
-        # Update protocol status based on signing progress
         if all_signed == total_signatures:
-            # All members signed - protocol is fully signed
             protocol.status = 'signed_chairman'
         elif signature.role == 'chairman':
             protocol.status = 'signed_chairman'
@@ -255,38 +260,25 @@ class ProtocolViewSet(viewsets.ModelViewSet):
         
         protocol.save()
         
-        # If chairman signed and protocol is for course or test completion, create certificate
-        # Check if chairman just signed (status is signed_chairman)
         if protocol.status == 'signed_chairman' and (protocol.enrollment or protocol.test):
             from apps.certificates.models import Certificate
             from apps.notifications.models import Notification
-            from django.utils import timezone
             
-            # Determine if this is for a course or test
             is_course = protocol.course is not None
             is_test = protocol.test is not None
             
-            # Check if certificate already exists to avoid duplicates
             certificate_exists = False
             if is_course:
                 certificate_exists = Certificate.objects.filter(
-                    protocol=protocol, 
-                    student=protocol.student, 
-                    course=protocol.course
+                    protocol=protocol, student=protocol.student, course=protocol.course
                 ).exists()
             elif is_test:
                 certificate_exists = Certificate.objects.filter(
-                    protocol=protocol, 
-                    student=protocol.student, 
-                    test=protocol.test
+                    protocol=protocol, student=protocol.student, test=protocol.test
                 ).exists()
             
             if not certificate_exists:
-                # Create certificate
-                certificate_data = {
-                    'student': protocol.student,
-                    'protocol': protocol
-                }
+                certificate_data = {'student': protocol.student, 'protocol': protocol}
                 if is_course:
                     certificate_data['course'] = protocol.course
                 elif is_test:
@@ -294,13 +286,11 @@ class ProtocolViewSet(viewsets.ModelViewSet):
                 
                 certificate = Certificate.objects.create(**certificate_data)
                 
-                # Update enrollment status to completed if it's a course
                 if protocol.enrollment:
                     protocol.enrollment.status = 'completed'
                     protocol.enrollment.completed_at = timezone.now()
                     protocol.enrollment.save()
                 
-                # Notify student
                 if is_course:
                     message = f'Ваш сертификат по курсу "{protocol.course.title}" готов. Номер сертификата: {certificate.number}'
                 elif is_test:
@@ -314,6 +304,67 @@ class ProtocolViewSet(viewsets.ModelViewSet):
                     title='Сертификат выдан',
                     message=message
                 )
+    
+    @action(detail=True, methods=['post'])
+    def sign_eds(self, request, pk=None):
+        """Sign protocol with EDS (ЭЦП) via NCALayer."""
+        protocol = self.get_object()
+        
+        if request.user.role not in ['pdek_member', 'pdek_chairman']:
+            return Response(
+                {'error': 'Only PDEK members can sign protocols'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        if not protocol.file or not protocol.file.name:
+            return Response(
+                {'error': 'Файл протокола не загружен. Загрузите файл перед подписанием ЭЦП.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        serializer = EDSSignSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        signature_base64 = serializer.validated_data['signature_base64']
+        
+        signature, _ = ProtocolSignature.objects.get_or_create(
+            protocol=protocol,
+            signer=request.user,
+            defaults={'role': 'chairman' if request.user.role == 'pdek_chairman' else 'member'}
+        )
+        
+        if signature.otp_verified:
+            return Response(
+                {'error': 'Вы уже подписали этот протокол.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Extract certificate info for audit and verify IIN
+        from .eds_verify import extract_certificate_info, verify_iin_match
+
+        cert_info = extract_certificate_info(signature_base64)
+        if cert_info is None:
+            return Response(
+                {'error': 'Не удалось извлечь данные сертификата для проверки ИИН. Обратитесь к администратору.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        iin_ok, iin_error = verify_iin_match(
+            cert_info.get('iin'),
+            getattr(request.user, 'iin', None),
+        )
+        if not iin_ok:
+            return Response(
+                {'error': iin_error or 'ИИН в сертификате не совпадает с данными пользователя.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        signature.sign_type = 'eds'
+        signature.eds_signature = signature_base64
+        signature.eds_certificate_info = cert_info
+        signature.otp_verified = True
+        signature.signed_at = timezone.now()
+        signature.save()
+        
+        self._apply_signature_and_update_protocol(protocol, signature)
         
         return Response(
             ProtocolSerializer(protocol).data,

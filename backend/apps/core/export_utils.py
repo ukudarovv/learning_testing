@@ -56,6 +56,68 @@ def export_to_excel(headers, rows, sheet_name='Sheet1'):
     return buffer
 
 
+def _format_cell_value(value):
+    """Format value for Excel cell (datetime, None, etc.)"""
+    if hasattr(value, 'strftime'):
+        return value.strftime('%Y-%m-%d %H:%M:%S') if value else ''
+    if value is None:
+        return ''
+    return value
+
+
+def export_to_excel_multi_sheet(sheets_data):
+    """
+    Create Excel file with multiple sheets.
+
+    Args:
+        sheets_data: List of (sheet_name, headers, rows) tuples.
+                     Each tuple: (str, list of headers, list of row lists)
+
+    Returns:
+        BytesIO buffer containing the xlsx file
+    """
+    wb = Workbook()
+    header_font = Font(bold=True)
+    header_fill = PatternFill(start_color='E0E0E0', end_color='E0E0E0', fill_type='solid')
+    header_alignment = Alignment(horizontal='center', wrap_text=True)
+
+    for sheet_idx, (sheet_name, headers, rows) in enumerate(sheets_data):
+        if sheet_idx == 0:
+            ws = wb.active
+        else:
+            ws = wb.create_sheet(title=sheet_name[:31])
+        ws.title = sheet_name[:31]
+
+        # Write headers with styling
+        for col_idx, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col_idx, value=header)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = header_alignment
+
+        # Write data rows
+        for row_idx, row_data in enumerate(rows, 2):
+            for col_idx, value in enumerate(row_data, 1):
+                ws.cell(row=row_idx, column=col_idx, value=_format_cell_value(value))
+
+        # Auto-adjust column widths
+        for col_idx in range(1, len(headers) + 1):
+            column_letter = get_column_letter(col_idx)
+            max_length = 0
+            for row in ws[column_letter]:
+                try:
+                    if row.value is not None and len(str(row.value)) > max_length:
+                        max_length = min(len(str(row.value)), 50)
+                except (TypeError, AttributeError):
+                    pass
+            ws.column_dimensions[column_letter].width = max(max_length + 2, 10)
+
+    buffer = BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    return buffer
+
+
 def create_excel_response(buffer, filename):
     """Create Django HttpResponse for Excel download"""
     from django.http import HttpResponse

@@ -12,6 +12,7 @@ export function SiteSettingsEditor() {
   const [requireSmsOnRegistration, setRequireSmsOnRegistration] = useState(true);
   const [requireCourseEnrollmentRequest, setRequireCourseEnrollmentRequest] = useState(true);
   const [requireTestEnrollmentRequest, setRequireTestEnrollmentRequest] = useState(true);
+  const [defaultProtocolSignMethod, setDefaultProtocolSignMethod] = useState<'both' | 'sms' | 'eds'>('both');
 
   useEffect(() => {
     settingsService.getSettings()
@@ -20,6 +21,7 @@ export function SiteSettingsEditor() {
         setRequireSmsOnRegistration(data.require_sms_on_registration);
         setRequireCourseEnrollmentRequest(data.require_course_enrollment_request ?? true);
         setRequireTestEnrollmentRequest(data.require_test_enrollment_request ?? true);
+        setDefaultProtocolSignMethod((data.default_protocol_sign_method as 'both' | 'sms' | 'eds') || 'both');
       })
       .catch(() => toast.error(t('admin.settings.loadError') || 'Ошибка загрузки настроек'))
       .finally(() => setLoading(false));
@@ -32,6 +34,7 @@ export function SiteSettingsEditor() {
         require_sms_on_registration: requireSmsOnRegistration,
         require_course_enrollment_request: requireCourseEnrollmentRequest,
         require_test_enrollment_request: requireTestEnrollmentRequest,
+        default_protocol_sign_method: defaultProtocolSignMethod,
       });
       setConfig(updated);
       toast.success(t('admin.settings.saveSuccess') || 'Настройки сохранены');
@@ -120,6 +123,24 @@ export function SiteSettingsEditor() {
               </p>
             </div>
           </label>
+        </div>
+
+        <div className="flex flex-col gap-2 mt-4">
+          <label className="block text-sm font-medium text-gray-700">
+            {t('admin.settings.defaultProtocolSignMethod') || 'Способ подписания протоколов'}
+          </label>
+          <select
+            value={defaultProtocolSignMethod}
+            onChange={(e) => setDefaultProtocolSignMethod(e.target.value as 'both' | 'sms' | 'eds')}
+            className="w-full max-w-xs px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="both">{t('admin.settings.protocolSignBoth') || 'SMS и ЭЦП'}</option>
+            <option value="sms">{t('admin.settings.protocolSignSms') || 'Только SMS'}</option>
+            <option value="eds">{t('admin.settings.protocolSignEds') || 'Только ЭЦП'}</option>
+          </select>
+          <p className="text-sm text-gray-500">
+            {t('admin.settings.defaultProtocolSignMethodHint') || 'Способ подписания протоколов для членов ПДЭК'}
+          </p>
         </div>
 
         <div className="mt-6 pt-4 border-t border-gray-200">

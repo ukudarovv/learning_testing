@@ -47,6 +47,14 @@ const protocolsService = {
     return adaptProtocol(data);
   },
 
+  /** Подписать протокол ЭЦП через NCALayer */
+  async signProtocolEDS(protocolId: string, signatureBase64: string): Promise<Protocol> {
+    const data = await apiClient.post<any>(`/protocols/${protocolId}/sign_eds/`, {
+      signature_base64: signatureBase64,
+    });
+    return adaptProtocol(data);
+  },
+
   /** Скачивает загруженный админом файл протокола (любой формат: PDF, DOCX и т.д.) */
   async downloadProtocolFile(protocol: Protocol): Promise<{ blob: Blob; filename: string }> {
     const fileUrl = this.getFileUrl(protocol);
@@ -68,6 +76,11 @@ const protocolsService = {
     const path = typeof protocol.file === 'string' ? protocol.file : String(protocol.file || '');
     const filename = path.split('/').pop() || `protocol_${protocol.id}.pdf`;
     return { blob, filename };
+  },
+
+  /** Скачивает файл протокола через API (для подписания ЭЦП) */
+  async fetchProtocolFileForEDS(protocolId: string): Promise<Blob> {
+    return apiClient.get<Blob>(`/protocols/${protocolId}/pdf/`, undefined, { responseType: 'blob' });
   },
 
   async uploadProtocolFile(protocolId: string, file: File): Promise<Protocol> {

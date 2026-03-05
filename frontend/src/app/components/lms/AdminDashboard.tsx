@@ -1542,6 +1542,14 @@ function ReportsSection() {
             <Download className="w-4 h-4" />
             {t('admin.dashboard.reports.coursesPopularityExport') || 'Популярность курсов'}
           </button>
+          <button
+            onClick={() => handleExport('learning-exam', () => analyticsService.exportLearningExamReport())}
+            disabled={!!exporting}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+          >
+            <Download className="w-4 h-4" />
+            {t('admin.dashboard.reports.learningExamReport') || 'Детализированный отчёт'}
+          </button>
         </div>
       </div>
 
@@ -1706,34 +1714,6 @@ function ReportsSection() {
               )}
             </tbody>
           </table>
-        </div>
-      </div>
-
-      {/* Export Options */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h3 className="text-lg font-bold text-gray-900 mb-4">{t('admin.dashboard.reports.exportReports')}</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button className="flex items-center justify-center gap-2 px-6 py-4 border-2 border-gray-300 text-gray-700 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all">
-            <Download className="w-5 h-5" />
-            <div className="text-left">
-              <div className="font-semibold">{t('admin.dashboard.reports.summaryReport')}</div>
-              <div className="text-xs text-gray-500">{t('admin.dashboard.reports.pdfExcel')}</div>
-            </div>
-          </button>
-          <button className="flex items-center justify-center gap-2 px-6 py-4 border-2 border-gray-300 text-gray-700 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all">
-            <Download className="w-5 h-5" />
-            <div className="text-left">
-              <div className="font-semibold">{t('admin.dashboard.reports.testResults')}</div>
-              <div className="text-xs text-gray-500">{t('admin.dashboard.reports.excel')}</div>
-            </div>
-          </button>
-          <button className="flex items-center justify-center gap-2 px-6 py-4 border-2 border-gray-300 text-gray-700 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all">
-            <Download className="w-5 h-5" />
-            <div className="text-left">
-              <div className="font-semibold">{t('admin.dashboard.reports.issuedCertificates')}</div>
-              <div className="text-xs text-gray-500">{t('admin.dashboard.reports.pdfExcel')}</div>
-            </div>
-          </button>
         </div>
       </div>
     </div>

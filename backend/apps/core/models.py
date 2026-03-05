@@ -52,6 +52,12 @@ class SiteConfig(models.Model):
         default=True,
         verbose_name='Требовать запрос для тестов'
     )
+    default_protocol_sign_method = models.CharField(
+        max_length=10,
+        choices=[('both', 'SMS и ЭЦП'), ('sms', 'Только SMS'), ('eds', 'Только ЭЦП')],
+        default='both',
+        verbose_name='Способ подписания протоколов по умолчанию'
+    )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата обновления')
 
@@ -72,6 +78,7 @@ def get_site_config():
             'require_sms_on_registration': True,
             'require_course_enrollment_request': True,
             'require_test_enrollment_request': True,
+            'default_protocol_sign_method': 'both',
         }
     )
     return config

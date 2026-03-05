@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FileText, CheckCircle, Clock, AlertTriangle, Phone, Video, ChevronDown, ChevronUp, XCircle } from 'lucide-react';
+import { FileText, CheckCircle, Clock, AlertTriangle, Phone, Video, ChevronDown, ChevronUp, XCircle, Shield } from 'lucide-react';
 import { Protocol, TestAttempt } from '../../types/lms';
 import { SMSVerification } from './SMSVerification';
+import { EDSSignModal } from './EDSSignModal';
 import { useProtocols } from '../../hooks/useProtocols';
 import { protocolsService } from '../../services/protocols';
 import { examsService } from '../../services/exams';
+import { settingsService } from '../../services/settings';
 import { useUser } from '../../contexts/UserContext';
 import { toast } from 'sonner';
 
@@ -14,13 +16,23 @@ export function PDEKDashboard() {
   const { user: currentUser } = useUser();
   const [selectedProtocol, setSelectedProtocol] = useState<Protocol | null>(null);
   const [showSMSModal, setShowSMSModal] = useState(false);
+  const [showEDSModal, setShowEDSModal] = useState(false);
   const [protocolToSign, setProtocolToSign] = useState<Protocol | null>(null);
   const [loading, setLoading] = useState(false);
   const [testAttempt, setTestAttempt] = useState<TestAttempt | null>(null);
   const [loadingAttempt, setLoadingAttempt] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  const [signMethod, setSignMethod] = useState<'sms' | 'eds' | 'both'>('both');
 
   const isChairman = currentUser?.role === 'pdek_chairman';
+
+  useEffect(() => {
+    settingsService.getSettings()
+      .then((data) => setSignMethod((data.default_protocol_sign_method as 'sms' | 'eds' | 'both') || 'both'))
+      .catch(() => setSignMethod('both'));
+  }, []);
+  const showSmsButton = signMethod === 'both' || signMethod === 'sms';
+  const showEdsButton = signMethod === 'both' || signMethod === 'eds';
   
   // Получаем протоколы через API
   const { protocols, loading: protocolsLoading, refetch } = useProtocols();
@@ -83,15 +95,28 @@ export function PDEKDashboard() {
       toast.success(t('lms.pdek.signSuccess'));
       setShowSMSModal(false);
       setProtocolToSign(null);
-      // Обновляем список протоколов после небольшой задержки, чтобы бэкенд успел обновить данные
-      setTimeout(() => {
-        refetch(); // Обновляем список протоколов
-      }, 500);
+      setTimeout(() => refetch(), 500);
     } catch (error: any) {
       toast.error(error.message || t('lms.pdek.signError'));
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleEDSSignRequest = (protocol: Protocol) => {
+    if (!protocol.file) {
+      toast.error(t('lms.pdek.noProtocolFile') || 'Файл протокола не загружен. Обратитесь к администратору.');
+      return;
+    }
+    setProtocolToSign(protocol);
+    setShowEDSModal(true);
+  };
+
+  const handleEDSSuccess = () => {
+    setShowEDSModal(false);
+    setProtocolToSign(null);
+    toast.success(t('lms.pdek.signSuccess'));
+    setTimeout(() => refetch(), 500);
   };
 
   return (
@@ -191,7 +216,7 @@ export function PDEKDashboard() {
                       <h4 className="text-sm font-semibold text-gray-700 mb-3">{t('lms.pdek.signatureStatus')}</h4>
                       <div className="space-y-2">
                         {protocol.signatures.map((sig, index) => (
-                          <div key={sig.userId || sig.id || `sig-${index}`} className="flex items-center justify-between">
+                            <div key={sig.userId || sig.id || `sig-${index}`} className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               {sig.otpVerified ? (
                                 <CheckCircle className="w-4 h-4 text-green-600" />
@@ -200,6 +225,7 @@ export function PDEKDashboard() {
                               )}
                               <span className="text-sm">
                                 {sig.userName} ({sig.role === 'chairman' ? t('lms.pdek.chairmanRole') : t('lms.pdek.memberRole')})
+                                {sig.signType === 'eds' && <span className="text-emerald-600 ml-1">ЭЦП</span>}
                               </span>
                             </div>
                             {sig.otpVerified && sig.signedAt && (
@@ -247,13 +273,25 @@ export function PDEKDashboard() {
                     >
                       {t('lms.pdek.details')}
                     </button>
-                      <button
-                        onClick={() => handleSignRequest(protocol)}
-                        className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                      >
-                        <Phone className="w-4 h-4" />
-                        {t('lms.pdek.signSms')}
-                      </button>
+                      {showSmsButton && (
+                        <button
+                          onClick={() => handleSignRequest(protocol)}
+                          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                        >
+                          <Phone className="w-4 h-4" />
+                          {t('lms.pdek.signSms')}
+                        </button>
+                      )}
+                      {showEdsButton && (
+                        <button
+                          onClick={() => handleEDSSignRequest(protocol)}
+                          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium"
+                          title={t('lms.pdek.signEDS') || 'Подписать ЭЦП'}
+                        >
+                          <Shield className="w-4 h-4" />
+                          {t('lms.pdek.signEDS') || 'ЭЦП'}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -413,12 +451,24 @@ export function PDEKDashboard() {
                 <div className="space-y-3">
                   {selectedProtocol.signatures.map((sig, index) => (
                     <div key={sig.userId || sig.id || `sig-${index}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div>
+                      <div className="flex-1">
                         <p className="font-medium">{sig.userName}</p>
                         <p className="text-sm text-gray-600">
                           {sig.role === 'chairman' ? t('lms.pdek.chairmanRole') : t('lms.pdek.memberRole')}
+                          {sig.signType === 'eds' && (
+                            <span className="ml-2 text-emerald-600">({t('lms.pdek.signEDS') || 'ЭЦП'})</span>
+                          )}
                         </p>
                         <p className="text-xs text-gray-500 mt-1">{sig.phone}</p>
+                        {sig.signType === 'eds' && sig.edsCertificateInfo && (
+                          <div className="mt-2 p-2 bg-white rounded border border-emerald-100 text-xs">
+                            <p className="font-medium text-gray-700 mb-1">{t('lms.pdek.certificateInfo') || 'Сертификат:'}</p>
+                            <p>{sig.edsCertificateInfo.full_name && <span>{sig.edsCertificateInfo.full_name}</span>}</p>
+                            {sig.edsCertificateInfo.iin && <p>{t('lms.pdek.iin')} {sig.edsCertificateInfo.iin}</p>}
+                            {sig.edsCertificateInfo.serial_number && <p>{t('lms.pdek.certSerial') || 'Серийный №'}: {sig.edsCertificateInfo.serial_number}</p>}
+                            {sig.edsCertificateInfo.issuer && <p>{t('lms.pdek.certIssuer') || 'УЦ'}: {sig.edsCertificateInfo.issuer}</p>}
+                          </div>
+                        )}
                       </div>
                       <div className="text-right">
                         {sig.otpVerified && sig.signedAt ? (
@@ -560,21 +610,53 @@ export function PDEKDashboard() {
               >
                 {t('common.close')}
               </button>
-                <button
-                  onClick={() => {
-                    handleSignRequest(selectedProtocol);
-                    setSelectedProtocol(null);
-                    setTestAttempt(null);
-                    setShowDetails(false);
-                  }}
-                  className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  <Phone className="w-4 h-4" />
-                  {t('lms.pdek.signSms')}
-                </button>
+                {showSmsButton && (
+                  <button
+                    onClick={() => {
+                      handleSignRequest(selectedProtocol);
+                      setSelectedProtocol(null);
+                      setTestAttempt(null);
+                      setShowDetails(false);
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <Phone className="w-4 h-4" />
+                    {t('lms.pdek.signSms')}
+                  </button>
+                )}
+                {showEdsButton && (
+                  <button
+                    onClick={() => {
+                      if (selectedProtocol?.file) {
+                        handleEDSSignRequest(selectedProtocol);
+                        setSelectedProtocol(null);
+                        setTestAttempt(null);
+                        setShowDetails(false);
+                      } else {
+                        toast.error(t('lms.pdek.noProtocolFile') || 'Файл протокола не загружен');
+                      }
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                  >
+                    <Shield className="w-4 h-4" />
+                    {t('lms.pdek.signEDS') || 'ЭЦП'}
+                  </button>
+                )}
             </div>
           </div>
         </div>
+      )}
+
+      {/* EDS Sign Modal */}
+      {showEDSModal && protocolToSign && (
+        <EDSSignModal
+          protocol={protocolToSign}
+          onSuccess={handleEDSSuccess}
+          onCancel={() => {
+            setShowEDSModal(false);
+            setProtocolToSign(null);
+          }}
+        />
       )}
 
       {/* SMS Verification Modal */}

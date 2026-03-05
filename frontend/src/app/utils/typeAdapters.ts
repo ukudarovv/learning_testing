@@ -125,6 +125,8 @@ export function adaptSignature(backendSignature: any): Signature {
     signedAt: backendSignature.signed_at ? new Date(backendSignature.signed_at) : undefined,
     otp_verified: backendSignature.otp_verified,
     otpVerified: backendSignature.otp_verified || backendSignature.otpVerified || false,
+    signType: backendSignature.sign_type || 'otp',
+    edsCertificateInfo: backendSignature.eds_certificate_info || undefined,
   };
 }
 

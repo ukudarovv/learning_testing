@@ -87,6 +87,19 @@ const analyticsService = {
     });
     downloadBlob(blob, 'courses_popularity.xlsx');
   },
+
+  async exportLearningExamReport(params?: { course_id?: number; user_id?: number; date_from?: string; date_to?: string }): Promise<void> {
+    const searchParams = new URLSearchParams();
+    if (params?.course_id) searchParams.set('course_id', String(params.course_id));
+    if (params?.user_id) searchParams.set('user_id', String(params.user_id));
+    if (params?.date_from) searchParams.set('date_from', params.date_from);
+    if (params?.date_to) searchParams.set('date_to', params.date_to);
+    const query = searchParams.toString() ? `?${searchParams.toString()}` : '';
+    const blob = await apiClient.get<Blob>(`/analytics/learning_exam_report/${query}`, undefined, {
+      responseType: 'blob',
+    });
+    downloadBlob(blob, 'learning_exam_report.xlsx');
+  },
 };
 
 export { analyticsService };

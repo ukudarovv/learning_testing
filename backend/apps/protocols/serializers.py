@@ -14,9 +14,9 @@ class ProtocolSignatureSerializer(serializers.ModelSerializer):
         model = ProtocolSignature
         fields = [
             'id', 'signer', 'role', 'signed_at',
-            'otp_verified', 'otp_expires_at'
+            'otp_verified', 'otp_expires_at', 'sign_type', 'eds_certificate_info'
         ]
-        read_only_fields = ['id', 'signed_at', 'otp_verified', 'otp_expires_at']
+        read_only_fields = ['id', 'signed_at', 'otp_verified', 'otp_expires_at', 'sign_type', 'eds_certificate_info']
 
 
 class ProtocolSerializer(serializers.ModelSerializer):
@@ -79,4 +79,9 @@ class OTPRequestSerializer(serializers.Serializer):
 class OTPSignSerializer(serializers.Serializer):
     """Serializer for OTP signing"""
     otp = serializers.CharField(max_length=6)
+
+
+class EDSSignSerializer(serializers.Serializer):
+    """Serializer for EDS (ЭЦП) signing via NCALayer"""
+    signature_base64 = serializers.CharField(help_text='Base64 CMS detached signature from NCALayer')
 

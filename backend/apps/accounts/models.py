@@ -59,6 +59,17 @@ class User(AbstractBaseUser, PermissionsMixin):
     city = models.CharField(max_length=100, blank=True)
     organization = models.CharField(max_length=255, blank=True)
     
+    # PDEK: preferred protocol signing method (sms, eds, or both)
+    PROTOCOL_SIGN_CHOICES = [
+        ('both', 'SMS и ЭЦП'),
+        ('sms', 'Только SMS'),
+        ('eds', 'Только ЭЦП'),
+    ]
+    protocol_sign_method = models.CharField(
+        max_length=10, choices=PROTOCOL_SIGN_CHOICES, default='both',
+        help_text='Способ подписания протоколов для членов ПДЭК'
+    )
+    
     is_staff = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     date_joined = models.DateTimeField(default=timezone.now)

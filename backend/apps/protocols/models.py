@@ -71,6 +71,11 @@ class Protocol(models.Model):
 class ProtocolSignature(models.Model):
     """Protocol signature model"""
     
+    SIGN_TYPE_CHOICES = [
+        ('otp', 'OTP (SMS)'),
+        ('eds', 'EDS (ЭЦП)'),
+    ]
+    
     ROLE_CHOICES = [
         ('member', 'Member'),
         ('chairman', 'Chairman'),
@@ -83,6 +88,11 @@ class ProtocolSignature(models.Model):
     otp_verified = models.BooleanField(default=False)
     otp_code = models.CharField(max_length=6, blank=True)
     otp_expires_at = models.DateTimeField(null=True, blank=True)
+    
+    # EDS (ЭЦП) fields
+    sign_type = models.CharField(max_length=10, choices=SIGN_TYPE_CHOICES, default='otp')
+    eds_signature = models.TextField(blank=True, help_text='Base64 CMS detached signature from NCALayer')
+    eds_certificate_info = models.JSONField(null=True, blank=True, help_text='IIN, full_name from certificate for audit')
     
     class Meta:
         db_table = 'protocol_signatures'

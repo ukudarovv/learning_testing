@@ -14,4 +14,5 @@ openpyxl==3.1.5
 django-filter==24.2
 requests==2.31.0
 twilio==9.2.3
+cryptography>=42.0.0
 
