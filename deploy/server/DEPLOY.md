@@ -94,7 +94,26 @@ ls -la /run/aqlant-api/
 - Убедитесь, что в unit указаны те же пути, что на сервере (`WorkingDirectory`, `PATH`, `ExecStart`)
 - В nginx в `proxy_pass` для unix-сокета обязателен **двоеточие в конце**: `http://unix:/run/aqlant-api/gunicorn.sock:`
 
-## 6. Nginx
+## 6. Nginx (сначала только HTTP)
+
+Убедитесь, что **DNS** указывает на IP сервера:
+
+- `api.elearning.aqlant.com` → A-запись на ваш VPS  
+- `elearning.aqlant.com` → A-запись на тот же IP  
+
+Проверка с вашего ПК: `ping api.elearning.aqlant.com` (должен отвечать нужный IP).
+
+Откройте порты **80** и **443** (иначе Certbot не выдаст сертификат):
+
+```bash
+sudo ufw allow OpenSSH
+sudo ufw allow 'Nginx Full'
+# или явно: sudo ufw allow 80/tcp && sudo ufw allow 443/tcp
+sudo ufw enable
+sudo ufw status
+```
+
+Копируйте конфиги и включайте сайты:
 
 ```bash
 sudo cp /home/ubuntu/aqlant-lms/deploy/server/nginx/api.elearning.aqlant.com.conf /etc/nginx/sites-available/
@@ -104,13 +123,63 @@ sudo ln -sf /etc/nginx/sites-available/elearning.aqlant.com.conf /etc/nginx/site
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
-TLS:
+Проверьте в браузере по HTTP: `http://api.elearning.aqlant.com/api/docs/` и `http://elearning.aqlant.com` — страницы должны открываться (без SSL пока нормально).
+
+## 7. HTTPS — Let’s Encrypt и Certbot
+
+Плагин **certbot-nginx** сам допишет в конфиги `listen 443 ssl`, пути к сертификатам и редирект с 80 на 443.
+
+Интерактивно (спросит email и согласие с ToS):
 
 ```bash
 sudo certbot --nginx -d api.elearning.aqlant.com -d elearning.aqlant.com
 ```
 
-## 7. Фронтенд
+Неинтерактивно (замените email):
+
+```bash
+sudo certbot --nginx \
+  -d api.elearning.aqlant.com \
+  -d elearning.aqlant.com \
+  --non-interactive --agree-tos \
+  -m admin@aqlant.com
+```
+
+Если нужен ещё **www** (сначала добавьте A/CNAME для `www.elearning.aqlant.com` в DNS):
+
+```bash
+sudo certbot --nginx \
+  -d api.elearning.aqlant.com \
+  -d elearning.aqlant.com \
+  -d www.elearning.aqlant.com
+```
+
+После успеха:
+
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+Проверка автообновления сертификатов (раз в ~90 дней):
+
+```bash
+sudo certbot renew --dry-run
+systemctl list-timers | grep certbot
+```
+
+На Ubuntu обычно уже включён таймер `certbot.timer`; если нет: `sudo systemctl enable --now certbot.timer`.
+
+### Если Certbot пишет об ошибке проверки (challenge failed)
+
+- Порт **80** снаружи должен доходить до nginx (фаервол провайдера + `ufw`).  
+- Домены в DNS должны указывать на **этот** сервер.  
+- Для одного домена можно запустить отдельно: `sudo certbot --nginx -d api.elearning.aqlant.com`, затем второй сайт.
+
+### После включения HTTPS
+
+В `backend/.env` задайте `FRONTEND_URL=https://elearning.aqlant.com`, в CORS/CSRF уже должны быть `https://...` (см. `settings.py` и при необходимости `DJANGO_CORS_ALLOWED_ORIGINS` / `DJANGO_CSRF_TRUSTED_ORIGINS`).
+
+## 8. Фронтенд
 
 ```bash
 cd /home/ubuntu/aqlant-lms/frontend
@@ -121,7 +190,7 @@ npm run build
 
 Проверка: открыть `https://elearning.aqlant.com`, в DevTools запросы к `https://api.elearning.aqlant.com/api/`.
 
-## 8. Альтернатива сокету — HTTP на localhost
+## 9. Альтернатива сокету — HTTP на localhost
 
 Если не хотите возиться с правами сокета, в unit замените `ExecStart` на:
 
@@ -135,7 +204,7 @@ npm run build
 proxy_pass http://127.0.0.1:8001;
 ```
 
-## 9. Обновление кода
+## 10. Обновление кода
 
 ```bash
 cd /home/ubuntu/aqlant-lms && git pull

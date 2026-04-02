@@ -33,14 +33,16 @@ ALLOWED_HOSTS = [
     "api.aqlant.com",
     "api.elearning.aqlant.com",
     "elearning.aqlant.com",
+    "www.elearning.aqlant.com",
     "localhost",
     "127.0.0.1",
-] + _env_csv('DJANGO_ALLOWED_HOSTS')
+] + _env_csv('DJANGO_ALLOWED_HOSTS') + _env_csv('ALLOWED_HOSTS')
 
 CORS_ALLOWED_ORIGINS = [
     "https://aqlant.com",
     "https://www.aqlant.com",
     "https://elearning.aqlant.com",
+    "https://www.elearning.aqlant.com",
     "http://localhost:5173",
     "http://localhost:5174",
     "http://localhost:3000",
@@ -55,6 +57,7 @@ CSRF_TRUSTED_ORIGINS = [
     "https://api.aqlant.com",
     "https://api.elearning.aqlant.com",
     "https://elearning.aqlant.com",
+    "https://www.elearning.aqlant.com",
 ] + _env_csv('DJANGO_CSRF_TRUSTED_ORIGINS')
 
 
