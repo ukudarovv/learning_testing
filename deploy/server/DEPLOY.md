@@ -113,7 +113,7 @@ sudo ufw enable
 sudo ufw status
 ```
 
-Копируйте конфиги и включайте сайты:
+Скопируйте **стартовые** конфиги (только **HTTP**) и включите сайты — **делайте это один раз до первого запуска Certbot**:
 
 ```bash
 sudo cp /home/ubuntu/aqlant-lms/deploy/server/nginx/api.elearning.aqlant.com.conf /etc/nginx/sites-available/
@@ -124,6 +124,8 @@ sudo nginx -t && sudo systemctl reload nginx
 ```
 
 Проверьте в браузере по HTTP: `http://api.elearning.aqlant.com/api/docs/` и `http://elearning.aqlant.com` — страницы должны открываться (без SSL пока нормально).
+
+**После успешного Certbot не выполняйте снова `sudo cp .../deploy/server/nginx/*.conf` в `/etc/nginx/sites-available/`** — файлы в репозитории содержат только `listen 80`, без `listen 443` и путей к сертификатам. Повторное копирование **сотрёт HTTPS** и может дублировать `server_name`, из‑за чего nginx пишет `conflicting server name ... ignored`.
 
 ## 7. HTTPS — Let’s Encrypt и Certbot
 
@@ -174,6 +176,30 @@ systemctl list-timers | grep certbot
 - Порт **80** снаружи должен доходить до nginx (фаервол провайдера + `ufw`).  
 - Домены в DNS должны указывать на **этот** сервер.  
 - Для одного домена можно запустить отдельно: `sudo certbot --nginx -d api.elearning.aqlant.com`, затем второй сайт.
+
+### Предупреждение nginx: `conflicting server name ... on 0.0.0.0:80, ignored`
+
+Значит, **несколько** `server { ... }` с одинаковым `server_name` слушают один порт (обычно 80). Остаётся только первый блок, остальные nginx игнорирует — возможны «левые» редиректы или потеря SSL.
+
+1. Посмотреть, кто объявляет те же имена:
+
+   ```bash
+   grep -R "server_name" /etc/nginx/sites-enabled/
+   ```
+
+2. Убрать дубли: оставить **по одному** активному файлу на API и на фронт. Часто мешают старые ссылки или второй копией после `cp` из репо:
+   - лишние файлы в `sites-enabled/` отключить: `sudo rm /etc/nginx/sites-enabled/имя-дубля` (или переименовать в `.disabled`);
+   - дефолтный сайт: при необходимости `sudo rm /etc/nginx/sites-enabled/default`.
+
+3. Если HTTPS пропал после повторного `cp` из репозитория — снова прогнать Certbot (подставит сертификаты в текущие конфиги):
+
+   ```bash
+   sudo certbot --nginx -d api.elearning.aqlant.com -d elearning.aqlant.com
+   ```
+
+   Сертификат уже есть в `/etc/letsencrypt/live/api.elearning.aqlant.com/` — Certbot обновит nginx-конфиги без повторной выдачи, если срок ещё в порядке (следуйте подсказкам в терминале).
+
+4. Проверка: `sudo nginx -t && sudo systemctl reload nginx` — **не должно** быть предупреждений про `conflicting server name` для ваших доменов.
 
 ### После включения HTTPS
 
