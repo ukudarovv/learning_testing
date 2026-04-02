@@ -13,6 +13,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Load environment variables from backend/.env
 load_dotenv(BASE_DIR / '.env')
 
+
+def _env_csv(name: str) -> list:
+    raw = os.getenv(name, '').strip()
+    if not raw:
+        return []
+    return [x.strip() for x in raw.split(',') if x.strip()]
+
+
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-change-this-in-production')
 
@@ -23,16 +31,20 @@ ALLOWED_HOSTS = [
     "aqlant.com",
     "www.aqlant.com",
     "api.aqlant.com",
+    "api.elearning.aqlant.com",
+    "elearning.aqlant.com",
     "api.unicover.kz",
     "unicover.kz",
     "www.unicover.kz",
     "localhost",
     "127.0.0.1",
-]
+] + _env_csv('DJANGO_ALLOWED_HOSTS')
+
 CORS_ALLOWED_ORIGINS = [
     "https://aqlant.com",
     "https://www.aqlant.com",
-     "https://unicover.kz",
+    "https://elearning.aqlant.com",
+    "https://unicover.kz",
     "https://www.unicover.kz",
     "http://localhost:5173",
     "http://localhost:5174",
@@ -40,16 +52,18 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173",
     "http://127.0.0.1:5175",
     "http://127.0.0.1:3000",
-]
+] + _env_csv('DJANGO_CORS_ALLOWED_ORIGINS')
 
 CSRF_TRUSTED_ORIGINS = [
     "https://aqlant.com",
     "https://www.aqlant.com",
     "https://api.aqlant.com",
+    "https://api.elearning.aqlant.com",
+    "https://elearning.aqlant.com",
     "https://api.unicover.kz",
     "https://unicover.kz",
     "https://www.unicover.kz",
-]
+] + _env_csv('DJANGO_CSRF_TRUSTED_ORIGINS')
 
 
 # Application definition

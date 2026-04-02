@@ -1,0 +1,33 @@
+# Установка:
+#   sudo cp deploy/server/systemd/aqlant-gunicorn.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now aqlant-gunicorn
+#
+# Сокет: /run/aqlant-api/gunicorn.sock (каталог создаётся systemd, права 0770, группа www-data)
+# Пользователь ubuntu должен входить в группу www-data: sudo usermod -aG www-data ubuntu
+
+[Unit]
+Description=Aqlant LMS — Gunicorn (Django API)
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=www-data
+RuntimeDirectory=aqlant-api
+RuntimeDirectoryMode=0770
+UMask=0007
+WorkingDirectory=/home/ubuntu/aqlant-lms/backend
+Environment=PATH=/home/ubuntu/aqlant-lms/venv/bin
+ExecStart=/home/ubuntu/aqlant-lms/venv/bin/gunicorn \
+    --workers 3 \
+    --timeout 120 \
+    --bind unix:/run/aqlant-api/gunicorn.sock \
+    --access-logfile - \
+    --error-logfile - \
+    config.wsgi:application
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
