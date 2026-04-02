@@ -31,7 +31,7 @@ def send_registration_email(
     Args:
         user: Зарегистрированный пользователь (студент)
         password: Пароль пользователя (для отображения в письме)
-        program_name: Название программы (по умолчанию "Обучение на платформе UNICOVER")
+        program_name: Название программы (по умолчанию "Обучение на платформе Aqlant")
         start_date: Дата начала (по умолчанию сегодня)
         platform_url: Ссылка на платформу (из FRONTEND_URL)
         coordinator_phone: Телефон координатора
@@ -54,9 +54,9 @@ def send_registration_email(
             return True  # считаем успехом, письмо уже ушло
         _registration_email_sent[email_key] = now
     
-    program_name = program_name or getattr(settings, 'REGISTRATION_PROGRAM_NAME', 'Обучение на платформе UNICOVER')
+    program_name = program_name or getattr(settings, 'REGISTRATION_PROGRAM_NAME', 'Обучение на платформе Aqlant')
     start_date = start_date or timezone.now().strftime('%d.%m.%Y')
-    platform_url = platform_url or getattr(settings, 'FRONTEND_URL', 'https://unicover.kz')
+    platform_url = platform_url or getattr(settings, 'FRONTEND_URL', 'https://aqlant.com')
     coordinator_phone = coordinator_phone or getattr(settings, 'REGISTRATION_COORDINATOR_PHONE', '')
     coordinator_email = coordinator_email or getattr(settings, 'REGISTRATION_COORDINATOR_EMAIL', '')
     
@@ -80,10 +80,10 @@ def send_registration_email(
 Желаем успешного обучения!
 
 С уважением,
-ТОО "Unicover"
+ТОО «Aqlant»
 '''.strip()
     
-    subject = f'Регистрация на платформе UNICOVER'
+    subject = f'Регистрация на платформе Aqlant'
     
     # HTML-версия для лучшей доставляемости (меньше шанс попасть в спам)
     html_message = f'''
@@ -101,7 +101,7 @@ def send_registration_email(
 <p>Рекомендуем авторизоваться заранее и проверить корректность доступа к платформе.</p>
 <p>В случае возникновения технических вопросов вы можете обратиться к координатору программы по телефону {coordinator_phone} или по электронной почте {coordinator_email}.</p>
 <p>Желаем успешного обучения!</p>
-<p>С уважением,<br>ТОО "Unicover"</p>
+<p>С уважением,<br>ТОО «Aqlant»</p>
 </body>
 </html>
 '''.strip()
@@ -222,7 +222,7 @@ def send_course_notification(
 Вы можете начать обучение в личном кабинете.
 
 С уважением,
-Команда UNICOVER
+Команда Aqlant
         '''.strip()
     
     # Get enrolled students
@@ -281,7 +281,7 @@ def send_course_reminder(
 Не забудьте подготовиться к началу обучения!
 
 С уважением,
-Команда UNICOVER
+Команда Aqlant
     '''.strip()
     
     if user_ids:
@@ -339,7 +339,7 @@ def send_protocol_pdek_notification(protocol, fail_silently: bool = True) -> int
         protocol.course.title if protocol.course
         else (protocol.test.title if protocol.test else '—')
     )
-    platform_url = getattr(settings, 'FRONTEND_URL', 'https://unicover.kz')
+    platform_url = getattr(settings, 'FRONTEND_URL', 'https://aqlant.com')
     dashboard_url = f"{platform_url.rstrip('/')}/pdek/dashboard"
 
     subject = f'Новый протокол №{protocol.number} ожидает подписания'
@@ -356,7 +356,7 @@ def send_protocol_pdek_notification(protocol, fail_silently: bool = True) -> int
 {dashboard_url}
 
 С уважением,
-ТОО "Unicover"
+ТОО «Aqlant»
 '''.strip()
 
     html_message = f'''
@@ -370,7 +370,7 @@ def send_protocol_pdek_notification(protocol, fail_silently: bool = True) -> int
 <strong>Курс/тест:</strong> {course_or_test}<br>
 <strong>Дата экзамена:</strong> {protocol.exam_date.strftime('%d.%m.%Y') if protocol.exam_date else '—'}</p>
 <p><a href="{dashboard_url}" style="color: #2563eb;">Перейти к подписанию</a></p>
-<p>С уважением,<br>ТОО "Unicover"</p>
+<p>С уважением,<br>ТОО «Aqlant»</p>
 </body>
 </html>
 '''.strip()

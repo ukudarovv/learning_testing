@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 if __name__ == '__main__':
     # Test phone number (replace with your test number)
     test_phone = '77001234567'  # Replace with actual test number
-    test_message = 'Тестовое сообщение от UNICOVER'
+    test_message = 'Тестовое сообщение от Aqlant'
     
     print("=" * 50)
     print("Testing SMSC.kz SMS Service")

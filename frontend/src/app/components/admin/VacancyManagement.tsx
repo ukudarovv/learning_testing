@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Plus, Edit, Trash2, Eye, Filter, X, Download } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Filter, X, Download } from 'lucide-react';
 import { vacanciesService, Vacancy } from '../../services/vacancies';
 import { toast } from 'sonner';
 
@@ -218,15 +218,6 @@ export function VacancyManagement({ onCreate, onEdit, refreshTrigger }: VacancyM
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end gap-2">
-                        <a
-                          href={`/construction/vacancies/${vacancy.id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-900"
-                          title="Просмотр"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </a>
                         <button
                           onClick={() => onEdit(vacancy)}
                           className="text-blue-600 hover:text-blue-900"

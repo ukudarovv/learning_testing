@@ -17,13 +17,13 @@ SMSC_API_URL=https://smsc.kz/sys/send.php
 При попытке завершения курса или подписания протокола проверьте логи Django сервера. Вы должны увидеть:
 
 ```
-INFO: Attempting to send SMS to 87778077444 for course completion X
+INFO: Attempting to send SMS to 87075577444 for course completion X
 INFO: OTP code generated: 123456
 INFO: SMSC.kz configured: login=ukudarov, password=***
-INFO: Normalizing phone: 87778077444 -> digits only: 87778077444
-INFO: Replaced 8 with 7: 77778077444
-INFO: Final normalized phone: 77778077444
-INFO: Sending SMS to 77778077444 via SMSC.kz
+INFO: Normalizing phone: 87075577444 -> digits only: 87075577444
+INFO: Replaced 8 with 7: 77075577444
+INFO: Final normalized phone: 77075577444
+INFO: Sending SMS to 77075577444 via SMSC.kz
 INFO: SMS result: {'success': True, 'message': 'SMS sent successfully', 'sms_id': '1'}
 ```
 
@@ -34,7 +34,7 @@ INFO: SMS result: {'success': True, 'message': 'SMS sent successfully', 'sms_id'
 Запустите тестовую команду для проверки отправки SMS:
 ```bash
 cd backend
-python manage.py test_sms --phone 87778077444 --message "Тест"
+python manage.py test_sms --phone 87075577444 --message "Тест"
 ```
 
 Если тест проходит успешно, но SMS не отправляется при завершении курса, проблема может быть в:
@@ -48,7 +48,7 @@ python manage.py test_sms --phone 87778077444 --message "Тест"
 ```bash
 python manage.py shell
 >>> from apps.accounts.models import User
->>> user = User.objects.get(phone='87778077444')  # или ваш номер
+>>> user = User.objects.get(phone='87075577444')  # или ваш номер
 >>> print(f"Phone: {user.phone}, ID: {user.id}")
 ```
 

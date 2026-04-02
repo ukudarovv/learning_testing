@@ -26,16 +26,16 @@ class Command(BaseCommand):
 
         self.stdout.write(f"Отправка тестовых писем на: {recipient_list}")
 
-        subject = 'Тестовое письмо UNICOVER'
+        subject = 'Тестовое письмо Aqlant'
         message = '''Здравствуйте!
 
-Это тестовое письмо от платформы UNICOVER.
+Это тестовое письмо от платформы Aqlant.
 
 Если вы получили это письмо, настройки email работают корректно.
 Уведомления о новых протоколах для подписания будут приходить на эту почту.
 
 С уважением,
-ТОО "Unicover"
+ТОО «Aqlant»
 '''.strip()
 
         html_message = '''
@@ -44,10 +44,10 @@ class Command(BaseCommand):
 <head><meta charset="utf-8"></head>
 <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px;">
 <p>Здравствуйте!</p>
-<p>Это тестовое письмо от платформы UNICOVER.</p>
+<p>Это тестовое письмо от платформы Aqlant.</p>
 <p>Если вы получили это письмо, настройки email работают корректно.<br>
 Уведомления о новых протоколах для подписания будут приходить на эту почту.</p>
-<p>С уважением,<br>ТОО "Unicover"</p>
+<p>С уважением,<br>ТОО «Aqlant»</p>
 </body>
 </html>
 '''.strip()

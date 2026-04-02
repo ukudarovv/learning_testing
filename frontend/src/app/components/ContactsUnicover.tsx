@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { MapPin, Phone, Mail, Clock, Building2, CheckCircle, AlertCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { GoogleMap } from './GoogleMap';
 import { contactsService, ContactMessageCreate } from '../services/contacts';
 import { toast } from 'sonner';
 
@@ -97,25 +96,6 @@ export function ContactsUnicover() {
                 );
               })}
             </div>
-
-            {/* Google Maps */}
-            <GoogleMap 
-              address={t('homepage.contacts.info.address.content')}
-              latitude={47.10189431406451}
-              longitude={51.91418497800475}
-              height="400px"
-            />
-
-            {/* Company Details */}
-            <div className="mt-6 bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-              <h3 className="font-bold text-gray-900 mb-4">{t('homepage.contacts.companyDetails.title')}</h3>
-              <div className="space-y-2 text-sm text-gray-600">
-                <p><strong>{t('homepage.contacts.companyDetails.fullName')}:</strong> {t('homepage.contacts.companyDetails.fullNameValue')}</p>
-                <p><strong>{t('homepage.contacts.companyDetails.bin')}:</strong> {t('homepage.contacts.companyDetails.binValue')}</p>
-                <p><strong>{t('homepage.contacts.companyDetails.legalAddress')}:</strong> {t('homepage.contacts.companyDetails.legalAddressValue')}</p>
-                <p><strong>{t('homepage.contacts.companyDetails.email')}:</strong> {t('homepage.contacts.companyDetails.emailValue')}</p>
-              </div>
-            </div>
           </div>
 
           {/* Contact Form */}
@@ -207,10 +187,7 @@ export function ContactsUnicover() {
                     disabled={loading}
                   >
                     <option value="">{t('homepage.contacts.form.directionPlaceholder')}</option>
-                    <option value="construction">{t('homepage.contacts.form.directions.construction')}</option>
-                    <option value="engineering">{t('homepage.contacts.form.directions.engineering')}</option>
                     <option value="education">{t('homepage.contacts.form.directions.education')}</option>
-                    <option value="safety">{t('homepage.contacts.form.directions.safety')}</option>
                     <option value="other">{t('homepage.contacts.form.directions.other')}</option>
                   </select>
                 </div>

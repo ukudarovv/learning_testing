@@ -1,5 +1,5 @@
 """
-Custom middleware for UNICOVER project
+Custom middleware for Aqlant LMS project
 """
 
 

@@ -1,5 +1,5 @@
 """
-Django settings for unicover project.
+Django settings for Aqlant LMS project.
 """
 
 import os
@@ -20,6 +20,9 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-change-this-in-production'
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = [
+    "aqlant.com",
+    "www.aqlant.com",
+    "api.aqlant.com",
     "api.unicover.kz",
     "unicover.kz",
     "www.unicover.kz",
@@ -27,6 +30,8 @@ ALLOWED_HOSTS = [
     "127.0.0.1",
 ]
 CORS_ALLOWED_ORIGINS = [
+    "https://aqlant.com",
+    "https://www.aqlant.com",
      "https://unicover.kz",
     "https://www.unicover.kz",
     "http://localhost:5173",
@@ -38,6 +43,9 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 CSRF_TRUSTED_ORIGINS = [
+    "https://aqlant.com",
+    "https://www.aqlant.com",
+    "https://api.aqlant.com",
     "https://api.unicover.kz",
     "https://unicover.kz",
     "https://www.unicover.kz",
@@ -230,8 +238,8 @@ CORS_ALLOW_HEADERS = [
 
 # Swagger/OpenAPI settings
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'UNICOVER LMS API',
-    'DESCRIPTION': 'API для системы управления обучением UNICOVER',
+    'TITLE': 'Aqlant LMS API',
+    'DESCRIPTION': 'API для системы управления обучением Aqlant',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
     'SCHEMA_PATH_PREFIX': '/api/',
@@ -245,7 +253,7 @@ TWILIO_PHONE_NUMBER = os.getenv('TWILIO_PHONE_NUMBER', '')
 # SMS Settings (SMSC.kz)
 SMSC_LOGIN = os.getenv('SMSC_LOGIN', '')
 SMSC_PASSWORD = os.getenv('SMSC_PASSWORD', '')
-SMSC_SENDER = os.getenv('SMSC_SENDER', 'UNICOVER')
+SMSC_SENDER = os.getenv('SMSC_SENDER', 'AQLANT')
 SMSC_API_URL = os.getenv('SMSC_API_URL', 'https://smsc.kz/sys/send.php')
 
 # Email Settings
@@ -261,7 +269,7 @@ if SENDGRID_API_KEY:
     EMAIL_USE_TLS = True
     EMAIL_HOST_USER = 'apikey'
     EMAIL_HOST_PASSWORD = SENDGRID_API_KEY
-    DEFAULT_FROM_EMAIL = SENDGRID_FROM_EMAIL or os.getenv('DEFAULT_FROM_EMAIL', 'noreply@unicover.kz')
+    DEFAULT_FROM_EMAIL = SENDGRID_FROM_EMAIL or os.getenv('DEFAULT_FROM_EMAIL', 'noreply@aqlant.com')
 else:
     # Если EMAIL_HOST задан в .env — используем SMTP. Иначе console (письма только в лог)
     _email_host = os.getenv('EMAIL_HOST', '')
@@ -277,13 +285,13 @@ else:
     EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True' if not EMAIL_USE_SSL else False
     EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
     EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
-    DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@unicover.kz')
+    DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@aqlant.com')
 
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
 
 # Registration email (рассылка при регистрации студента)
-FRONTEND_URL = os.getenv('FRONTEND_URL', 'https://unicover.kz')
-REGISTRATION_PROGRAM_NAME = os.getenv('REGISTRATION_PROGRAM_NAME', 'Обучение на платформе UNICOVER')
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'https://aqlant.com')
+REGISTRATION_PROGRAM_NAME = os.getenv('REGISTRATION_PROGRAM_NAME', 'Обучение на платформе Aqlant')
 REGISTRATION_COORDINATOR_PHONE = os.getenv('REGISTRATION_COORDINATOR_PHONE', '')
 REGISTRATION_COORDINATOR_EMAIL = os.getenv('REGISTRATION_COORDINATOR_EMAIL', '')
 # Адрес отправителя (для SendGrid — верифицированный в панели; для SMTP — обычно совпадает с логином)

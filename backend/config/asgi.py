@@ -1,5 +1,5 @@
 """
-ASGI config for unicover project.
+ASGI config for Aqlant LMS project.
 
 It exposes the ASGI callable as a module-level variable named ``application``.
 

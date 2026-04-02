@@ -1,5 +1,5 @@
 """
-URL configuration for unicover project.
+URL configuration for Aqlant LMS project.
 """
 from django.contrib import admin
 from django.urls import path, include

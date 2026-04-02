@@ -41,6 +41,17 @@
     "required": "Required",
     "optional": "Optional"
   },
+  "brand": {
+    "name": "Learning & Testing",
+    "subtitle": "Aqlant LLP",
+    "legalForm": "LLP",
+    "titleRu": "ТОО «Aqlant»",
+    "titleKz": "«Aqlant» ЖШС",
+    "titleEn": "Aqlant LLP",
+    "headerEmail": "info@aqlant.com",
+    "headerPhone": "+7 707 557 74 44",
+    "headerAddress": "060026, Atyrau, Yermekqali Begaliev St. 9"
+  },
   "navigation": {
     "menu": "Menu",
     "personalCabinet": "Personal Cabinet",
@@ -133,7 +144,7 @@
     "hero": {
       "badge": "Construction Direction",
       "title": "About Company",
-      "description": "UNICOVER LLP is a multi-profile engineering and design-construction company providing a full range of services in industrial safety, surveys, design and construction."
+      "description": "Aqlant LLP is a multi-profile engineering and design-construction company providing a full range of services in industrial safety, surveys, design and construction."
     },
     "breadcrumbs": {
       "home": "Home",
@@ -142,7 +153,7 @@
     },
     "about": {
       "title": "Our Activities",
-      "paragraph1": "UNICOVER LLP specializes in performing the full cycle of works from engineering surveys to commissioning. We work in various industries and civil construction.",
+      "paragraph1": "Aqlant LLP specializes in performing the full cycle of works from engineering surveys to commissioning. We work in various industries and civil construction.",
       "paragraph2": "The company has all necessary licenses and certificates confirming the right to perform work in the field of surveys, design and construction. Our specialists have extensive experience working with facilities of various complexity.",
       "paragraph3": "We guarantee high quality of work performed, compliance with all regulatory requirements and standards of the Republic of Kazakhstan, as well as an individual approach to each project."
     },
@@ -204,7 +215,7 @@
   "licenses": {
     "title": "Licenses",
     "badge": "Licenses and Certificates",
-    "description": "UNICOVER LLP has a complete set of state licenses and industry certificates confirming the right to perform work in various fields.",
+    "description": "Aqlant LLP has a complete set of state licenses and industry certificates confirming the right to perform work in various fields.",
     "loading": "Loading licenses...",
     "notFound": "No licenses found",
     "categories": {
@@ -221,7 +232,7 @@
     },
     "info": {
       "title": "About Licenses",
-      "description1": "All licenses are issued by authorized bodies of the Republic of Kazakhstan and confirm the right of UNICOVER LLP to perform the relevant types of work. Licenses are regularly updated and undergo the necessary re-registration procedures.",
+      "description1": "All licenses are issued by authorized bodies of the Republic of Kazakhstan and confirm the right of Aqlant LLP to perform the relevant types of work. Licenses are regularly updated and undergo the necessary re-registration procedures.",
       "description2": "For additional information about licenses or to request copies of documents, please contact us through",
       "contactLink": "the feedback form"
     },
@@ -243,7 +254,7 @@
     "programs": "Training Programs",
     "cabinet": "Personal Cabinet",
     "certificateVerification": "Certificate Verification",
-    "pageTitle": "UNICOVER Education Center",
+    "pageTitle": "Aqlant Education Center",
     "pageDescription": "Professional training with issuance of certificates and certificates in industrial safety, occupational safety and other areas.",
     "courses": {
       "loading": "Loading courses...",
@@ -310,29 +321,29 @@
     "badge": "Contacts",
     "title": "Contact Us",
     "description": "We are ready to answer your questions and discuss cooperation opportunities",
-    "mapAddress": "Atyrau, Student Street 25, BC Bayterek Plaza",
+    "mapAddress": "060026, Atyrau, Yermekqali Begaliev St. 9",
     "info": {
       "bin": "BIN",
-      "binValue": "100240007639",
+      "binValue": "260140021058",
       "address": "Address",
-      "addressValue": "Atyrau, Student Street 25\nBC Bayterek Plaza, 5th floor",
+      "addressValue": "060026, Republic of Kazakhstan, Atyrau, Yermekqali Begaliev St. 9",
       "phone": "Phones",
-      "phoneValue": "+7 (7122) 20-80-92\n+7 708 420-80-92",
+      "phoneValue": "+7 707 557 74 44",
       "email": "Email",
-      "emailValue": "info@unicover.kz",
+      "emailValue": "info@aqlant.com",
       "workingHours": "Working Hours",
       "workingHoursValue": "Mon-Fri: 9:00 - 18:00\nSat-Sun: Closed"
     },
     "companyDetails": {
       "title": "Company Details",
       "fullName": "Full Name",
-      "fullNameValue": "UNICOVER LLP",
+      "fullNameValue": "Aqlant LLP",
       "bin": "BIN",
-      "binValue": "100240007639",
+      "binValue": "260140021058",
       "legalAddress": "Legal Address",
-      "legalAddressValue": "Atyrau, Student Street 25, BC Bayterek Plaza, 5th floor",
+      "legalAddressValue": "060026, Republic of Kazakhstan, Atyrau, Yermekqali Begaliev St. 9",
       "email": "Email",
-      "emailValue": "info@unicover.kz"
+      "emailValue": "info@aqlant.com"
     },
     "form": {
       "title": "Send Request",
@@ -364,14 +375,14 @@
       "errorMessage": "Error sending message. Please try again."
     },
     "address": "Address",
-    "addressValue": "Atyrau, Student Street 25, BC Bayterek Plaza, 5th floor",
+    "addressValue": "060026, Republic of Kazakhstan, Atyrau, Yermekqali Begaliev St. 9",
     "phone": "Phones",
     "email": "Email",
     "workingHours": "Working Hours"
   },
   "footer": {
     "companyDescription": "Multi-profile engineering and design-construction company. Full range of services in industrial safety, surveys, design and construction.",
-    "copyright": "© {{year}} UNICOVER LLP. BIN 100240007639. All rights reserved.",
+    "copyright": "© {{year}} Aqlant LLP. BIN 260140021058. All rights reserved.",
     "construction": "Construction",
     "education": "Education Center",
     "contacts": "Contacts"
@@ -823,7 +834,7 @@
     },
     "dashboard": {
       "title": "Admin Dashboard",
-      "subtitle": "Manage UNICOVER Learning Platform",
+      "subtitle": "Manage Aqlant Learning Platform",
       "navigation": {
         "overview": "Overview",
         "courses": "Courses",
@@ -1427,7 +1438,7 @@
       "title": "Vacancies",
       "badge": "Career",
       "heroTitle": "Vacancies",
-      "heroDescription": "Join the UNICOVER LLP team! We offer interesting projects, professional development and decent working conditions.",
+      "heroDescription": "Join the Aqlant LLP team! We offer interesting projects, professional development and decent working conditions.",
       "breadcrumbs": {
         "home": "Home",
         "construction": "Construction",
@@ -1511,7 +1522,7 @@
   "forms": {
     "login": {
       "title": "Login",
-      "subtitle": "UNICOVER Education Center",
+      "subtitle": "Aqlant Education Center",
       "phone": "Phone Number",
       "phonePlaceholder": "+7 (XXX) XXX-XX-XX",
       "password": "Password",
@@ -1632,8 +1643,8 @@
   },
   "homepage": {
     "hero": {
-      "bin": "BIN 100240007639",
-      "companyName": "UNICOVER LLP",
+      "bin": "BIN 260140021058",
+      "companyName": "Aqlant LLP",
       "subtitle": "Engineering and design-construction company",
       "description": "Full range of services in industrial safety, surveys, design, construction works and professional training",
       "construction": {
@@ -1662,9 +1673,9 @@
     },
     "about": {
       "badge": "About Company",
-      "title": "UNICOVER LLP",
+      "title": "Aqlant LLP",
       "heading": "Multi-profile engineering and design-construction company",
-      "description1": "UNICOVER LLP provides a full range of services in industrial safety, surveys, design and construction works. We work in the Kazakhstan market, maintaining high standards of quality, safety and regulatory compliance.",
+      "description1": "Aqlant LLP provides a full range of services in industrial safety, surveys, design and construction works. We work in the Kazakhstan market, maintaining high standards of quality, safety and regulatory compliance.",
       "description2": "The company has all necessary licenses and certificates confirming competence and the right to perform works of increased technical complexity.",
       "weCombine": "We combine:",
       "combineItems": {
@@ -1695,7 +1706,7 @@
           "description": "Openness and honesty in work"
         }
       },
-      "imageAlt": "About UNICOVER company"
+      "imageAlt": "About Aqlant company"
     },
     "construction": {
       "badge": "Construction Direction",
@@ -1734,7 +1745,7 @@
       },
       "licenses": {
         "title": "Licenses and Certificates",
-        "description": "UNICOVER LLP has a full package of state licenses and industry certificates confirming the right to perform works in the following areas:",
+        "description": "Aqlant LLP has a full package of state licenses and industry certificates confirming the right to perform works in the following areas:",
         "surveys": {
           "title": "Surveys and Design",
           "items": {
@@ -1755,7 +1766,7 @@
     },
     "education": {
       "badge": "Education Direction",
-      "title": "UNICOVER Education Center",
+      "title": "Aqlant Education Center",
       "description": "Training and retraining of specialists in industrial safety",
       "safety": {
         "title": "Industrial Safety",
@@ -1793,19 +1804,19 @@
       "info": {
         "bin": {
           "title": "BIN",
-          "content": "100240007639"
+          "content": "260140021058"
         },
         "address": {
           "title": "Address",
-          "content": "Atyrau, Student Street 25\nBC Bayterek Plaza, 5th floor"
+          "content": "060026, Republic of Kazakhstan, Atyrau, Yermekqali Begaliev St. 9"
         },
         "phone": {
           "title": "Phones",
-          "content": "+7 (7122) 20-80-92\n+7 708 420-80-92"
+          "content": "+7 707 557 74 44"
         },
         "email": {
           "title": "Email",
-          "content": "info@unicover.kz"
+          "content": "info@aqlant.com"
         },
         "workingHours": {
           "title": "Working Hours",
@@ -1815,13 +1826,13 @@
       "companyDetails": {
         "title": "Company Details",
         "fullName": "Full Name",
-        "fullNameValue": "UNICOVER LLP",
+        "fullNameValue": "Aqlant LLP",
         "bin": "BIN",
-        "binValue": "100240007639",
+        "binValue": "260140021058",
         "legalAddress": "Legal Address",
-        "legalAddressValue": "Atyrau, Student Street 25, BC Bayterek Plaza, 5th floor",
+        "legalAddressValue": "060026, Republic of Kazakhstan, Atyrau, Yermekqali Begaliev St. 9",
         "email": "Email",
-        "emailValue": "info@unicover.kz"
+        "emailValue": "info@aqlant.com"
       },
       "form": {
         "title": "Send Request",

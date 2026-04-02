@@ -17,7 +17,7 @@ class SMSCService:
     def __init__(self):
         self.login = getattr(settings, 'SMSC_LOGIN', '')
         self.password = getattr(settings, 'SMSC_PASSWORD', '')
-        self.sender = getattr(settings, 'SMSC_SENDER', 'UNICOVER')
+        self.sender = getattr(settings, 'SMSC_SENDER', 'AQLANT')
         self.api_url = getattr(settings, 'SMSC_API_URL', 'https://smsc.kz/sys/send.php')
         
     def _normalize_phone(self, phone: str) -> str:

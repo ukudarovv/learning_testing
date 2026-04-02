@@ -1,8 +1,9 @@
-import { Menu, X, Mail, MapPin, Phone, User, Building2, GraduationCap, LogOut } from 'lucide-react';
+import { Menu, X, Mail, MapPin, Phone, User, LogOut } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
 import { useTranslation } from 'react-i18next';
+import { BrandLogo } from './BrandLogo';
 
 export function Header() {
   const navigate = useNavigate();
@@ -44,6 +45,8 @@ export function Header() {
     }
   };
 
+  const closeMobileMenu = () => setIsMenuOpen(false);
+
   return (
     <header className="bg-white sticky top-0 z-50 shadow-md">
       {/* Top Bar with Contact Info */}
@@ -51,21 +54,17 @@ export function Header() {
         <div className="container mx-auto px-4">
           <div className="flex flex-wrap items-center justify-between py-2 text-sm gap-4">
             <div className="flex flex-wrap items-center gap-4 md:gap-6">
-              <a href="mailto:info@unicover.kz" className="flex items-center gap-2 hover:text-blue-300 transition-colors">
+              <a href={`mailto:${t('brand.headerEmail')}`} className="flex items-center gap-2 hover:text-blue-300 transition-colors">
                 <Mail className="w-4 h-4" />
-                <span>info@unicover.kz</span>
+                <span>{t('brand.headerEmail')}</span>
               </a>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 max-w-md">
                 <MapPin className="w-4 h-4 flex-shrink-0" />
-                <span className="text-xs">г.Атырау, ул. Студенческий 25, БЦ Bayterek Plaza, 5 этаж</span>
+                <span className="text-xs">{t('brand.headerAddress')}</span>
               </div>
-              <a href="tel:+77122208092" className="flex items-center gap-2 hover:text-blue-300 transition-colors">
+              <a href="tel:+77075577444" className="flex items-center gap-2 hover:text-blue-300 transition-colors">
                 <Phone className="w-4 h-4" />
-                <span>+7 (7122) 20-80-92</span>
-              </a>
-              <a href="tel:+77084208092" className="flex items-center gap-2 hover:text-blue-300 transition-colors">
-                <Phone className="w-4 h-4" />
-                <span>+7 708 420-80-92</span>
+                <span>{t('brand.headerPhone')}</span>
               </a>
             </div>
             
@@ -113,73 +112,25 @@ export function Header() {
         <div className="flex items-center justify-between h-20">
           {/* Logo */}
           <div className="flex items-center">
-            <Link to="/" className="flex items-center">
-              <img 
-                src="/logo.jpg" 
-                alt="UNICOVER Logo" 
-                className="h-14 w-auto object-contain"
-              />
-            </Link>
+            <BrandLogo onClick={closeMobileMenu} className="min-h-[3.5rem] justify-center" />
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center gap-6">
+          <nav className="hidden lg:flex items-center gap-6 flex-wrap justify-end">
             <Link to="/" className="text-gray-700 hover:text-blue-600 transition-colors font-medium">
               {t('common.home')}
             </Link>
             <a href="/#about" className="text-gray-700 hover:text-blue-600 transition-colors font-medium">
               {t('common.about')}
             </a>
-            
-            {/* Construction Dropdown */}
-            <div className="relative group">
-              <button className="flex items-center gap-2 text-gray-700 hover:text-blue-600 transition-colors font-medium">
-                <Building2 className="w-4 h-4" />
-                {t('common.construction')}
-              </button>
-              <div className="absolute top-full left-0 mt-2 w-64 bg-white shadow-xl rounded-lg py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
-                <Link to="/construction/about" className="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600">
-                  {t('construction.about')}
-                </Link>
-                <Link to="/construction/licenses" className="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600">
-                  {t('construction.licenses')}
-                </Link>
-                <Link to="/projects" className="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600">
-                  {t('construction.projects')}
-                </Link>
-                <Link to="/news" className="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600">
-                  {t('navigation.news') || 'Новости'}
-                </Link>
-                <Link to="/construction/vacancies" className="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600">
-                  {t('navigation.vacancies')}
-                </Link>
-                <a href="/#partners" className="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600">
-                  {t('construction.partners')}
-                </a>
-              </div>
-            </div>
-
-            {/* Education Dropdown */}
-            <div className="relative group">
-              <button className="flex items-center gap-2 text-gray-700 hover:text-blue-600 transition-colors font-medium">
-                <GraduationCap className="w-4 h-4" />
-                {t('common.education')}
-              </button>
-              <div className="absolute top-full left-0 mt-2 w-64 bg-white shadow-xl rounded-lg py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
-                <a href="/#education" className="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600">
-                  {t('education.about')}
-                </a>
-                <Link to="/education" className="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600">
-                  {t('education.programs')}
-                </Link>
-                <Link to="/verify" className="block px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600">
-                  {t('education.certificateVerification')}
-                </Link>
-              </div>
-            </div>
-
-            <Link to="/contacts" className="text-gray-700 hover:text-blue-600 transition-colors font-medium">
+            <a href="/#education" className="text-gray-700 hover:text-blue-600 transition-colors font-medium">
+              {t('common.education')}
+            </a>
+            <a href="/#contacts" className="text-gray-700 hover:text-blue-600 transition-colors font-medium">
               {t('common.contacts')}
+            </a>
+            <Link to="/verify" className="text-gray-700 hover:text-blue-600 transition-colors font-medium">
+              {t('education.certificateVerification')}
             </Link>
             
             {currentUser ? (
@@ -223,49 +174,22 @@ export function Header() {
         {isMenuOpen && (
           <nav className="lg:hidden py-4 border-t border-gray-200">
             <div className="flex flex-col gap-4">
-              <Link to="/" className="text-gray-700 hover:text-blue-600 py-2">
+              <Link to="/" onClick={closeMobileMenu} className="text-gray-700 hover:text-blue-600 py-2">
                 Главная
               </Link>
-              <a href="/#about" className="text-gray-700 hover:text-blue-600 py-2">
+              <a href="/#about" onClick={closeMobileMenu} className="text-gray-700 hover:text-blue-600 py-2">
                 О компании
               </a>
-              <div className="border-t border-gray-200 pt-2">
-                <p className="text-xs font-semibold text-gray-500 uppercase mb-2">{t('common.construction')}</p>
-                <Link to="/construction/about" className="text-gray-700 hover:text-blue-600 py-2 pl-4 block">
-                  {t('construction.about')}
-                </Link>
-                <Link to="/construction/licenses" className="text-gray-700 hover:text-blue-600 py-2 pl-4 block">
-                  {t('construction.licenses')}
-                </Link>
-                <Link to="/construction" className="text-gray-700 hover:text-blue-600 py-2 pl-4 block">
-                  {t('construction.completedWorks')}
-                </Link>
-                <Link to="/projects" className="text-gray-700 hover:text-blue-600 py-2 pl-4 block">
-                  {t('construction.projects')}
-                </Link>
-                <Link to="/news" className="text-gray-700 hover:text-blue-600 py-2 pl-4 block">
-                  {t('navigation.news') || 'Новости'}
-                </Link>
-                <a href="/#partners" className="text-gray-700 hover:text-blue-600 py-2 pl-4 block">
-                  {t('construction.partners')}
-                </a>
-              </div>
-              <div className="border-t border-gray-200 pt-2">
-                <p className="text-xs font-semibold text-gray-500 uppercase mb-2">{t('common.education')}</p>
-                <a href="/#education" className="text-gray-700 hover:text-blue-600 py-2 pl-4 block">
-                  {t('education.about')}
-                </a>
-                <Link to="/education" className="text-gray-700 hover:text-blue-600 py-2 pl-4 block">
-                  {t('education.programs')}
-                </Link>
-                <Link to="/verify" className="text-gray-700 hover:text-blue-600 py-2 pl-4 block">
-                  {t('education.certificateVerification')}
-                </Link>
-              </div>
-              <Link to="/contacts" className="text-gray-700 hover:text-blue-600 py-2">
+              <a href="/#education" onClick={closeMobileMenu} className="text-gray-700 hover:text-blue-600 py-2">
+                {t('common.education')}
+              </a>
+              <a href="/#contacts" onClick={closeMobileMenu} className="text-gray-700 hover:text-blue-600 py-2">
                 {t('common.contacts')}
+              </a>
+              <Link to="/verify" onClick={closeMobileMenu} className="text-gray-700 hover:text-blue-600 py-2">
+                {t('education.certificateVerification')}
               </Link>
-              <Link to="/login" className="text-blue-600 font-medium py-2 border-t border-gray-200">
+              <Link to="/login" onClick={closeMobileMenu} className="text-blue-600 font-medium py-2 border-t border-gray-200">
                 {t('header.personalCabinet')}
               </Link>
             </div>

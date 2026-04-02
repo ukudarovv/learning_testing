@@ -8,6 +8,7 @@ import { useUser } from '../contexts/UserContext';
 import { SMSVerification } from './lms/SMSVerification';
 import { smsService } from '../services/smsService';
 import { settingsService } from '../services/settings';
+import { BrandLogo } from './BrandLogo';
 
 export function RegisterForm() {
   const { t } = useTranslation();
@@ -180,11 +181,9 @@ export function RegisterForm() {
         <div className="max-w-md mx-auto">
           <div className="bg-white p-8 rounded-2xl shadow-lg">
             <div className="text-center mb-8">
-              <img 
-                src="/logo.jpg" 
-                alt="UNICOVER Logo" 
-                className="h-16 w-auto object-contain mx-auto mb-4"
-              />
+              <div className="flex justify-center mb-4">
+                <BrandLogo variant="auth" />
+              </div>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
                 {t('forms.register.title')}
               </h2>

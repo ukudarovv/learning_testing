@@ -16,6 +16,21 @@ interface UserContextType {
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
+const USER_STORAGE_KEY = 'aqlant_user';
+const LEGACY_USER_STORAGE_KEY = 'unicover_user';
+
+function readStoredUserJson(): string | null {
+  let raw = localStorage.getItem(USER_STORAGE_KEY);
+  if (!raw) {
+    raw = localStorage.getItem(LEGACY_USER_STORAGE_KEY);
+    if (raw) {
+      localStorage.setItem(USER_STORAGE_KEY, raw);
+      localStorage.removeItem(LEGACY_USER_STORAGE_KEY);
+    }
+  }
+  return raw;
+}
+
 export function UserProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -28,21 +43,22 @@ export function UserProvider({ children }: { children: ReactNode }) {
         try {
           const userData = await authService.getCurrentUser();
           setUser(userData);
-          localStorage.setItem('unicover_user', JSON.stringify(userData));
+          localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
         } catch (error) {
           console.error('Failed to load user:', error);
           // Токен невалиден, очищаем
           apiClient.setToken(null);
-          localStorage.removeItem('unicover_user');
+          localStorage.removeItem(USER_STORAGE_KEY);
+          localStorage.removeItem(LEGACY_USER_STORAGE_KEY);
         }
       } else {
-        // Проверяем localStorage для обратной совместимости
-        const storedUser = localStorage.getItem('unicover_user');
+        const storedUser = readStoredUserJson();
         if (storedUser) {
           try {
             setUser(JSON.parse(storedUser));
           } catch (e) {
-            localStorage.removeItem('unicover_user');
+            localStorage.removeItem(USER_STORAGE_KEY);
+            localStorage.removeItem(LEGACY_USER_STORAGE_KEY);
           }
         }
       }
@@ -56,7 +72,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     try {
       const response = await authService.login({ phone, password });
       setUser(response.user);
-      localStorage.setItem('unicover_user', JSON.stringify(response.user));
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.user));
     } catch (error) {
       console.error('Login error:', error);
       throw error;
@@ -65,7 +81,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   const setUserFromAuth = (userData: User) => {
     setUser(userData);
-    localStorage.setItem('unicover_user', JSON.stringify(userData));
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
   };
 
   const logout = async () => {
@@ -75,7 +91,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
       console.error('Logout error:', error);
     } finally {
       setUser(null);
-      localStorage.removeItem('unicover_user');
+      localStorage.removeItem(USER_STORAGE_KEY);
+      localStorage.removeItem(LEGACY_USER_STORAGE_KEY);
     }
   };
 
@@ -83,7 +100,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     if (user) {
       const updatedUser = { ...user, ...updates };
       setUser(updatedUser);
-      localStorage.setItem('unicover_user', JSON.stringify(updatedUser));
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updatedUser));
     }
   };
 
@@ -91,7 +108,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     try {
       const userData = await authService.getCurrentUser();
       setUser(userData);
-      localStorage.setItem('unicover_user', JSON.stringify(userData));
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
     } catch (error) {
       console.error('Failed to refresh user:', error);
       throw error;

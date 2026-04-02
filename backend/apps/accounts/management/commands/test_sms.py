@@ -21,7 +21,7 @@ class Command(BaseCommand):
         parser.add_argument(
             '--message',
             type=str,
-            default='Тестовое сообщение от UNICOVER',
+            default='Тестовое сообщение от Aqlant',
             help='Message text to send',
         )
 

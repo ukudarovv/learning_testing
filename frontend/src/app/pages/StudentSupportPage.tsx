@@ -49,8 +49,8 @@ export function StudentSupportPage() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-1">{t('pages.support.email')}</h3>
-                    <a href="mailto:support@unicover.kz" className="text-blue-600 hover:text-blue-700">
-                      support@unicover.kz
+                    <a href="mailto:info@aqlant.com" className="text-blue-600 hover:text-blue-700">
+                      info@aqlant.com
                     </a>
                     <p className="text-sm text-gray-600 mt-1">{t('pages.support.responseTime')}</p>
                   </div>

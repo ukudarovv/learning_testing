@@ -14,7 +14,7 @@ source venv/bin/activate
 
 pip install -r requirements.txt
 python manage.py migrate
-python manage.py create_admin --phone +77778077444 --full-name "Admin User"
+python manage.py create_admin --phone +77075577444 --full-name "Admin User"
 python manage.py runserver
 ```
 

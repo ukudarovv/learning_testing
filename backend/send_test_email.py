@@ -29,22 +29,22 @@ def main():
 <html>
 <head><meta charset="utf-8"></head>
 <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-<p>Это тестовое письмо от платформы UNICOVER.</p>
+<p>Это тестовое письмо от платформы Aqlant.</p>
 <p>Если вы получили это письмо, настройки SMTP работают корректно.</p>
-<p>С уважением,<br>ТОО "Unicover"</p>
+<p>С уважением,<br>ТОО «Aqlant»</p>
 </body>
 </html>
 '''.strip()
 
     try:
         result = send_mail(
-            subject='Тестовое письмо UNICOVER',
-            message='''Это тестовое письмо от платформы UNICOVER.
+            subject='Тестовое письмо Aqlant',
+            message='''Это тестовое письмо от платформы Aqlant.
 
 Если вы получили это письмо, настройки SMTP работают корректно.
 
 С уважением,
-ТОО "Unicover"
+ТОО «Aqlant»
 ''',
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[recipient],

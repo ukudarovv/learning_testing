@@ -1,10 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Plus, Edit, Trash2, Eye, Filter, Newspaper } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Filter, Newspaper } from 'lucide-react';
 import { newsService } from '../../services/news';
 import { News } from '../../types/news';
 import { NewsCategory } from '../../types/news';
 import { toast } from 'sonner';
-import { Link } from 'react-router-dom';
 
 interface NewsManagementProps {
   onCreate: () => void;
@@ -218,15 +217,6 @@ export function NewsManagement({ onCreate, onEdit, refreshTrigger }: NewsManagem
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end gap-2">
-                        <Link
-                          to={`/news/${item.id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-900"
-                          title="Просмотр"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Link>
                         <button
                           onClick={() => onEdit(item)}
                           className="text-blue-600 hover:text-blue-900"

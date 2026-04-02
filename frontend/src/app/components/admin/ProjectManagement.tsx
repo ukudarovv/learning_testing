@@ -1,9 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Plus, Edit, Trash2, Eye, Filter, Building2 } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Filter, Building2 } from 'lucide-react';
 import { projectsService, Project } from '../../services/projects';
 import { ProjectCategory } from '../../types/projects';
 import { toast } from 'sonner';
-import { Link } from 'react-router-dom';
 
 interface ProjectManagementProps {
   onCreate: () => void;
@@ -231,15 +230,6 @@ export function ProjectManagement({ onCreate, onEdit, refreshTrigger }: ProjectM
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end gap-2">
-                        <Link
-                          to={`/projects/${project.id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-900"
-                          title="Просмотр"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Link>
                         <button
                           onClick={() => onEdit(project)}
                           className="text-blue-600 hover:text-blue-900"

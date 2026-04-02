@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { User, Lock, Phone, Eye, EyeOff } from 'lucide-react';
 import { useUser } from '../contexts/UserContext';
 import { ApiError } from '../services/api';
+import { BrandLogo } from './BrandLogo';
 
 export function LoginForm() {
   const { t } = useTranslation();
@@ -34,7 +35,8 @@ export function LoginForm() {
       }
       
       // Получаем пользователя из localStorage для определения роли
-      const userStr = localStorage.getItem('unicover_user');
+      const userStr =
+        localStorage.getItem('aqlant_user') || localStorage.getItem('unicover_user');
       if (userStr) {
         const user = JSON.parse(userStr);
         
@@ -95,11 +97,9 @@ export function LoginForm() {
       <div className="max-w-md w-full">
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <div className="text-center mb-8">
-            <img 
-              src="/logo.jpg" 
-              alt="UNICOVER Logo" 
-              className="h-16 w-auto object-contain mx-auto mb-4"
-            />
+            <div className="flex justify-center mb-4">
+              <BrandLogo variant="auth" />
+            </div>
             <h2 className="text-3xl font-bold text-gray-900">{t('forms.login.title')}</h2>
             <p className="text-gray-600 mt-2">{t('forms.login.subtitle')}</p>
           </div>

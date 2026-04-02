@@ -20,7 +20,7 @@ class Command(BaseCommand):
             phone='77771234567',
             defaults={
                 'full_name': 'Администратор',
-                'email': 'admin@unicover.kz',
+                'email': 'admin@aqlant.com',
                 'role': 'admin',
                 'verified': True,
                 'is_staff': True,
@@ -62,7 +62,7 @@ class Command(BaseCommand):
             phone='77774444444',
             defaults={
                 'full_name': 'Преподаватель Тестов',
-                'email': 'teacher@unicover.kz',
+                'email': 'teacher@aqlant.com',
                 'role': 'teacher',
                 'verified': True,
             }
@@ -77,7 +77,7 @@ class Command(BaseCommand):
             phone='77775555555',
             defaults={
                 'full_name': 'Член ПДЭК',
-                'email': 'pdek@unicover.kz',
+                'email': 'pdek@aqlant.com',
                 'role': 'pdek_member',
                 'verified': True,
             }
@@ -91,7 +91,7 @@ class Command(BaseCommand):
             phone='77776666666',
             defaults={
                 'full_name': 'Председатель ПДЭК',
-                'email': 'chairman@unicover.kz',
+                'email': 'chairman@aqlant.com',
                 'role': 'pdek_chairman',
                 'verified': True,
             }

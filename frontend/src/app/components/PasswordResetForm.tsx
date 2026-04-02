@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Phone, Lock, Eye, EyeOff, ArrowLeft, CheckCircle } from 'lucide-react';
 import { authService } from '../services/auth';
 import { ApiError } from '../services/api';
+import { BrandLogo } from './BrandLogo';
 
 type Step = 'request' | 'verify' | 'setPassword';
 
@@ -133,11 +134,9 @@ export function PasswordResetForm() {
       <div className="max-w-md w-full">
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <div className="text-center mb-8">
-            <img 
-              src="/logo.jpg" 
-              alt="UNICOVER Logo" 
-              className="h-16 w-auto object-contain mx-auto mb-4"
-            />
+            <div className="flex justify-center mb-4">
+              <BrandLogo variant="auth" />
+            </div>
             <h2 className="text-3xl font-bold text-gray-900">
               {step === 'request' 
                 ? t('forms.passwordReset.title')

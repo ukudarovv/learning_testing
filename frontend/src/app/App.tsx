@@ -1,20 +1,9 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { HomePage } from './pages/HomePage';
-import { ConstructionPage } from './pages/ConstructionPage';
-import { ConstructionAboutPage } from './pages/ConstructionAboutPage';
-import { ConstructionLicensesPage } from './pages/ConstructionLicensesPage';
-import { VacanciesPage } from './pages/VacanciesPage';
-import { VacancyDetailPage } from './pages/VacancyDetailPage';
-import { EducationPage } from './pages/EducationPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { PasswordResetPage } from './pages/PasswordResetPage';
 import { DashboardPage } from './pages/DashboardPage';
-import { ContactsPage } from './pages/ContactsPage';
-import { ProjectsPage } from './pages/ProjectsPage';
-import { ProjectDetailPage } from './pages/ProjectDetailPage';
-import { NewsPage } from './pages/NewsPage';
-import { NewsDetailPage } from './pages/NewsDetailPage';
 import { StudentDashboardPage } from './pages/StudentDashboardPage';
 import { StudentCoursesPage } from './pages/StudentCoursesPage';
 import { StudentHistoryPage } from './pages/StudentHistoryPage';
@@ -34,26 +23,24 @@ import { TermsPage } from './pages/TermsPage';
 import { PrivacyPage } from './pages/PrivacyPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
+function RedirectHome() {
+  return <Navigate to="/" replace />;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<HomePage />} />
-        <Route path="/construction" element={<ConstructionPage />} />
-        <Route path="/construction/about" element={<ConstructionAboutPage />} />
-        <Route path="/construction/licenses" element={<ConstructionLicensesPage />} />
-        <Route path="/construction/vacancies" element={<VacanciesPage />} />
-        <Route path="/construction/vacancies/:id" element={<VacancyDetailPage />} />
-        <Route path="/education" element={<EducationPage />} />
-        <Route path="/projects" element={<ProjectsPage />} />
-        <Route path="/projects/:id" element={<ProjectDetailPage />} />
-        <Route path="/news" element={<NewsPage />} />
-        <Route path="/news/:id" element={<NewsDetailPage />} />
+        <Route path="/construction/*" element={<RedirectHome />} />
+        <Route path="/education" element={<RedirectHome />} />
+        <Route path="/projects/*" element={<RedirectHome />} />
+        <Route path="/news/*" element={<RedirectHome />} />
+        <Route path="/contacts" element={<RedirectHome />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/password-reset" element={<PasswordResetPage />} />
-        <Route path="/contacts" element={<ContactsPage />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/verify/:certificateNumber?" element={<VerifyCertificatePage />} />

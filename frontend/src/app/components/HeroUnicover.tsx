@@ -1,4 +1,4 @@
-import { Building2, GraduationCap, Shield, ArrowRight } from 'lucide-react';
+import { GraduationCap, Shield, ArrowRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 
@@ -34,32 +34,10 @@ export function HeroUnicover() {
             </p>
           </div>
 
-          {/* Two Main Directions */}
-          <div className="grid md:grid-cols-2 gap-6 mb-12">
+          <div className="max-w-2xl mx-auto mb-12">
             <a
-              href="#construction-about"
-              className="group bg-white/10 backdrop-blur-sm p-8 rounded-2xl border-2 border-white/20 hover:bg-white/20 hover:border-white/40 transition-all"
-            >
-              <div className="flex items-start gap-4 mb-4">
-                <div className="w-16 h-16 bg-white/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Building2 className="w-8 h-8" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-2xl font-bold mb-2">{t('homepage.hero.construction.title')}</h3>
-                  <p className="text-blue-100 text-sm mb-4">
-                    {t('homepage.hero.construction.description')}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 text-sm font-medium group-hover:gap-3 transition-all">
-                {t('homepage.hero.learnMore')}
-                <ArrowRight className="w-4 h-4" />
-              </div>
-            </a>
-
-            <a
-              href="#education-about"
-              className="group bg-white/10 backdrop-blur-sm p-8 rounded-2xl border-2 border-white/20 hover:bg-white/20 hover:border-white/40 transition-all"
+              href="#education"
+              className="group block bg-white/10 backdrop-blur-sm p-8 rounded-2xl border-2 border-white/20 hover:bg-white/20 hover:border-white/40 transition-all"
             >
               <div className="flex items-start gap-4 mb-4">
                 <div className="w-16 h-16 bg-white/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -77,25 +55,6 @@ export function HeroUnicover() {
                 <ArrowRight className="w-4 h-4" />
               </div>
             </a>
-          </div>
-
-          {/* Key Stats */}
-          <div className="grid sm:grid-cols-3 gap-6">
-            <div className="bg-white/10 backdrop-blur-sm p-6 rounded-xl text-center">
-              <Shield className="w-8 h-8 mx-auto mb-3" />
-              <h4 className="font-bold mb-2">{t('homepage.hero.stats.licenses.title')}</h4>
-              <p className="text-sm text-blue-100">{t('homepage.hero.stats.licenses.description')}</p>
-            </div>
-            <div className="bg-white/10 backdrop-blur-sm p-6 rounded-xl text-center">
-              <Building2 className="w-8 h-8 mx-auto mb-3" />
-              <h4 className="font-bold mb-2">{t('homepage.hero.stats.quality.title')}</h4>
-              <p className="text-sm text-blue-100">{t('homepage.hero.stats.quality.description')}</p>
-            </div>
-            <div className="bg-white/10 backdrop-blur-sm p-6 rounded-xl text-center">
-              <GraduationCap className="w-8 h-8 mx-auto mb-3" />
-              <h4 className="font-bold mb-2">{t('homepage.hero.stats.training.title')}</h4>
-              <p className="text-sm text-blue-100">{t('homepage.hero.stats.training.description')}</p>
-            </div>
           </div>
         </div>
       </div>

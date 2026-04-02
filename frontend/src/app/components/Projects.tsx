@@ -1,6 +1,5 @@
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Building2, Calendar, MapPin } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { projectsService } from '../services/projects';
 import { Project } from '../types/projects';
@@ -40,16 +39,9 @@ export function Projects() {
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
             Выполненные работы
           </h2>
-          <p className="text-gray-600 max-w-2xl mx-auto mb-4">
+          <p className="text-gray-600 max-w-2xl mx-auto">
             Примеры успешно реализованных проектов в области проектирования и строительства
           </p>
-          <Link
-            to="/projects"
-            className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
-          >
-            Смотреть все проекты
-            <Building2 className="w-4 h-4" />
-          </Link>
         </div>
 
         {loading && (
@@ -74,10 +66,9 @@ export function Projects() {
         {!loading && !error && projects.length > 0 && (
           <div className="grid md:grid-cols-2 gap-8">
             {projects.map((project) => (
-              <Link
+              <article
                 key={project.id}
-                to={`/projects/${project.id}`}
-                className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow group block"
+                className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow group"
               >
                 <div className="relative overflow-hidden h-64">
                   <ImageWithFallback
@@ -107,7 +98,7 @@ export function Projects() {
                     </div>
                   </div>
                 </div>
-              </Link>
+              </article>
             ))}
           </div>
         )}

@@ -1,7 +1,8 @@
-import { Facebook, Instagram, Youtube, MapPin, Phone, Mail, Building2, GraduationCap } from 'lucide-react';
+import { Facebook, Instagram, Youtube, MapPin, Phone, Mail, GraduationCap } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { scrollToSection } from '../utils/scrollToSection';
+import { BrandLogo } from './BrandLogo';
 
 export function FooterUnicover() {
   const { t } = useTranslation();
@@ -13,25 +14,15 @@ export function FooterUnicover() {
   const handleHashLink = (e: React.MouseEvent<HTMLAnchorElement>, hash: string) => {
     e.preventDefault();
     if (isHomePage) {
-      // If on home page, scroll to section
       scrollToSection(hash.replace('#', ''));
     } else {
-      // If on another page, navigate to home with hash
       navigate(`/${hash}`, { replace: false });
     }
   };
 
-  const constructionLinks = [
-    { name: t('construction.about'), href: '/construction/about', isLink: true },
-    { name: t('construction.licenses'), href: '/construction/licenses', isLink: true },
-    { name: t('construction.completedWorks'), href: '/projects', isLink: true },
-    { name: t('construction.partners'), href: '#partners', isLink: false, isHash: true },
-  ];
-
   const educationLinks = [
     { name: t('education.about'), href: '#education', isHash: true },
-    { name: t('education.programs'), href: '/education#courses', isLink: true, hasHash: true },
-    { name: t('education.online.title'), href: '/education#elearning', isLink: true, hasHash: true },
+    { name: t('education.programs'), href: '#education', isHash: true },
     { name: t('education.certificateVerification'), href: '/verify', isLink: true },
     { name: t('education.cabinet'), href: '/login', isLink: true },
   ];
@@ -40,6 +31,11 @@ export function FooterUnicover() {
     { name: t('common.home'), href: '#home', isHash: true },
     { name: t('common.about'), href: '#about', isHash: true },
     { name: t('common.contacts'), href: '#contacts', isHash: true },
+  ];
+
+  const legalLinks = [
+    { name: t('pages.terms.title'), to: '/terms' as const },
+    { name: t('pages.privacy.title'), to: '/privacy' as const },
   ];
 
   const socialLinks = [
@@ -51,15 +47,11 @@ export function FooterUnicover() {
   return (
     <footer className="bg-gray-900 text-gray-300">
       <div className="container mx-auto px-4 py-16">
-        <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-8 mb-12">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
           {/* Company Info */}
           <div className="lg:col-span-2">
             <div className="flex items-center mb-6">
-              <img 
-                src="/logo.jpg" 
-                alt="UNICOVER Logo" 
-                className="h-10 w-auto object-contain"
-              />
+              <BrandLogo variant="footer" />
             </div>
             <p className="text-sm mb-6">
               {t('footer.companyDescription')}
@@ -81,37 +73,6 @@ export function FooterUnicover() {
             </div>
           </div>
 
-          {/* Construction Links */}
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <Building2 className="w-5 h-5 text-blue-400" />
-              <h3 className="font-bold text-white">{t('footer.construction')}</h3>
-            </div>
-            <ul className="space-y-3">
-              {constructionLinks.map((link, index) => (
-                <li key={index}>
-                  {link.isLink ? (
-                    <Link to={link.href} className="text-sm hover:text-blue-400 transition-colors">
-                      {link.name}
-                    </Link>
-                  ) : link.isHash ? (
-                    <a 
-                      href={link.href} 
-                      onClick={(e) => handleHashLink(e, link.href)}
-                      className="text-sm hover:text-blue-400 transition-colors cursor-pointer"
-                    >
-                      {link.name}
-                    </a>
-                  ) : (
-                    <a href={link.href} className="text-sm hover:text-blue-400 transition-colors">
-                      {link.name}
-                    </a>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
-
           {/* Education Links */}
           <div>
             <div className="flex items-center gap-2 mb-4">
@@ -121,27 +82,16 @@ export function FooterUnicover() {
             <ul className="space-y-3">
               {educationLinks.map((link, index) => (
                 <li key={index}>
-                  {link.isLink && !link.hasHash ? (
+                  {link.isLink ? (
                     <Link to={link.href} className="text-sm hover:text-blue-400 transition-colors">
                       {link.name}
                     </Link>
-                  ) : link.isLink && link.hasHash ? (
-                    <a 
-                      href={link.href} 
-                      className="text-sm hover:text-blue-400 transition-colors"
-                    >
-                      {link.name}
-                    </a>
-                  ) : link.isHash ? (
+                  ) : (
                     <a 
                       href={link.href} 
                       onClick={(e) => handleHashLink(e, link.href)}
                       className="text-sm hover:text-blue-400 transition-colors cursor-pointer"
                     >
-                      {link.name}
-                    </a>
-                  ) : (
-                    <a href={link.href} className="text-sm hover:text-blue-400 transition-colors">
                       {link.name}
                     </a>
                   )}
@@ -160,19 +110,14 @@ export function FooterUnicover() {
               </li>
               <li className="flex items-start gap-3 text-sm">
                 <Phone className="w-5 h-5 text-blue-400 flex-shrink-0" />
-                <div>
-                  <a href="tel:+77122208092" className="hover:text-blue-400 transition-colors block">
-                    +7 (7122) 20-80-92
-                  </a>
-                  <a href="tel:+77084208092" className="hover:text-blue-400 transition-colors block">
-                    +7 708 420-80-92
-                  </a>
-                </div>
+                <a href="tel:+77075577444" className="hover:text-blue-400 transition-colors">
+                  {t('brand.headerPhone')}
+                </a>
               </li>
               <li className="flex items-center gap-3 text-sm">
                 <Mail className="w-5 h-5 text-blue-400 flex-shrink-0" />
-                <a href="mailto:info@unicover.kz" className="hover:text-blue-400 transition-colors">
-                  info@unicover.kz
+                <a href={`mailto:${t('brand.headerEmail')}`} className="hover:text-blue-400 transition-colors">
+                  {t('brand.headerEmail')}
                 </a>
               </li>
             </ul>
@@ -185,7 +130,7 @@ export function FooterUnicover() {
             <p className="text-sm text-gray-400">
               {t('footer.copyright', { year: currentYear })}
             </p>
-            <div className="flex gap-6 text-sm">
+            <div className="flex flex-wrap gap-6 text-sm justify-center md:justify-end items-center">
               {quickLinks.map((link, index) => (
                 <a 
                   key={index} 
@@ -195,6 +140,15 @@ export function FooterUnicover() {
                 >
                   {link.name}
                 </a>
+              ))}
+              {legalLinks.map((link) => (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  className="text-gray-400 hover:text-blue-400 transition-colors"
+                >
+                  {link.name}
+                </Link>
               ))}
             </div>
           </div>
