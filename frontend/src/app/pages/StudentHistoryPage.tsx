@@ -1,5 +1,5 @@
 import { Header } from '../components/Header';
-import { FooterUnicover } from '../components/FooterUnicover';
+import { SiteFooter } from '../components/SiteFooter';
 import { useMyEnrollments } from '../hooks/useMyEnrollments';
 import { Link } from 'react-router-dom';
 import { BookOpen, CheckCircle2, Award, FileQuestion, Video, Eye, X, Calendar } from 'lucide-react';
@@ -64,7 +64,7 @@ export function StudentHistoryPage() {
             <p className="mt-4 text-gray-600">{t('lms.student.historyPage.loading')}</p>
           </div>
         </div>
-        <FooterUnicover />
+        <SiteFooter />
       </>
     );
   }
@@ -85,7 +85,7 @@ export function StudentHistoryPage() {
             </Link>
           </div>
         </div>
-        <FooterUnicover />
+        <SiteFooter />
       </>
     );
   }
@@ -381,7 +381,7 @@ export function StudentHistoryPage() {
         </div>
       )}
 
-      <FooterUnicover />
+      <SiteFooter />
     </>
   );
 }

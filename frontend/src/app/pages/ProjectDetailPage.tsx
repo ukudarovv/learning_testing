@@ -1,5 +1,5 @@
 import { Header } from '../components/Header';
-import { FooterUnicover } from '../components/FooterUnicover';
+import { SiteFooter } from '../components/SiteFooter';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { Calendar, MapPin, ArrowLeft, Users, Clock, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
@@ -52,7 +52,7 @@ export function ProjectDetailPage() {
             </div>
           </div>
         </main>
-        <FooterUnicover />
+        <SiteFooter />
       </>
     );
   }
@@ -75,7 +75,7 @@ export function ProjectDetailPage() {
             </div>
           </div>
         </main>
-        <FooterUnicover />
+        <SiteFooter />
       </>
     );
   }
@@ -298,7 +298,7 @@ export function ProjectDetailPage() {
           </div>
         </div>
       </main>
-      <FooterUnicover />
+      <SiteFooter />
 
       {/* Image Modal */}
       {isImageModalOpen && allImages.length > 0 && (

@@ -1,5 +1,5 @@
 import { Header } from '../components/Header';
-import { FooterUnicover } from '../components/FooterUnicover';
+import { SiteFooter } from '../components/SiteFooter';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { Newspaper, Calendar, Search, Filter } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -204,7 +204,7 @@ export function NewsPage() {
           )}
         </div>
       </main>
-      <FooterUnicover />
+      <SiteFooter />
     </>
   );
 }

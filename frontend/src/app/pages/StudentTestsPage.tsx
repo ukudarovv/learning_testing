@@ -1,5 +1,5 @@
 import { Header } from '../components/Header';
-import { FooterUnicover } from '../components/FooterUnicover';
+import { SiteFooter } from '../components/SiteFooter';
 import { useTests } from '../hooks/useTests';
 import { Link } from 'react-router-dom';
 import { Clock, CheckCircle2, Play } from 'lucide-react';
@@ -21,7 +21,7 @@ export function StudentTestsPage() {
             <p className="mt-4 text-gray-600">{t('lms.student.testsPage.loading')}</p>
           </div>
         </div>
-        <FooterUnicover />
+        <SiteFooter />
       </>
     );
   }
@@ -42,7 +42,7 @@ export function StudentTestsPage() {
             </Link>
           </div>
         </div>
-        <FooterUnicover />
+        <SiteFooter />
       </>
     );
   }
@@ -122,7 +122,7 @@ export function StudentTestsPage() {
           )}
         </div>
       </div>
-      <FooterUnicover />
+      <SiteFooter />
     </>
   );
 }

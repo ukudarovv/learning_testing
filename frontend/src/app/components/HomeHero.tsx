@@ -2,7 +2,7 @@ import { GraduationCap, Shield, ArrowRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 
-export function HeroUnicover() {
+export function HomeHero() {
   const { t } = useTranslation();
   
   return (

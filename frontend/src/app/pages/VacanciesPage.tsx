@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Header } from '../components/Header';
-import { FooterUnicover } from '../components/FooterUnicover';
+import { SiteFooter } from '../components/SiteFooter';
 import { Briefcase, MapPin, DollarSign, Clock, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { vacanciesService, Vacancy } from '../services/vacancies';
@@ -178,7 +178,7 @@ export function VacanciesPage() {
           </div>
         </div>
       </main>
-      <FooterUnicover />
+      <SiteFooter />
     </>
   );
 }

@@ -20,7 +20,7 @@ const categoryIcons: Record<string, typeof Shield> = {
   'professions': Wrench,
 };
 
-export function CoursesUnicover() {
+export function CoursesCatalog() {
   const navigate = useNavigate();
   const { user } = useUser();
   const { i18n, t } = useTranslation();

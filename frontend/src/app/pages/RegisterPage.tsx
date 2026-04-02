@@ -1,6 +1,6 @@
 import { Header } from '../components/Header';
 import { RegisterForm } from '../components/RegisterForm';
-import { FooterUnicover } from '../components/FooterUnicover';
+import { SiteFooter } from '../components/SiteFooter';
 
 export function RegisterPage() {
   return (
@@ -9,7 +9,7 @@ export function RegisterPage() {
       <main className="pt-20">
         <RegisterForm />
       </main>
-      <FooterUnicover />
+      <SiteFooter />
     </>
   );
 }

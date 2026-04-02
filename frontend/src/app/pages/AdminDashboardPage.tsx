@@ -1,5 +1,5 @@
 import { Header } from '../components/Header';
-import { FooterUnicover } from '../components/FooterUnicover';
+import { SiteFooter } from '../components/SiteFooter';
 import { AdminDashboard } from '../components/lms/AdminDashboard';
 
 export function AdminDashboardPage() {
@@ -7,7 +7,7 @@ export function AdminDashboardPage() {
     <>
       <Header />
       <AdminDashboard />
-      <FooterUnicover />
+      <SiteFooter />
     </>
   );
 }

@@ -1,5 +1,5 @@
 import { Header } from '../components/Header';
-import { FooterUnicover } from '../components/FooterUnicover';
+import { SiteFooter } from '../components/SiteFooter';
 import { DocumentsView } from '../components/lms/DocumentsView';
 
 export function DocumentsPage() {
@@ -7,7 +7,7 @@ export function DocumentsPage() {
     <>
       <Header />
       <DocumentsView />
-      <FooterUnicover />
+      <SiteFooter />
     </>
   );
 }

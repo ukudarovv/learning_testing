@@ -1,11 +1,11 @@
 import { useEffect } from 'react';
 import { Header } from '../components/Header';
-import { HeroUnicover } from '../components/HeroUnicover';
-import { AboutUnicover } from '../components/AboutUnicover';
+import { HomeHero } from '../components/HomeHero';
+import { AboutSection } from '../components/AboutSection';
 import { EducationSection } from '../components/EducationSection';
 import { Partners } from '../components/Partners';
-import { ContactsUnicover } from '../components/ContactsUnicover';
-import { FooterUnicover } from '../components/FooterUnicover';
+import { ContactsSection } from '../components/ContactsSection';
+import { SiteFooter } from '../components/SiteFooter';
 import { useLocation } from 'react-router-dom';
 import { scrollToSection } from '../utils/scrollToSection';
 
@@ -27,13 +27,13 @@ export function HomePage() {
     <>
       <Header />
       <main>
-        <HeroUnicover />
-        <AboutUnicover />
+        <HomeHero />
+        <AboutSection />
         <EducationSection />
         <Partners />
-        <ContactsUnicover />
+        <ContactsSection />
       </main>
-      <FooterUnicover />
+      <SiteFooter />
     </>
   );
 }

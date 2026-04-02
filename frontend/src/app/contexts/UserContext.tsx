@@ -17,18 +17,9 @@ interface UserContextType {
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 const USER_STORAGE_KEY = 'aqlant_user';
-const LEGACY_USER_STORAGE_KEY = 'unicover_user';
 
 function readStoredUserJson(): string | null {
-  let raw = localStorage.getItem(USER_STORAGE_KEY);
-  if (!raw) {
-    raw = localStorage.getItem(LEGACY_USER_STORAGE_KEY);
-    if (raw) {
-      localStorage.setItem(USER_STORAGE_KEY, raw);
-      localStorage.removeItem(LEGACY_USER_STORAGE_KEY);
-    }
-  }
-  return raw;
+  return localStorage.getItem(USER_STORAGE_KEY);
 }
 
 export function UserProvider({ children }: { children: ReactNode }) {
@@ -49,7 +40,6 @@ export function UserProvider({ children }: { children: ReactNode }) {
           // Токен невалиден, очищаем
           apiClient.setToken(null);
           localStorage.removeItem(USER_STORAGE_KEY);
-          localStorage.removeItem(LEGACY_USER_STORAGE_KEY);
         }
       } else {
         const storedUser = readStoredUserJson();
@@ -58,7 +48,6 @@ export function UserProvider({ children }: { children: ReactNode }) {
             setUser(JSON.parse(storedUser));
           } catch (e) {
             localStorage.removeItem(USER_STORAGE_KEY);
-            localStorage.removeItem(LEGACY_USER_STORAGE_KEY);
           }
         }
       }
@@ -92,7 +81,6 @@ export function UserProvider({ children }: { children: ReactNode }) {
     } finally {
       setUser(null);
       localStorage.removeItem(USER_STORAGE_KEY);
-      localStorage.removeItem(LEGACY_USER_STORAGE_KEY);
     }
   };
 

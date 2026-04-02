@@ -1,6 +1,6 @@
-# UNICOVER LMS Backend
+# Aqlant LMS Backend
 
-Backend API для системы управления обучением UNICOVER.
+Backend API для системы управления обучением Aqlant (Learning & Testing).
 
 ## Установка
 

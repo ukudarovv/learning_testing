@@ -1,5 +1,5 @@
 import { Header } from '../components/Header';
-import { FooterUnicover } from '../components/FooterUnicover';
+import { SiteFooter } from '../components/SiteFooter';
 import { Search, CheckCircle, XCircle, Calendar, User, BookOpen, Award, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -275,7 +275,7 @@ export function VerifyCertificatePage() {
           </div>
         </div>
       </main>
-      <FooterUnicover />
+      <SiteFooter />
     </>
   );
 }

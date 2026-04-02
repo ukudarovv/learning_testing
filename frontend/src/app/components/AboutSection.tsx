@@ -2,7 +2,7 @@ import { Target, Award, Users, Shield } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 
-export function AboutUnicover() {
+export function AboutSection() {
   const { t } = useTranslation();
   
   const principles = [

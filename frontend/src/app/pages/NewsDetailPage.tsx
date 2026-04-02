@@ -1,5 +1,5 @@
 import { Header } from '../components/Header';
-import { FooterUnicover } from '../components/FooterUnicover';
+import { SiteFooter } from '../components/SiteFooter';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { Calendar, ArrowLeft } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
@@ -64,7 +64,7 @@ export function NewsDetailPage() {
             </div>
           </div>
         </main>
-        <FooterUnicover />
+        <SiteFooter />
       </>
     );
   }
@@ -87,7 +87,7 @@ export function NewsDetailPage() {
             </div>
           </div>
         </main>
-        <FooterUnicover />
+        <SiteFooter />
       </>
     );
   }
@@ -154,7 +154,7 @@ export function NewsDetailPage() {
           </div>
         </div>
       </main>
-      <FooterUnicover />
+      <SiteFooter />
     </>
   );
 }

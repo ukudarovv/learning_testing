@@ -35,8 +35,7 @@ export function LoginForm() {
       }
       
       // Получаем пользователя из localStorage для определения роли
-      const userStr =
-        localStorage.getItem('aqlant_user') || localStorage.getItem('unicover_user');
+      const userStr = localStorage.getItem('aqlant_user');
       if (userStr) {
         const user = JSON.parse(userStr);
         

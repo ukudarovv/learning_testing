@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Header } from '../components/Header';
-import { FooterUnicover } from '../components/FooterUnicover';
+import { SiteFooter } from '../components/SiteFooter';
 import { TestEditor } from '../components/admin/TestEditor';
 import { Test } from '../types/lms';
 import { testsService } from '../services/tests';
@@ -33,7 +33,7 @@ export function CreateTestPage() {
           <TestEditor test={undefined} onSave={handleSave} onCancel={handleCancel} />
         </div>
       </div>
-      <FooterUnicover />
+      <SiteFooter />
     </>
   );
 }

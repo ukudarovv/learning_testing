@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Header } from '../components/Header';
-import { FooterUnicover } from '../components/FooterUnicover';
+import { SiteFooter } from '../components/SiteFooter';
 import { CoursePlayer } from '../components/lms/CoursePlayer';
 import { coursesService } from '../services/courses';
 import { Course } from '../types/lms';
@@ -149,7 +149,7 @@ export function CoursePage() {
             <p className="mt-4 text-gray-600">Загрузка курса...</p>
           </div>
         </div>
-        <FooterUnicover />
+        <SiteFooter />
       </>
     );
   }
@@ -204,7 +204,7 @@ export function CoursePage() {
             </button>
           </div>
         </div>
-        <FooterUnicover />
+        <SiteFooter />
       </>
     );
   }
@@ -217,7 +217,7 @@ export function CoursePage() {
         onLessonComplete={handleLessonComplete}
         onCourseComplete={handleCourseComplete}
       />
-      <FooterUnicover />
+      <SiteFooter />
     </>
   );
 }

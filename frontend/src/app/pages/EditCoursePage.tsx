@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Header } from '../components/Header';
-import { FooterUnicover } from '../components/FooterUnicover';
+import { SiteFooter } from '../components/SiteFooter';
 import { CourseEditor } from '../components/admin/CourseEditor';
 import { Course } from '../types/lms';
 import { coursesService } from '../services/courses';
@@ -85,7 +85,7 @@ export function EditCoursePage() {
             <p className="mt-4 text-gray-600">Загрузка курса...</p>
           </div>
         </div>
-        <FooterUnicover />
+        <SiteFooter />
       </>
     );
   }
@@ -105,7 +105,7 @@ export function EditCoursePage() {
             </button>
           </div>
         </div>
-        <FooterUnicover />
+        <SiteFooter />
       </>
     );
   }
@@ -123,7 +123,7 @@ export function EditCoursePage() {
           />
         </div>
       </div>
-      <FooterUnicover />
+      <SiteFooter />
     </>
   );
 }

@@ -1,6 +1,6 @@
 import { Header } from '../components/Header';
 import { Dashboard } from '../components/Dashboard';
-import { FooterUnicover } from '../components/FooterUnicover';
+import { SiteFooter } from '../components/SiteFooter';
 
 export function DashboardPage() {
   return (
@@ -9,7 +9,7 @@ export function DashboardPage() {
       <main className="pt-20">
         <Dashboard />
       </main>
-      <FooterUnicover />
+      <SiteFooter />
     </>
   );
 }

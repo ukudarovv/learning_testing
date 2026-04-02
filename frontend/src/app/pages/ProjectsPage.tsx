@@ -1,5 +1,5 @@
 import { Header } from '../components/Header';
-import { FooterUnicover } from '../components/FooterUnicover';
+import { SiteFooter } from '../components/SiteFooter';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { Building2, Calendar, MapPin, Search, Filter } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -186,7 +186,7 @@ export function ProjectsPage() {
           )}
         </div>
       </main>
-      <FooterUnicover />
+      <SiteFooter />
     </>
   );
 }

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Header } from '../components/Header';
-import { FooterUnicover } from '../components/FooterUnicover';
+import { SiteFooter } from '../components/SiteFooter';
 import { Briefcase, MapPin, DollarSign, Clock, ArrowLeft, Loader2, Upload, X } from 'lucide-react';
 import { vacanciesService, Vacancy, VacancyApplicationCreate } from '../services/vacancies';
 import { toast } from 'sonner';
@@ -140,7 +140,7 @@ export function VacancyDetailPage() {
             </div>
           </div>
         </main>
-        <FooterUnicover />
+        <SiteFooter />
       </>
     );
   }
@@ -159,7 +159,7 @@ export function VacancyDetailPage() {
             </div>
           </div>
         </main>
-        <FooterUnicover />
+        <SiteFooter />
       </>
     );
   }
@@ -390,7 +390,7 @@ export function VacancyDetailPage() {
           </div>
         </div>
       </main>
-      <FooterUnicover />
+      <SiteFooter />
     </>
   );
 }

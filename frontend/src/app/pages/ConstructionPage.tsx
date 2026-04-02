@@ -1,6 +1,6 @@
 import { Header } from '../components/Header';
 import { Projects } from '../components/Projects';
-import { FooterUnicover } from '../components/FooterUnicover';
+import { SiteFooter } from '../components/SiteFooter';
 
 export function ConstructionPage() {
   return (
@@ -15,7 +15,7 @@ export function ConstructionPage() {
         </div>
         <Projects />
       </main>
-      <FooterUnicover />
+      <SiteFooter />
     </>
   );
 }

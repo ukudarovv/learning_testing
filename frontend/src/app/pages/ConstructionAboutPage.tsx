@@ -1,5 +1,5 @@
 import { Header } from '../components/Header';
-import { FooterUnicover } from '../components/FooterUnicover';
+import { SiteFooter } from '../components/SiteFooter';
 import { Building2, Compass, PenTool, Hammer, CheckCircle2, Target, Award, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -195,7 +195,7 @@ export function ConstructionAboutPage() {
           </section>
         </div>
       </main>
-      <FooterUnicover />
+      <SiteFooter />
     </>
   );
 }

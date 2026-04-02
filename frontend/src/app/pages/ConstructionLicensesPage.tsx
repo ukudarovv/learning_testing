@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Header } from '../components/Header';
-import { FooterUnicover } from '../components/FooterUnicover';
+import { SiteFooter } from '../components/SiteFooter';
 import { FileText, Download, Award, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { licensesService, License } from '../services/licenses';
@@ -250,7 +250,7 @@ export function ConstructionLicensesPage() {
           </div>
         </div>
       </main>
-      <FooterUnicover />
+      <SiteFooter />
     </>
   );
 }

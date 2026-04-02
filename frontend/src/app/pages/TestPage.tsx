@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Header } from '../components/Header';
-import { FooterUnicover } from '../components/FooterUnicover';
+import { SiteFooter } from '../components/SiteFooter';
 import { TestInterface } from '../components/lms/TestInterface';
 import { TestResultPage } from '../components/lms/TestResultPage';
 import { Answer, TestAttempt } from '../types/lms';
@@ -434,7 +434,7 @@ export function TestPage() {
               <p className="mt-4 text-gray-600">Загрузка теста...</p>
             </div>
           </div>
-          <FooterUnicover />
+          <SiteFooter />
         </>
       );
     }
@@ -459,7 +459,7 @@ export function TestPage() {
           onBackToCourse={courseId ? () => navigate(`/student/course/${courseId}`) : undefined}
           onBackToDashboard={() => navigate('/student/dashboard')}
         />
-        <FooterUnicover />
+        <SiteFooter />
       </>
     );
   }
@@ -477,7 +477,7 @@ export function TestPage() {
             </p>
           </div>
         </div>
-        <FooterUnicover />
+        <SiteFooter />
       </>
     );
   }
@@ -497,7 +497,7 @@ export function TestPage() {
             </button>
           </div>
         </div>
-        <FooterUnicover />
+        <SiteFooter />
       </>
     );
   }
@@ -517,7 +517,7 @@ export function TestPage() {
         savedAnswers={savedAnswers || undefined}
         startedAt={startedAt || undefined}
       />
-      <FooterUnicover />
+      <SiteFooter />
     </>
   );
 }

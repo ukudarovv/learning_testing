@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { contactsService, ContactMessageCreate } from '../services/contacts';
 import { toast } from 'sonner';
 
-export function ContactsUnicover() {
+export function ContactsSection() {
   const { t } = useTranslation();
   const [formData, setFormData] = useState<ContactMessageCreate>({
     name: '',

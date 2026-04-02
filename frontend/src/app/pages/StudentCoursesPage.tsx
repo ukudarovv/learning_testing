@@ -1,5 +1,5 @@
 import { Header } from '../components/Header';
-import { FooterUnicover } from '../components/FooterUnicover';
+import { SiteFooter } from '../components/SiteFooter';
 import { useMyEnrollments } from '../hooks/useMyEnrollments';
 import { Link } from 'react-router-dom';
 import { BookOpen, Clock, Play, CheckCircle2 } from 'lucide-react';
@@ -55,7 +55,7 @@ export function StudentCoursesPage() {
             <p className="mt-4 text-gray-600">{t('lms.student.coursesPage.loading')}</p>
           </div>
         </div>
-        <FooterUnicover />
+        <SiteFooter />
       </>
     );
   }
@@ -76,7 +76,7 @@ export function StudentCoursesPage() {
             </Link>
           </div>
         </div>
-        <FooterUnicover />
+        <SiteFooter />
       </>
     );
   }
@@ -203,7 +203,7 @@ export function StudentCoursesPage() {
           )}
         </div>
       </div>
-      <FooterUnicover />
+      <SiteFooter />
     </>
   );
 }

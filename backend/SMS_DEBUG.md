@@ -8,7 +8,7 @@
 ```bash
 SMSC_LOGIN=ukudarov
 SMSC_PASSWORD=Raushan1956!
-SMSC_SENDER=UNICOVER
+SMSC_SENDER=AQLANT
 SMSC_API_URL=https://smsc.kz/sys/send.php
 ```
 

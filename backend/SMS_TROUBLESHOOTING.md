@@ -6,7 +6,7 @@
    ```bash
    SMSC_LOGIN=ukudarov
    SMSC_PASSWORD=Raushan1956!
-   SMSC_SENDER=UNICOVER
+   SMSC_SENDER=AQLANT
    SMSC_API_URL=https://smsc.kz/sys/send.php
    ```
 
@@ -29,7 +29,7 @@
 
 **Решение:**
 - Проверьте баланс в личном кабинете SMSC.kz
-- Убедитесь, что имя отправителя `UNICOVER` зарегистрировано и одобрено
+- Убедитесь, что имя отправителя `AQLANT` (или ваше значение `SMSC_SENDER`) зарегистрировано и одобрено
 - Проверьте формат номера телефона (должен быть в формате 77001234567)
 
 ### 2. Ошибка "SMS service not configured"

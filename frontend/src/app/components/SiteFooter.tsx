@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { scrollToSection } from '../utils/scrollToSection';
 import { BrandLogo } from './BrandLogo';
 
-export function FooterUnicover() {
+export function SiteFooter() {
   const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();

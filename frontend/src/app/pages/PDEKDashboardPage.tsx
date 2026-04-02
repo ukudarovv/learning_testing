@@ -1,13 +1,13 @@
 import { Header } from '../components/Header';
 import { PDEKDashboard } from '../components/lms/PDEKDashboard';
-import { FooterUnicover } from '../components/FooterUnicover';
+import { SiteFooter } from '../components/SiteFooter';
 
 export function PDEKDashboardPage() {
   return (
     <>
       <Header />
       <PDEKDashboard />
-      <FooterUnicover />
+      <SiteFooter />
     </>
   );
 }

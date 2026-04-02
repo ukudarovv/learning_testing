@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Header } from '../components/Header';
-import { FooterUnicover } from '../components/FooterUnicover';
+import { SiteFooter } from '../components/SiteFooter';
 import { useTranslation } from 'react-i18next';
 import { apiClient } from '../services/api';
 import { Loader2 } from 'lucide-react';
@@ -62,7 +62,7 @@ export function PrivacyPage() {
           </div>
         </div>
       </main>
-      <FooterUnicover />
+      <SiteFooter />
     </>
   );
 }

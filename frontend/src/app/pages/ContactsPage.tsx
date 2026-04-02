@@ -1,15 +1,15 @@
 import { Header } from '../components/Header';
-import { ContactsUnicover } from '../components/ContactsUnicover';
-import { FooterUnicover } from '../components/FooterUnicover';
+import { ContactsSection } from '../components/ContactsSection';
+import { SiteFooter } from '../components/SiteFooter';
 
 export function ContactsPage() {
   return (
     <>
       <Header />
       <main className="pt-20">
-        <ContactsUnicover />
+        <ContactsSection />
       </main>
-      <FooterUnicover />
+      <SiteFooter />
     </>
   );
 }

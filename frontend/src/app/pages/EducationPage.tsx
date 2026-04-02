@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 import { Header } from '../components/Header';
-import { CoursesUnicover } from '../components/CoursesUnicover';
+import { CoursesCatalog } from '../components/CoursesCatalog';
 import { OnlineLearning } from '../components/OnlineLearning';
-import { FooterUnicover } from '../components/FooterUnicover';
+import { SiteFooter } from '../components/SiteFooter';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { scrollToSection } from '../utils/scrollToSection';
@@ -32,10 +32,10 @@ export function EducationPage() {
             {t('education.pageDescription')}
           </p>
         </div>
-        <CoursesUnicover />
+        <CoursesCatalog />
         <OnlineLearning />
       </main>
-      <FooterUnicover />
+      <SiteFooter />
     </>
   );
 }

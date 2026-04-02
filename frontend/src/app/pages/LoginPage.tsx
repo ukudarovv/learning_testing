@@ -1,6 +1,6 @@
 import { Header } from '../components/Header';
 import { LoginForm } from '../components/LoginForm';
-import { FooterUnicover } from '../components/FooterUnicover';
+import { SiteFooter } from '../components/SiteFooter';
 
 export function LoginPage() {
   return (
@@ -9,7 +9,7 @@ export function LoginPage() {
       <main className="pt-20">
         <LoginForm />
       </main>
-      <FooterUnicover />
+      <SiteFooter />
     </>
   );
 }

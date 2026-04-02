@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Header } from '../components/Header';
-import { FooterUnicover } from '../components/FooterUnicover';
+import { SiteFooter } from '../components/SiteFooter';
 import { TestEditor } from '../components/admin/TestEditor';
 import { Test } from '../types/lms';
 import { testsService } from '../services/tests';
@@ -74,7 +74,7 @@ export function EditTestPage() {
             <p className="mt-4 text-gray-600">Загрузка теста...</p>
           </div>
         </div>
-        <FooterUnicover />
+        <SiteFooter />
       </>
     );
   }
@@ -94,7 +94,7 @@ export function EditTestPage() {
             </button>
           </div>
         </div>
-        <FooterUnicover />
+        <SiteFooter />
       </>
     );
   }
@@ -107,7 +107,7 @@ export function EditTestPage() {
           <TestEditor key={`${test.id}-${refreshKey}`} test={test} onSave={handleSave} onCancel={handleCancel} />
         </div>
       </div>
-      <FooterUnicover />
+      <SiteFooter />
     </>
   );
 }

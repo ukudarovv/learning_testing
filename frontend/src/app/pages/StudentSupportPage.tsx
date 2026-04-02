@@ -1,5 +1,5 @@
 import { Header } from '../components/Header';
-import { FooterUnicover } from '../components/FooterUnicover';
+import { SiteFooter } from '../components/SiteFooter';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Mail, Phone, ArrowLeft } from 'lucide-react';
@@ -95,7 +95,7 @@ export function StudentSupportPage() {
           </div>
         </div>
       </div>
-      <FooterUnicover />
+      <SiteFooter />
     </>
   );
 }
