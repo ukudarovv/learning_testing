@@ -216,6 +216,15 @@ npm run build
 
 Проверка: открыть `https://elearning.aqlant.com`, в DevTools запросы к `https://api.elearning.aqlant.com/api/`.
 
+### Вместо приложения показывается «Welcome to nginx!»
+
+Это **страница по умолчанию** из пакета nginx (`/var/www/html` и т.п.). Значит запрос обрабатывает не ваш vhost с `root .../frontend/dist`, а **дефолтный** сайт.
+
+1. Отключите дефолт: `sudo rm /etc/nginx/sites-enabled/default` (или `000-default`), затем `sudo nginx -t && sudo systemctl reload nginx`.
+2. Убедитесь, что в `sites-enabled` есть ссылка на `elearning.aqlant.com.conf`, а в нём — `server_name elearning.aqlant.com` и `root` на каталог с **собранным** фронтом (`.../frontend/dist` после `npm run build`).
+3. Если были предупреждения `conflicting server name`, оставьте **один** активный файл на этот домен (см. раздел выше).
+4. Открывайте **`https://`** — после Certbot HTTP должен редиректить на HTTPS; «Не защищено» в адресной строке обычно значит, что открыт **http://**.
+
 ## 9. Альтернатива сокету — HTTP на localhost
 
 Если не хотите возиться с правами сокета, в unit замените `ExecStart` на:
