@@ -228,6 +228,20 @@ systemctl list-timers | grep certbot
 
 В `backend/.env` задайте `FRONTEND_URL=https://elearning.aqlant.com`, в CORS/CSRF уже должны быть `https://...` (см. `settings.py` и при необходимости `DJANGO_CORS_ALLOWED_ORIGINS` / `DJANGO_CSRF_TRUSTED_ORIGINS`).
 
+В `settings.py` также задан `CORS_ALLOWED_ORIGIN_REGEXES` для всех `https://*.aqlant.com`, чтобы не терять заголовок из‑за расхождений в списке.
+
+### CORS в браузере: «No Access-Control-Allow-Origin»
+
+1. **Обновите код на сервере** (`git pull`), перезапустите Gunicorn: `sudo systemctl restart aqlant-gunicorn`.
+2. Убедитесь, что ответ идёт **от Django**, а не от nginx-заглушки (502/504): `sudo systemctl status aqlant-gunicorn`, `journalctl -u aqlant-gunicorn -n 50`.
+3. Проверка заголовков с вашего ПК:
+
+   ```bash
+   curl -sI -H "Origin: https://elearning.aqlant.com" "https://api.elearning.aqlant.com/api/users/"
+   ```
+
+   В ответе должна быть строка `access-control-allow-origin: https://elearning.aqlant.com` (или совпадение с regex).
+
 ## 8. Фронтенд
 
 ```bash

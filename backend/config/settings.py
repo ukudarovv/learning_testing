@@ -51,6 +51,11 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
 ] + _env_csv('DJANGO_CORS_ALLOWED_ORIGINS')
 
+# Любой https-поддомен aqlant.com (в т.ч. вложенные), если Origin не попал в список выше
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://([\w-]+\.)*aqlant\.com$",
+]
+
 CSRF_TRUSTED_ORIGINS = [
     "https://aqlant.com",
     "https://www.aqlant.com",
