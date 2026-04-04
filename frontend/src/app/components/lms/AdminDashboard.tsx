@@ -1,41 +1,20 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, BookOpen, FileQuestion, Award, Settings, TrendingUp, Plus, Search, Filter, Download, Edit, Trash2, Eye, X, CheckCircle, XCircle, UserPlus, Tag, FileText, Mail, RotateCcw, Ban, Building2, Handshake, Video, Newspaper } from 'lucide-react';
+import { Users, BookOpen, FileQuestion, Award, Settings, TrendingUp, Plus, Search, Filter, Download, Edit, Trash2, Eye, X, CheckCircle, XCircle, UserPlus, Tag, FileText, Mail, RotateCcw, Ban, Video } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useTranslation } from 'react-i18next';
 import { UserEditor } from '../admin/UserEditor';
 import { UserManagement } from '../admin/UserManagement';
-import { LicenseManagement } from '../admin/LicenseManagement';
-import { LicenseEditor } from '../admin/LicenseEditor';
 import { ContactManagement } from '../admin/ContactManagement';
 import { ExtraAttemptRequests } from '../admin/ExtraAttemptRequests';
 import { TestAttemptsManagement } from '../admin/TestAttemptsManagement';
 import { EnrollmentRequests } from '../admin/EnrollmentRequests';
 import { AddStudentsToCourseModal } from '../admin/AddStudentsToCourseModal';
-import { VacancyManagement } from '../admin/VacancyManagement';
-import { VacancyApplications } from '../admin/VacancyApplications';
-import { VacancyStatistics } from '../admin/VacancyStatistics';
-import { VacancyEditor } from '../admin/VacancyEditor';
-import { ProjectManagement } from '../admin/ProjectManagement';
-import { ProjectEditor } from '../admin/ProjectEditor';
-import { ProjectCategoryManagement } from '../admin/ProjectCategoryManagement';
-import { NewsManagement } from '../admin/NewsManagement';
-import { NewsEditor } from '../admin/NewsEditor';
-import { NewsCategoryManagement } from '../admin/NewsCategoryManagement';
-import { LicenseCategoryManagement } from '../admin/LicenseCategoryManagement';
-import { PartnerManagement } from '../admin/PartnerManagement';
-import { PartnerEditor } from '../admin/PartnerEditor';
 import { CertificateManagement } from '../admin/CertificateManagement';
 import { ProtocolManagement } from '../admin/ProtocolManagement';
 import { ContentPageEditor } from '../admin/ContentPageEditor';
 import { SiteSettingsEditor } from '../admin/SiteSettingsEditor';
 import { Course, Test, User } from '../../types/lms';
-import { License, licensesService } from '../../services/licenses';
-import { Vacancy, vacanciesService } from '../../services/vacancies';
-import { Project, ProjectDetail, projectsService } from '../../services/projects';
-import { News } from '../../types/news';
-import { newsService } from '../../services/news';
-import { Partner, partnersService } from '../../services/partners';
 import { useAnalytics, useEnrollmentTrend, useTestResultsDistribution, useCoursesPopularity, useTopStudents } from '../../hooks/useAnalytics';
 import { analyticsService } from '../../services/analytics';
 import { useCourses } from '../../hooks/useCourses';
@@ -67,25 +46,15 @@ function getStatusText(status: string, t: (key: string) => string): string {
 export function AdminDashboard() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [activeSection, setActiveSection] = useState<'overview' | 'courses' | 'users' | 'tests' | 'reports' | 'categories' | 'licenses' | 'license-categories' | 'contacts' | 'extra-attempts' | 'test-attempts' | 'enrollment-requests' | 'protocols' | 'vacancies' | 'vacancy-applications' | 'vacancy-statistics' | 'projects' | 'project-categories' | 'news' | 'news-categories' | 'partners' | 'certificates' | 'content-pages' | 'settings'>('overview');
+  const [activeSection, setActiveSection] = useState<'overview' | 'courses' | 'users' | 'tests' | 'reports' | 'categories' | 'contacts' | 'extra-attempts' | 'test-attempts' | 'enrollment-requests' | 'protocols' | 'certificates' | 'content-pages' | 'settings'>('overview');
   const [showUserEditor, setShowUserEditor] = useState(false);
-  const [showLicenseEditor, setShowLicenseEditor] = useState(false);
-  const [showVacancyEditor, setShowVacancyEditor] = useState(false);
-  const [showProjectEditor, setShowProjectEditor] = useState(false);
-  const [showNewsEditor, setShowNewsEditor] = useState(false);
-  const [showPartnerEditor, setShowPartnerEditor] = useState(false);
   const [showContentPageEditor, setShowContentPageEditor] = useState(false);
   const [editingContentPageType, setEditingContentPageType] = useState<'terms' | 'privacy' | null>(null);
   const [editingItem, setEditingItem] = useState<any>(null);
-  const [vacanciesRefreshTrigger, setVacanciesRefreshTrigger] = useState(0);
-  const [projectsRefreshTrigger, setProjectsRefreshTrigger] = useState(0);
-  const [newsRefreshTrigger, setNewsRefreshTrigger] = useState(0);
-  const [partnersRefreshTrigger, setPartnersRefreshTrigger] = useState(0);
   const [selectedCourseForStudents, setSelectedCourseForStudents] = useState<any>(null);
   const [coursesRefetch, setCoursesRefetch] = useState<(() => void) | null>(null);
   const [testsRefetch, setTestsRefetch] = useState<(() => void) | null>(null);
   const [usersRefreshTrigger, setUsersRefreshTrigger] = useState(0);
-  const [licensesRefreshTrigger, setLicensesRefreshTrigger] = useState(0);
 
   const handleCreateCourse = () => {
     navigate('/admin/courses/new/edit');
@@ -120,34 +89,6 @@ export function AdminDashboard() {
   const handleEditUser = (user: any) => {
     setEditingItem(user);
     setShowUserEditor(true);
-  };
-
-  const handleCreateLicense = () => {
-    setEditingItem(null);
-    setShowLicenseEditor(true);
-  };
-
-  const handleEditLicense = (license: License) => {
-    setEditingItem(license);
-    setShowLicenseEditor(true);
-  };
-
-  const handleSaveLicense = async (license: Partial<License>, file?: File) => {
-    try {
-      if (editingItem) {
-        await licensesService.updateLicense(editingItem.id, license, file);
-        toast.success(t('admin.dashboard.messages.licenseUpdateSuccess'));
-      } else {
-        await licensesService.createLicense(license, file);
-        toast.success(t('admin.dashboard.messages.licenseCreateSuccess'));
-      }
-      setShowLicenseEditor(false);
-      setEditingItem(null);
-      setLicensesRefreshTrigger(prev => prev + 1);
-    } catch (error: any) {
-      toast.error(`${t('admin.dashboard.messages.licenseSaveError')}: ${error.message || t('admin.dashboard.messages.unknownError')}`);
-      console.error('Failed to save license:', error);
-    }
   };
 
   const handleSaveUser = async (user: Partial<User & { password?: string }>) => {
@@ -188,169 +129,6 @@ export function AdminDashboard() {
     } catch (error: any) {
       toast.error(`${t('admin.dashboard.messages.userSaveError')}: ${error.message || t('admin.dashboard.messages.unknownError')}`);
       console.error('Failed to save user:', error);
-    }
-  };
-
-  const handleCreateVacancy = () => {
-    setEditingItem(null);
-    setShowVacancyEditor(true);
-  };
-
-  const handleEditVacancy = (vacancy: Vacancy) => {
-    setEditingItem(vacancy);
-    setShowVacancyEditor(true);
-  };
-
-  const handleSaveVacancy = async (vacancy: Partial<Vacancy>) => {
-    try {
-      if (editingItem) {
-        await vacanciesService.updateVacancy(editingItem.id, vacancy);
-        toast.success(t('admin.dashboard.messages.vacancyUpdateSuccess'));
-      } else {
-        await vacanciesService.createVacancy(vacancy);
-        toast.success(t('admin.dashboard.messages.vacancyCreateSuccess'));
-      }
-      setShowVacancyEditor(false);
-      setEditingItem(null);
-      setVacanciesRefreshTrigger(prev => prev + 1);
-    } catch (error: any) {
-      toast.error(`${t('admin.dashboard.messages.vacancySaveError')}: ${error.message || t('admin.dashboard.messages.unknownError')}`);
-      console.error('Failed to save vacancy:', error);
-    }
-  };
-
-  const handleCreateProject = () => {
-    setEditingItem(null);
-    setShowProjectEditor(true);
-  };
-
-  const handleEditProject = async (project: Project) => {
-    try {
-      // Загружаем полную информацию о проекте для редактирования
-      const projectDetail = await projectsService.getProject(project.id);
-      setEditingItem(projectDetail);
-      setShowProjectEditor(true);
-    } catch (error: any) {
-      toast.error(`${t('admin.dashboard.messages.projectLoadError')}: ${error.message || t('admin.dashboard.messages.unknownError')}`);
-      console.error('Failed to load project details:', error);
-    }
-  };
-
-  const handleSaveProject = async (project: Partial<Project>, imageFile?: File): Promise<Project> => {
-    try {
-      if (!project.title?.trim()) {
-        toast.error(t('admin.dashboard.messages.projectTitleRequired'));
-        throw new Error(t('admin.dashboard.messages.projectTitleRequiredError'));
-      }
-      
-      let savedProject: Project;
-      if (editingItem) {
-        savedProject = await projectsService.updateProject(editingItem.id, project, imageFile);
-        toast.success(t('admin.dashboard.messages.projectUpdateSuccess'));
-      } else {
-        savedProject = await projectsService.createProject(project, imageFile);
-        toast.success(t('admin.dashboard.messages.projectCreateSuccess'));
-      }
-      setShowProjectEditor(false);
-      setEditingItem(null);
-      setProjectsRefreshTrigger(prev => prev + 1);
-      return savedProject;
-    } catch (error: any) {
-      toast.error(`${t('admin.dashboard.messages.projectSaveError')}: ${error.message || t('admin.dashboard.messages.unknownError')}`);
-      console.error('Failed to save project:', error);
-      throw error;
-    }
-  };
-
-  const handleCreateNews = () => {
-    setEditingItem(null);
-    setShowNewsEditor(true);
-  };
-
-  const handleEditNews = async (news: News) => {
-    try {
-      const newsDetail = await newsService.getNewsItem(news.id);
-      setEditingItem(newsDetail);
-      setShowNewsEditor(true);
-    } catch (error: any) {
-      toast.error(`${t('admin.dashboard.messages.newsLoadError') || 'Ошибка загрузки новости'}: ${error.message || t('admin.dashboard.messages.unknownError')}`);
-      console.error('Failed to load news details:', error);
-    }
-  };
-
-  const handleSaveNews = async (news: Partial<News>, imageFile?: File): Promise<News> => {
-    try {
-      if (!news.title?.trim()) {
-        toast.error(t('admin.dashboard.messages.newsTitleRequired') || 'Заголовок новости обязателен');
-        throw new Error(t('admin.dashboard.messages.newsTitleRequiredError') || 'Title required');
-      }
-
-      let savedNews: News;
-      if (editingItem) {
-        savedNews = await newsService.updateNews(editingItem.id, news, imageFile);
-        toast.success(t('admin.dashboard.messages.newsUpdateSuccess') || 'Новость успешно обновлена');
-      } else {
-        savedNews = await newsService.createNews(news, imageFile);
-        toast.success(t('admin.dashboard.messages.newsCreateSuccess') || 'Новость успешно создана');
-      }
-      setShowNewsEditor(false);
-      setEditingItem(null);
-      setNewsRefreshTrigger(prev => prev + 1);
-      return savedNews;
-    } catch (error: any) {
-      toast.error(`${t('admin.dashboard.messages.newsSaveError') || 'Ошибка сохранения новости'}: ${error.message || t('admin.dashboard.messages.unknownError')}`);
-      console.error('Failed to save news:', error);
-      throw error;
-    }
-  };
-
-  const handleCreatePartner = () => {
-    setEditingItem(null);
-    setShowPartnerEditor(true);
-  };
-
-  const handleEditPartner = (partner: Partner) => {
-    setEditingItem(partner);
-    setShowPartnerEditor(true);
-  };
-
-  const handleSavePartner = async (partner: Partial<Partner>, logoFile?: File): Promise<Partner> => {
-    try {
-      if (!partner.name?.trim()) {
-        toast.error(t('partners.nameRequired'));
-        throw new Error(t('partners.nameRequired'));
-      }
-
-      let savedPartner: Partner;
-      if (editingItem) {
-        const formData = new FormData();
-        formData.append('name', partner.name);
-        if (partner.website) formData.append('website', partner.website);
-        formData.append('order', String(partner.order || 0));
-        formData.append('is_active', String(partner.is_active !== undefined ? partner.is_active : true));
-        if (logoFile) formData.append('logo', logoFile);
-        
-        savedPartner = await partnersService.updatePartner(editingItem.id, formData);
-        toast.success(t('partners.updateSuccess'));
-      } else {
-        const formData = new FormData();
-        formData.append('name', partner.name);
-        if (partner.website) formData.append('website', partner.website);
-        formData.append('order', String(partner.order || 0));
-        formData.append('is_active', String(partner.is_active !== undefined ? partner.is_active : true));
-        if (logoFile) formData.append('logo', logoFile);
-        
-        savedPartner = await partnersService.createPartner(formData);
-        toast.success(t('partners.createSuccess'));
-      }
-      setShowPartnerEditor(false);
-      setEditingItem(null);
-      setPartnersRefreshTrigger(prev => prev + 1);
-      return savedPartner;
-    } catch (error: any) {
-      toast.error(`${t('partners.saveError')}: ${error.message || t('messages.error.generic')}`);
-      console.error('Failed to save partner:', error);
-      throw error;
     }
   };
 
@@ -489,28 +267,6 @@ export function AdminDashboard() {
                   <span className="font-medium">{t('admin.dashboard.navigation.categories')}</span>
                 </button>
                 <button
-                  onClick={() => setActiveSection('licenses')}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                    activeSection === 'licenses'
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <FileText className="w-5 h-5" />
-                  <span className="font-medium">{t('admin.dashboard.navigation.licenses')}</span>
-                </button>
-                <button
-                  onClick={() => setActiveSection('license-categories')}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                    activeSection === 'license-categories'
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <Tag className="w-5 h-5" />
-                  <span className="font-medium">{t('admin.licenses.categories') || 'Категории лицензий'}</span>
-                </button>
-                <button
                   onClick={() => setActiveSection('contacts')}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                     activeSection === 'contacts'
@@ -520,94 +276,6 @@ export function AdminDashboard() {
                 >
                   <Mail className="w-5 h-5" />
                   <span className="font-medium">{t('admin.contacts.title')}</span>
-                </button>
-                <button
-                  onClick={() => setActiveSection('vacancies')}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                    activeSection === 'vacancies'
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <FileText className="w-5 h-5" />
-                  <span className="font-medium">{t('admin.dashboard.navigation.vacancies')}</span>
-                </button>
-                <button
-                  onClick={() => setActiveSection('vacancy-applications')}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                    activeSection === 'vacancy-applications'
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <Users className="w-5 h-5" />
-                  <span className="font-medium">{t('admin.dashboard.navigation.vacancyApplications')}</span>
-                </button>
-                <button
-                  onClick={() => setActiveSection('vacancy-statistics')}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                    activeSection === 'vacancy-statistics'
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <TrendingUp className="w-5 h-5" />
-                  <span className="font-medium">{t('admin.dashboard.navigation.vacancyStatistics')}</span>
-                </button>
-                <button
-                  onClick={() => setActiveSection('projects')}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                    activeSection === 'projects'
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <Building2 className="w-5 h-5" />
-                  <span className="font-medium">{t('admin.projects.title')}</span>
-                </button>
-                <button
-                  onClick={() => setActiveSection('project-categories')}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                    activeSection === 'project-categories'
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <Tag className="w-5 h-5" />
-                  <span className="font-medium">{t('admin.categories.title')}</span>
-                </button>
-                <button
-                  onClick={() => setActiveSection('news')}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                    activeSection === 'news'
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <Newspaper className="w-5 h-5" />
-                  <span className="font-medium">{t('admin.news.title') || 'Новости'}</span>
-                </button>
-                <button
-                  onClick={() => setActiveSection('news-categories')}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                    activeSection === 'news-categories'
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <Tag className="w-5 h-5" />
-                  <span className="font-medium">{t('admin.news.categories') || 'Категории новостей'}</span>
-                </button>
-                <button
-                  onClick={() => setActiveSection('partners')}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                    activeSection === 'partners'
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <Handshake className="w-5 h-5" />
-                  <span className="font-medium">{t('admin.partners.title')}</span>
                 </button>
                 <button
                   onClick={() => setActiveSection('content-pages')}
@@ -667,16 +335,6 @@ export function AdminDashboard() {
             )}
             {activeSection === 'reports' && <ReportsSection />}
             {activeSection === 'categories' && <CategoriesSection />}
-            {activeSection === 'licenses' && (
-              <LicenseManagement
-                onCreate={handleCreateLicense}
-                onEdit={handleEditLicense}
-                refreshTrigger={licensesRefreshTrigger}
-              />
-            )}
-            {activeSection === 'license-categories' && (
-              <LicenseCategoryManagement refreshTrigger={licensesRefreshTrigger} />
-            )}
             {activeSection === 'contacts' && (
               <ContactManagement />
             )}
@@ -694,46 +352,6 @@ export function AdminDashboard() {
             )}
             {activeSection === 'test-attempts' && (
               <TestAttemptsManagement />
-            )}
-            {activeSection === 'vacancies' && (
-              <VacancyManagement
-                onCreate={handleCreateVacancy}
-                onEdit={handleEditVacancy}
-                refreshTrigger={vacanciesRefreshTrigger}
-              />
-            )}
-            {activeSection === 'vacancy-applications' && (
-              <VacancyApplications />
-            )}
-            {activeSection === 'vacancy-statistics' && (
-              <VacancyStatistics />
-            )}
-            {activeSection === 'projects' && (
-              <ProjectManagement
-                onCreate={handleCreateProject}
-                onEdit={handleEditProject}
-                refreshTrigger={projectsRefreshTrigger}
-              />
-            )}
-            {activeSection === 'project-categories' && (
-              <ProjectCategoryManagement refreshTrigger={projectsRefreshTrigger} />
-            )}
-            {activeSection === 'news' && (
-              <NewsManagement
-                onCreate={handleCreateNews}
-                onEdit={handleEditNews}
-                refreshTrigger={newsRefreshTrigger}
-              />
-            )}
-            {activeSection === 'news-categories' && (
-              <NewsCategoryManagement refreshTrigger={newsRefreshTrigger} />
-            )}
-            {activeSection === 'partners' && (
-              <PartnerManagement
-                onCreate={handleCreatePartner}
-                onEdit={handleEditPartner}
-                refreshTrigger={partnersRefreshTrigger}
-              />
             )}
             {activeSection === 'content-pages' && (
               <ContentPagesSection 
@@ -761,58 +379,6 @@ export function AdminDashboard() {
         />
       )}
 
-      {showLicenseEditor && (
-        <LicenseEditor
-          license={editingItem}
-          onSave={handleSaveLicense}
-          onCancel={() => {
-            setShowLicenseEditor(false);
-            setEditingItem(null);
-          }}
-        />
-      )}
-
-      {showVacancyEditor && (
-        <VacancyEditor
-          vacancy={editingItem}
-          onSave={handleSaveVacancy}
-          onCancel={() => {
-            setShowVacancyEditor(false);
-            setEditingItem(null);
-          }}
-        />
-      )}
-
-      {showProjectEditor && (
-        <ProjectEditor
-          project={editingItem}
-          onSave={handleSaveProject}
-          onCancel={() => {
-            setShowProjectEditor(false);
-            setEditingItem(null);
-          }}
-        />
-      )}
-      {showNewsEditor && (
-        <NewsEditor
-          news={editingItem}
-          onSave={handleSaveNews}
-          onCancel={() => {
-            setShowNewsEditor(false);
-            setEditingItem(null);
-          }}
-        />
-      )}
-      {showPartnerEditor && (
-        <PartnerEditor
-          partner={editingItem}
-          onSave={handleSavePartner}
-          onCancel={() => {
-            setShowPartnerEditor(false);
-            setEditingItem(null);
-          }}
-        />
-      )}
       {showContentPageEditor && editingContentPageType && (
         <ContentPageEditor
           pageType={editingContentPageType}
