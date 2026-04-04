@@ -118,7 +118,7 @@ sudo ufw status
 Все виртуальные хосты в `sites-enabled/` работают **на одних и тех же** портах: **80** (HTTP) и **443** (HTTPS). Разные домены различаются директивой **`server_name`**, а не разными портами. Отдельно «занимать» порт под `elearning` и под `api` не требуется.
 
 Проверить, что nginx слушает нужные порты:
-
+ 
 ```bash
 sudo ss -tlnp | grep -E ':80|:443'
 # или
@@ -237,7 +237,23 @@ npm ci
 npm run build
 ```
 
-Проверка: открыть `https://elearning.aqlant.com`, в DevTools запросы к `https://api.elearning.aqlant.com/api/`.
+Проверка: открыть `https://elearning.aqlant.com`, в DevTools → **Network**: запросы должны идти на **`https://api.elearning.aqlant.com/api/`**, а не на `localhost`.
+
+В репозитории есть шаблон `frontend/.env.production.example` — можно `cp .env.production.example .env.production` и при необходимости поправить URL API.
+
+### В консоли: `localhost:8000` / `ERR_CONNECTION_REFUSED`
+
+Сборка Vite **вшивает** `VITE_API_URL` в JS на этапе `npm run build`. Если файла `.env.production` не было (или в нём нет `VITE_API_URL`), в бандле остаётся значение по умолчанию из кода — **`http://localhost:8000/api`**. Браузер пользователя тогда стучится на **его** `localhost`, а не на сервер API → `Failed to fetch` / `ERR_CONNECTION_REFUSED`.
+
+**Исправление:** на сервере (или в CI) перед сборкой:
+
+```bash
+cd /home/ubuntu/aqlant-lms/frontend
+echo 'VITE_API_URL=https://api.elearning.aqlant.com/api' > .env.production
+npm run build
+```
+
+Затем снова разложите `dist/` под nginx (как в конфиге `root`). После каждого изменения API-URL нужна **новая** сборка.
 
 ### Вместо приложения показывается «Welcome to nginx!»
 
@@ -269,5 +285,5 @@ cd /home/ubuntu/aqlant-lms && git pull
 source venv/bin/activate && pip install -r backend/requirements.txt gunicorn
 cd backend && python manage.py migrate && python manage.py collectstatic --noinput
 sudo systemctl restart aqlant-gunicorn
-# фронт: npm run build при изменении VITE_API_URL или кода
+cd ../frontend && echo 'VITE_API_URL=https://api.elearning.aqlant.com/api' > .env.production && npm ci && npm run build
 ```
