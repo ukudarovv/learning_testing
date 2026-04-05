@@ -15,7 +15,7 @@
     "loading": "Loading...",
     "error": "Error",
     "success": "Success",
-    "construction": "Construction",
+    "construction": "IT & engineering systems",
     "education": "Education Center",
     "yes": "Yes",
     "no": "No",
@@ -125,7 +125,7 @@
   "projects": {
     "badge": "Portfolio",
     "title": "Completed Works",
-    "description": "Examples of successfully implemented projects in design and construction",
+    "description": "Examples of implemented projects in IT, networking and electrical installation",
     "searchPlaceholder": "Search by name or description...",
     "allCategories": "All Categories",
     "loading": "Loading projects...",
@@ -133,7 +133,7 @@
     "notFound": "Projects not found"
   },
   "construction": {
-    "title": "Construction",
+    "title": "IT & engineering systems",
     "about": "About Company",
     "licenses": "Licenses",
     "projects": "Projects and Works",
@@ -142,51 +142,51 @@
   },
   "constructionAbout": {
     "hero": {
-      "badge": "Construction Direction",
+      "badge": "IT & engineering systems",
       "title": "About Company",
-      "description": "Aqlant LLP is a multi-profile engineering and design-construction company providing a full range of services in industrial safety, surveys, design and construction."
+      "description": "Aqlant LLP provides engineering, technical and IT solutions: software development, design and installation of low-voltage and power networks, corporate networks and infrastructure, plus professional training in these fields."
     },
     "breadcrumbs": {
       "home": "Home",
-      "construction": "Construction",
+      "construction": "IT & engineering systems",
       "about": "About Company"
     },
     "about": {
       "title": "Our Activities",
-      "paragraph1": "Aqlant LLP specializes in performing the full cycle of works from engineering surveys to commissioning. We work in various industries and civil construction.",
-      "paragraph2": "The company has all necessary licenses and certificates confirming the right to perform work in the field of surveys, design and construction. Our specialists have extensive experience working with facilities of various complexity.",
-      "paragraph3": "We guarantee high quality of work performed, compliance with all regulatory requirements and standards of the Republic of Kazakhstan, as well as an individual approach to each project."
+      "paragraph1": "Aqlant LLP delivers end-to-end projects to equip facilities: from software development and system integration to communication networks, low-voltage and power solutions. We operate in Kazakhstan and maintain high standards of quality, safety and regulatory compliance.",
+      "paragraph2": "The company holds licenses and certificates confirming competence in information technology, electrical installation and low-voltage systems. Our specialists have experience implementing solutions for businesses and organizations of various scales.",
+      "paragraph3": "We guarantee quality, reliability and transparency in cooperation, compliance with regulatory requirements and standards of the Republic of Kazakhstan, and an individual approach to each project."
     },
     "services": {
       "title": "Activities",
-      "subtitle": "Full range of services in design and construction",
+      "subtitle": "Software, networks, electrical works and training",
       "surveying": {
-        "title": "Engineering Surveys",
+        "title": "Software development and information systems",
         "items": {
-          "geological": "Engineering and geological studies",
-          "hydrogeological": "Engineering and hydrogeological works",
-          "geodetic": "Engineering and geodetic surveys",
-          "equipment": "High-precision equipment"
+          "geological": "Custom software development for client needs",
+          "hydrogeological": "Integration and support of information systems",
+          "geodetic": "Automation and corporate applications",
+          "equipment": "Technical support and evolution of solutions"
         }
       },
       "design": {
-        "title": "Design",
+        "title": "Networks and low-voltage systems",
         "items": {
-          "technological": "Technological design of production facilities",
-          "architectural": "Architectural design (I-III responsibility levels)",
-          "urban": "Urban planning design and planning",
-          "engineering": "Design of engineering systems and networks",
-          "reconstruction": "Reconstruction and major repairs"
+          "technological": "Design of networks and structured cabling",
+          "architectural": "Corporate and local area networks",
+          "urban": "Communications, video surveillance and access control",
+          "engineering": "Installation and commissioning of low-voltage systems",
+          "reconstruction": "Upgrade and expansion of network infrastructure"
         }
       },
       "construction": {
-        "title": "Construction and Installation Works",
+        "title": "Electrical installation and power supply",
         "items": {
-          "category": "C&IW Category III",
-          "buildings": "Construction of facilities for various purposes",
-          "installation": "Equipment installation",
-          "modernization": "Reconstruction and modernization",
-          "standards": "Compliance with SNiP and RK standards"
+          "category": "Electrical installation works of various complexity",
+          "buildings": "Power and distribution networks",
+          "installation": "Installation of electrical equipment and switchgear",
+          "modernization": "Reconstruction and upgrade of electrical installations",
+          "standards": "Compliance with norms and standards of RK"
         }
       }
     },
@@ -194,20 +194,20 @@
       "title": "Our Advantages",
       "experience": {
         "title": "Experience and Professionalism",
-        "description": "Years of experience in design and construction"
+        "description": "Hands-on experience in software, networks and electrical installation"
       },
       "licenses": {
         "title": "Licenses and Certificates",
-        "description": "Full package of state licenses and industry certificates"
+        "description": "Permits and certificates for IT, electrical and low-voltage work"
       },
       "team": {
         "title": "Qualified Team",
-        "description": "Highly qualified specialists with extensive experience"
+        "description": "Engineers, developers and installers with verified qualifications"
       }
     },
     "cta": {
       "title": "Ready to Start Your Project?",
-      "description": "Contact us to discuss your project. Our specialists are ready to answer all your questions and offer an optimal solution.",
+      "description": "Contact us to discuss software, networks or electrical installation. We will propose an optimal solution.",
       "contact": "Contact Us",
       "projects": "Our Projects"
     }
@@ -215,13 +215,13 @@
   "licenses": {
     "title": "Licenses",
     "badge": "Licenses and Certificates",
-    "description": "Aqlant LLP has a complete set of state licenses and industry certificates confirming the right to perform work in various fields.",
+    "description": "Aqlant LLP holds licenses and certificates confirming the right to perform work in information technology, electrical installation and low-voltage systems.",
     "loading": "Loading licenses...",
     "notFound": "No licenses found",
     "categories": {
       "all": "All",
-      "surveying": "Surveys and Design",
-      "construction": "Construction"
+      "surveying": "IT and network design",
+      "construction": "Electrical and low-voltage systems"
     },
     "card": {
       "number": "Number:",
@@ -232,7 +232,7 @@
     },
     "info": {
       "title": "About Licenses",
-      "description1": "All licenses are issued by authorized bodies of the Republic of Kazakhstan and confirm the right of Aqlant LLP to perform the relevant types of work. Licenses are regularly updated and undergo the necessary re-registration procedures.",
+      "description1": "Documents are issued by authorized bodies of the Republic of Kazakhstan and confirm the right of Aqlant LLP to perform the relevant types of work. Licenses and permits are kept up to date as required.",
       "description2": "For additional information about licenses or to request copies of documents, please contact us through",
       "contactLink": "the feedback form"
     },
@@ -255,7 +255,7 @@
     "cabinet": "Personal Cabinet",
     "certificateVerification": "Certificate Verification",
     "pageTitle": "Aqlant Education Center",
-    "pageDescription": "Professional training with issuance of certificates and certificates in industrial safety, occupational safety and other areas.",
+    "pageDescription": "Professional training with certificates in software development, networks, low-voltage and electrical systems, corporate infrastructure and related fields.",
     "courses": {
       "loading": "Loading courses...",
       "badge": "Educational Programs",
@@ -358,10 +358,10 @@
       "direction": "Interest Area",
       "directionPlaceholder": "Select direction",
       "directions": {
-        "construction": "Construction and Design",
-        "engineering": "Engineering Surveys",
-        "education": "Training",
-        "safety": "Industrial Safety",
+        "construction": "Software development and integration",
+        "engineering": "Networks, low-voltage and electrical systems",
+        "education": "Training and retraining",
+        "safety": "Electrical installation and power supply",
         "other": "Other"
       },
       "message": "Message",
@@ -381,9 +381,9 @@
     "workingHours": "Working Hours"
   },
   "footer": {
-    "companyDescription": "Multi-profile engineering and design-construction company. Full range of services in industrial safety, surveys, design and construction.",
+    "companyDescription": "Engineering, technical and IT solutions: software development, low-voltage and power networks, corporate networks and specialist training.",
     "copyright": "© {{year}} Aqlant LLP. BIN 260140021058. All rights reserved.",
-    "construction": "Construction",
+    "construction": "IT & engineering systems",
     "education": "Education Center",
     "contacts": "Contacts"
   },
@@ -1438,10 +1438,10 @@
       "title": "Vacancies",
       "badge": "Career",
       "heroTitle": "Vacancies",
-      "heroDescription": "Join the Aqlant LLP team! We offer interesting projects, professional development and decent working conditions.",
+      "heroDescription": "Join the Aqlant LLP team! Software, networks, electrical installation and training — challenging tasks and professional growth.",
       "breadcrumbs": {
         "home": "Home",
-        "construction": "Construction",
+        "construction": "IT & engineering systems",
         "vacancies": "Vacancies"
       },
       "loading": "Loading vacancies...",
@@ -1645,21 +1645,21 @@
     "hero": {
       "bin": "BIN 260140021058",
       "companyName": "Aqlant LLP",
-      "subtitle": "Engineering and design-construction company",
-      "description": "Full range of services in industrial safety, surveys, design, construction works and professional training",
+      "subtitle": "Engineering, technical and IT solutions",
+      "description": "Software development, design and installation of low-voltage and power networks, corporate networks and infrastructure, professional training in these fields",
       "construction": {
-        "title": "Construction",
-        "description": "Design, surveys and construction and installation works"
+        "title": "Projects and deployment",
+        "description": "Networks, power supply, low-voltage systems and integration"
       },
       "education": {
         "title": "Education Center",
-        "description": "Training and retraining of specialists in industrial safety"
+        "description": "Training and retraining in IT, networks and electrical engineering"
       },
       "learnMore": "Learn More",
       "stats": {
         "licenses": {
           "title": "Licenses",
-          "description": "Full package of state licenses and certificates"
+          "description": "Licenses and permits for IT, electrical and low-voltage work"
         },
         "quality": {
           "title": "Quality",
@@ -1667,35 +1667,35 @@
         },
         "training": {
           "title": "Training",
-          "description": "Modern programs for specialist training"
+          "description": "Programs in software, networks and electrical equipment"
         }
       }
     },
     "about": {
       "badge": "About Company",
       "title": "Aqlant LLP",
-      "heading": "Multi-profile engineering and design-construction company",
-      "description1": "Aqlant LLP provides a full range of services in industrial safety, surveys, design and construction works. We work in the Kazakhstan market, maintaining high standards of quality, safety and regulatory compliance.",
-      "description2": "The company has all necessary licenses and certificates confirming competence and the right to perform works of increased technical complexity.",
+      "heading": "Engineering, technical and IT solutions company",
+      "description1": "Aqlant LLP provides services in software development, design and installation of low-voltage and power networks, corporate networks and related infrastructure. We work in the Kazakhstan market, maintaining high standards of quality, safety and regulatory compliance.",
+      "description2": "The company holds licenses and certificates confirming competence in information technology, electrical installation and low-voltage systems and the right to perform complex work.",
       "weCombine": "We combine:",
       "combineItems": {
-        "professionalism": "Professionalism of the engineering team",
-        "technologies": "Modern technologies",
-        "knowledge": "Deep knowledge of the regulatory framework"
+        "professionalism": "Experience of engineers and developers",
+        "technologies": "Modern technologies and equipment",
+        "knowledge": "Knowledge of regulations and best practices"
       },
       "ourGoal": {
         "title": "Our Goal",
-        "description": "Create reliable solutions that work for many years"
+        "description": "Reliable IT and engineering solutions for your business"
       },
       "principles": {
         "title": "Our Principles",
         "quality": {
           "title": "Quality",
-          "description": "High standards of work performance"
+          "description": "High standards in development and on site"
         },
         "safety": {
           "title": "Safety",
-          "description": "Compliance with industrial safety standards"
+          "description": "Compliance with safety requirements and norms of RK"
         },
         "responsibility": {
           "title": "Responsibility",
@@ -1709,57 +1709,57 @@
       "imageAlt": "About Aqlant company"
     },
     "construction": {
-      "badge": "Construction Direction",
-      "title": "Design and Construction",
-      "description": "Full cycle of works from engineering surveys to putting the facility into operation",
+      "badge": "IT & engineering systems",
+      "title": "Development, networks and electrical installation",
+      "description": "From software development and integration to low-voltage networks, corporate infrastructure and electrical installation",
       "services": {
         "surveys": {
-          "title": "Engineering Surveys",
+          "title": "Software development and information systems",
           "items": {
-            "geological": "Engineering and geological studies",
-            "hydrogeological": "Engineering and hydrogeological works",
-            "geodetic": "Engineering and geodetic surveys",
-            "equipment": "High-precision equipment"
+            "geological": "Custom software development for client needs",
+            "hydrogeological": "Integration and support of information systems",
+            "geodetic": "Automation and corporate applications",
+            "equipment": "Technical support and evolution of solutions"
           }
         },
         "design": {
-          "title": "Design",
+          "title": "Networks and low-voltage systems",
           "items": {
-            "technological": "Technological design of production facilities",
-            "architectural": "Architectural design (I-III responsibility levels)",
-            "urban": "Urban planning design and planning",
-            "engineering": "Design of engineering systems and networks",
-            "reconstruction": "Reconstruction and major repairs"
+            "technological": "Design of networks and structured cabling",
+            "architectural": "Corporate and local area networks",
+            "urban": "Communications, video surveillance and access control",
+            "engineering": "Installation and commissioning of low-voltage systems",
+            "reconstruction": "Upgrade and expansion of network infrastructure"
           }
         },
         "construction": {
-          "title": "Construction and Installation Works",
+          "title": "Electrical installation and power supply",
           "items": {
-            "category": "C&IW Category III",
-            "buildings": "Construction of facilities for various purposes",
-            "installation": "Equipment installation",
-            "modernization": "Reconstruction and modernization",
-            "standards": "Compliance with SNiP and RK standards"
+            "category": "Electrical installation works of various complexity",
+            "buildings": "Power and distribution networks",
+            "installation": "Installation of electrical equipment and switchgear",
+            "modernization": "Reconstruction and upgrade of electrical installations",
+            "standards": "Compliance with norms and standards of RK"
           }
         }
       },
       "licenses": {
         "title": "Licenses and Certificates",
-        "description": "Aqlant LLP has a full package of state licenses and industry certificates confirming the right to perform works in the following areas:",
+        "description": "Aqlant LLP holds licenses and certificates confirming the right to perform work in the following areas:",
         "surveys": {
-          "title": "Surveys and Design",
+          "title": "Information technology and network design",
           "items": {
-            "surveys": "License for engineering surveys",
-            "design": "License for design",
-            "architectural": "Architectural design I-III levels"
+            "surveys": "Licenses and permits in IT and integration",
+            "design": "Design of low-voltage and network systems",
+            "architectural": "Works in agreed categories of complexity"
           }
         },
         "construction": {
-          "title": "Construction",
+          "title": "Electrical installation and low-voltage systems",
           "items": {
-            "category": "License for C&IW Category III",
-            "reconstruction": "Reconstruction and modernization of facilities",
-            "repair": "Major repairs of buildings"
+            "category": "Licenses for electrical installation work",
+            "reconstruction": "Installation and maintenance of low-voltage systems",
+            "repair": "Compliance with electrical safety requirements"
           }
         }
       }
@@ -1767,28 +1767,28 @@
     "education": {
       "badge": "Education Direction",
       "title": "Aqlant Education Center",
-      "description": "Training and retraining of specialists in industrial safety",
+      "description": "Training and retraining in software development, networks, low-voltage and electrical systems",
       "safety": {
-        "title": "Industrial Safety",
-        "description": "The company has a certificate for the right to conduct work in the field of industrial safety, including:",
+        "title": "Professional training",
+        "description": "The education center runs programs aligned with the company profile:",
         "items": {
-          "training": "Training and retraining of specialists and workers in industrial safety",
-          "safetyRequirements": "Training in safety requirements when operating hazardous production facilities"
+          "training": "Training and retraining in IT, corporate networks and low-voltage systems",
+          "safetyRequirements": "Training in working with electrical equipment and safety requirements"
         },
-        "commitment": "We ensure a high level of competence of enterprise personnel by implementing educational programs that comply with industry norms and standards of the Republic of Kazakhstan."
+        "commitment": "We deliver up-to-date knowledge and practical skills in line with industry norms and standards of the Republic of Kazakhstan."
       },
       "features": {
         "certificate": {
-          "title": "Certificate for the right to perform work",
-          "description": "Official permission to train specialists in industrial safety"
+          "title": "Official programs",
+          "description": "Training with issuance of certificates and documents of the established form"
         },
         "teachers": {
           "title": "Experienced teachers",
-          "description": "Professional staff with practical experience working at hazardous facilities"
+          "description": "Specialists with hands-on experience in IT, networks and electrical installation"
         },
         "programs": {
           "title": "Modern programs",
-          "description": "Relevant educational programs that comply with RK standards"
+          "description": "Current courses in development, networks and electrical engineering"
         },
         "documents": {
           "title": "Official documents",
@@ -1847,10 +1847,10 @@
         "direction": "Area of Interest",
         "directionPlaceholder": "Select direction",
         "directions": {
-          "construction": "Construction and Design",
-          "engineering": "Engineering Surveys",
-          "education": "Training",
-          "safety": "Industrial Safety",
+          "construction": "Software development and integration",
+          "engineering": "Networks, low-voltage and electrical systems",
+          "education": "Training and retraining",
+          "safety": "Electrical installation and power supply",
           "other": "Other"
         },
         "message": "Message",
