@@ -1,13 +1,15 @@
-import { useState, useEffect } from 'react';
-import { X, Save, Upload, Eye, EyeOff, RefreshCw } from 'lucide-react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { X, Save, Eye, EyeOff, RefreshCw, Camera, Trash2, User as UserIcon } from 'lucide-react';
 import { User } from '../../types/lms';
 import { useTranslation } from 'react-i18next';
 import { smsService } from '../../services/smsService';
 import { SMSVerification } from '../lms/SMSVerification';
+import type { AdminUserPayload } from '../../services/users';
+import { formatRuKzPhoneInput, normalizeRuKzPhoneDigits } from '../../utils/phoneInput';
 
 interface UserEditorProps {
   user?: User;
-  onSave: (user: Partial<User>) => void | Promise<void>;
+  onSave: (user: AdminUserPayload) => void | Promise<void>;
   onCancel: () => void;
 }
 
@@ -33,6 +35,22 @@ export function UserEditor({ user, onSave, onCancel }: UserEditorProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [verificationCode, setVerificationCode] = useState<string | null>(null);
+  const [pendingPhotoFile, setPendingPhotoFile] = useState<File | null>(null);
+  const [clearServerPhoto, setClearServerPhoto] = useState(false);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    return () => {
+      if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
+    };
+  }, [photoPreviewUrl]);
+
+  const displayPhotoUrl = useMemo(() => {
+    if (photoPreviewUrl) return photoPreviewUrl;
+    if (!clearServerPhoto && user?.profile_photo_url) return user.profile_photo_url;
+    return null;
+  }, [photoPreviewUrl, clearServerPhoto, user?.profile_photo_url]);
 
   // Обновляем formData при изменении user (для редактирования)
   useEffect(() => {
@@ -40,7 +58,7 @@ export function UserEditor({ user, onSave, onCancel }: UserEditorProps) {
       setFormData({
         fullName: user.full_name || user.fullName || '',
         email: user.email || '',
-        phone: user.phone || '',
+        phone: formatRuKzPhoneInput(user.phone || ''),
         role: user.role || 'student',
         iin: user.iin || '',
         city: user.city || '',
@@ -50,13 +68,19 @@ export function UserEditor({ user, onSave, onCancel }: UserEditorProps) {
         language: user.language || 'ru',
       });
     }
+    setPendingPhotoFile(null);
+    setClearServerPhoto(false);
+    setPhotoPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
   }, [user?.id]);
 
   // Отслеживаем изменение номера телефона
   useEffect(() => {
     if (user) {
-      const originalPhone = user.phone || '';
-      const newPhone = formData.phone || '';
+      const originalPhone = normalizeRuKzPhoneDigits(user.phone || '');
+      const newPhone = normalizeRuKzPhoneDigits(formData.phone || '');
       setPhoneChanged(originalPhone !== newPhone && newPhone !== '');
     } else {
       setPhoneChanged(false);
@@ -75,6 +99,49 @@ export function UserEditor({ user, onSave, onCancel }: UserEditorProps) {
     { value: 'kz', label: t('header.kazakh') },
     { value: 'en', label: t('header.english') },
   ];
+
+  const buildPhotoPayload = (): Pick<AdminUserPayload, 'profile_photo' | 'clear_profile_photo'> => {
+    if (pendingPhotoFile) {
+      return { profile_photo: pendingPhotoFile };
+    }
+    if (clearServerPhoto && user?.profile_photo_url) {
+      return { clear_profile_photo: true };
+    }
+    return {};
+  };
+
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowed.includes(file.type)) {
+      setError(t('admin.users.profilePhotoInvalidType'));
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError(t('admin.users.profilePhotoTooLarge'));
+      return;
+    }
+    setError('');
+    setClearServerPhoto(false);
+    setPhotoPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(file);
+    });
+    setPendingPhotoFile(file);
+  };
+
+  const handleRemovePhoto = () => {
+    setPendingPhotoFile(null);
+    setPhotoPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+    if (user?.profile_photo_url) {
+      setClearServerPhoto(true);
+    }
+  };
 
   // Генерация случайного пароля
   const generatePassword = () => {
@@ -116,7 +183,7 @@ export function UserEditor({ user, onSave, onCancel }: UserEditorProps) {
     if (saving) return;
     setSaving(true);
     try {
-      await onSave(formData);
+      await onSave({ ...formData, ...buildPhotoPayload() });
     } finally {
       setSaving(false);
     }
@@ -131,6 +198,7 @@ export function UserEditor({ user, onSave, onCancel }: UserEditorProps) {
       const userDataWithCode = {
         ...formData,
         verification_code: code,
+        ...buildPhotoPayload(),
       };
       await onSave(userDataWithCode);
     } finally {
@@ -210,10 +278,10 @@ export function UserEditor({ user, onSave, onCancel }: UserEditorProps) {
                     type="tel"
                     value={formData.phone || ''}
                     onChange={(e) => {
-                      setFormData({ ...formData, phone: e.target.value });
+                      setFormData({ ...formData, phone: formatRuKzPhoneInput(e.target.value) });
                       setError('');
                     }}
-                    placeholder="+7 (XXX) XXX-XX-XX"
+                    placeholder="+77751234567"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
                   />
@@ -271,6 +339,51 @@ export function UserEditor({ user, onSave, onCancel }: UserEditorProps) {
                     </p>
                   </div>
                 )}
+
+                <div className="col-span-2 p-4 border border-gray-200 rounded-lg bg-gray-50/80">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <Camera className="w-4 h-4 inline mr-2 align-text-bottom" />
+                    {t('admin.users.profilePhotoSection')}
+                  </label>
+                  <p className="text-xs text-gray-600 mb-3">{t('admin.users.profilePhotoHint')}</p>
+                  <div className="flex flex-wrap items-center gap-4">
+                    <div className="w-20 h-20 rounded-full overflow-hidden bg-gray-200 border-2 border-gray-300 shrink-0 flex items-center justify-center">
+                      {displayPhotoUrl ? (
+                        <img src={displayPhotoUrl} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <UserIcon className="w-8 h-8 text-gray-400" />
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <input
+                        ref={photoInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+                        className="hidden"
+                        onChange={handlePhotoSelect}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => photoInputRef.current?.click()}
+                        className="px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 w-fit"
+                      >
+                        {displayPhotoUrl
+                          ? t('admin.users.profilePhotoReplace')
+                          : t('admin.users.profilePhotoUpload')}
+                      </button>
+                      {(displayPhotoUrl || user?.profile_photo_url) && (
+                        <button
+                          type="button"
+                          onClick={handleRemovePhoto}
+                          className="px-3 py-2 text-sm text-red-700 border border-red-200 rounded-lg hover:bg-red-50 inline-flex items-center gap-1 w-fit"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          {t('admin.users.profilePhotoRemove')}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">

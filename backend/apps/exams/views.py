@@ -26,11 +26,11 @@ class TestAttemptViewSet(viewsets.ModelViewSet):
     filter_backends = []
     
     def get_queryset(self):
-        """Filter attempts by user unless admin or PDEK member"""
+        """Filter attempts by user unless admin or EC member"""
         queryset = super().get_queryset()
         user = self.request.user
         
-        # Админы и члены ПДЭК могут видеть все попытки
+        # Админы и члены ЭК могут видеть все попытки
         if user.is_admin or getattr(user, 'role', None) in ['pdek_member', 'pdek_chairman']:
             return queryset
         
@@ -155,24 +155,42 @@ class TestAttemptViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_200_OK
             )
         
+        max_size = 500 * 1024 * 1024  # 500MB in bytes
+
+        def validate_video_upload(f, label):
+            if f.size > max_size:
+                return f'{label} file too large. Maximum size is 500MB'
+            if not f.content_type.startswith('video/'):
+                return f'Invalid file type for {label}. Only video files are allowed'
+            return None
+
         # Handle video recording upload if provided
         if 'video_recording' in request.FILES:
             video_file = request.FILES['video_recording']
-            # Validate file size (max 500MB)
-            max_size = 500 * 1024 * 1024  # 500MB in bytes
-            if video_file.size > max_size:
-                return Response(
-                    {'error': 'Video file too large. Maximum size is 500MB'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            # Validate file type (should be video)
-            if not video_file.content_type.startswith('video/'):
-                return Response(
-                    {'error': 'Invalid file type. Only video files are allowed'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+            err = validate_video_upload(video_file, 'Video')
+            if err:
+                return Response({'error': err}, status=status.HTTP_400_BAD_REQUEST)
             attempt.video_recording = video_file
-        
+
+        if 'screen_recording' in request.FILES:
+            screen_file = request.FILES['screen_recording']
+            err = validate_video_upload(screen_file, 'Screen')
+            if err:
+                return Response({'error': err}, status=status.HTTP_400_BAD_REQUEST)
+            attempt.screen_recording = screen_file
+
+        test = attempt.test
+        if test.requires_video_recording and not attempt.video_recording:
+            return Response(
+                {'error': 'Video recording is required for this test'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if test.requires_screen_recording and not attempt.screen_recording:
+            return Response(
+                {'error': 'Screen recording is required for this test'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         # Calculate score
         score, passed = attempt.calculate_score()
         attempt.score = score
@@ -199,7 +217,7 @@ class TestAttemptViewSet(viewsets.ModelViewSet):
             )
         
         return Response(
-            TestAttemptSerializer(attempt).data,
+            TestAttemptSerializer(attempt, context={'request': request}).data,
             status=status.HTTP_200_OK
         )
     
@@ -315,9 +333,9 @@ class TestAttemptViewSet(viewsets.ModelViewSet):
         
         attempt = self.get_object()
         
-        if not attempt.video_recording:
+        if not attempt.video_recording and not attempt.screen_recording:
             return Response(
-                {'error': 'No video recording to delete'},
+                {'error': 'No recordings to delete'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
@@ -382,9 +400,9 @@ class TestAttemptViewSet(viewsets.ModelViewSet):
         
         attempt = self.get_object()
         
-        if not attempt.video_recording:
+        if not attempt.video_recording and not attempt.screen_recording:
             return Response(
-                {'error': 'No video recording to delete'},
+                {'error': 'No recordings to delete'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
@@ -431,28 +449,31 @@ class TestAttemptViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            # Delete video file
+            deleted = []
             if attempt.video_recording:
                 video_path = attempt.video_recording.path
                 if os.path.exists(video_path):
                     os.remove(video_path)
                     logger.info(f"Video file deleted: {video_path}")
-                
-                # Clear the field
                 attempt.video_recording.delete(save=False)
                 attempt.video_recording = None
-                attempt.save()
-                
-                logger.info(f"Video recording deleted for attempt {attempt.id} by admin {request.user.phone}")
-                
-                return Response({
-                    'message': 'Video recording deleted successfully'
-                }, status=status.HTTP_200_OK)
-            else:
-                return Response(
-                    {'error': 'Video recording not found'},
-                    status=status.HTTP_404_NOT_FOUND
-                )
+                deleted.append('video')
+            if attempt.screen_recording:
+                screen_path = attempt.screen_recording.path
+                if os.path.exists(screen_path):
+                    os.remove(screen_path)
+                    logger.info(f"Screen file deleted: {screen_path}")
+                attempt.screen_recording.delete(save=False)
+                attempt.screen_recording = None
+                deleted.append('screen')
+            attempt.save()
+            logger.info(
+                f"Recordings deleted for attempt {attempt.id} by admin {request.user.phone}: {deleted}"
+            )
+            return Response(
+                {'message': 'Recording(s) deleted successfully'},
+                status=status.HTTP_200_OK
+            )
                 
         except Exception as e:
             logger.error(f"Error deleting video recording: {str(e)}")

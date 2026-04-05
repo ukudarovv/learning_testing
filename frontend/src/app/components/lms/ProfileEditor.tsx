@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { X, Save, User, Mail, Phone, Lock, Eye, EyeOff, Building2, MapPin, Globe } from 'lucide-react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { X, Save, User, Mail, Phone, Lock, Eye, EyeOff, Building2, MapPin, Globe, Camera, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { User as UserType } from '../../types/lms';
 import { authService } from '../../services/auth';
@@ -7,6 +7,7 @@ import { smsService } from '../../services/smsService';
 import { SMSVerification } from './SMSVerification';
 import { ApiError } from '../../services/api';
 import { useUser } from '../../contexts/UserContext';
+import { formatRuKzPhoneInput, normalizeRuKzPhoneDigits } from '../../utils/phoneInput';
 
 interface ProfileEditorProps {
   user: UserType;
@@ -20,7 +21,7 @@ export function ProfileEditor({ user, onSave, onCancel }: ProfileEditorProps) {
   const [formData, setFormData] = useState<Partial<UserType> & { password?: string; password_confirm?: string }>({
     full_name: user.full_name || user.fullName || '',
     email: user.email || '',
-    phone: user.phone || '',
+    phone: formatRuKzPhoneInput(user.phone || ''),
     iin: user.iin || '',
     city: user.city || '',
     organization: user.organization || '',
@@ -36,6 +37,22 @@ export function ProfileEditor({ user, onSave, onCancel }: ProfileEditorProps) {
   const [showSMSVerification, setShowSMSVerification] = useState(false);
   const [sendingSMS, setSendingSMS] = useState(false);
   const [phoneChanged, setPhoneChanged] = useState(false);
+  const [pendingPhotoFile, setPendingPhotoFile] = useState<File | null>(null);
+  const [clearServerPhoto, setClearServerPhoto] = useState(false);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    return () => {
+      if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
+    };
+  }, [photoPreviewUrl]);
+
+  const displayPhotoUrl = useMemo(() => {
+    if (photoPreviewUrl) return photoPreviewUrl;
+    if (!clearServerPhoto && user.profile_photo_url) return user.profile_photo_url;
+    return null;
+  }, [photoPreviewUrl, clearServerPhoto, user.profile_photo_url]);
 
   const languages = [
     { value: 'ru', label: t('header.russian') },
@@ -45,15 +62,52 @@ export function ProfileEditor({ user, onSave, onCancel }: ProfileEditorProps) {
 
   useEffect(() => {
     // Проверяем, изменился ли телефон
-    const originalPhone = user.phone || '';
-    const newPhone = formData.phone || '';
+    const originalPhone = normalizeRuKzPhoneDigits(user.phone || '');
+    const newPhone = normalizeRuKzPhoneDigits(formData.phone || '');
     setPhoneChanged(originalPhone !== newPhone && newPhone !== '');
   }, [formData.phone, user.phone]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    if (name === 'phone') {
+      setFormData(prev => ({ ...prev, phone: formatRuKzPhoneInput(value) }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
     setError('');
+  };
+
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowed.includes(file.type)) {
+      setError(t('lms.student.profile.photoInvalidType') || 'Допустимы только JPG, PNG или WebP.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError(t('lms.student.profile.photoTooLarge') || 'Файл не должен превышать 5 МБ.');
+      return;
+    }
+    setError('');
+    setClearServerPhoto(false);
+    setPhotoPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(file);
+    });
+    setPendingPhotoFile(file);
+  };
+
+  const handleRemovePhoto = () => {
+    setPendingPhotoFile(null);
+    setPhotoPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+    if (user.profile_photo_url) {
+      setClearServerPhoto(true);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -122,7 +176,20 @@ export function ProfileEditor({ user, onSave, onCancel }: ProfileEditorProps) {
         updateData.password = formData.password;
       }
 
+      if (pendingPhotoFile) {
+        updateData.profile_photo = pendingPhotoFile;
+      } else if (clearServerPhoto) {
+        updateData.clear_profile_photo = true;
+      }
+
       const updatedUser = await authService.updateProfile(updateData);
+
+      setPendingPhotoFile(null);
+      setClearServerPhoto(false);
+      setPhotoPreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
       
       // Обновляем пользователя в контексте
       await refreshUser();
@@ -183,6 +250,55 @@ export function ProfileEditor({ user, onSave, onCancel }: ProfileEditorProps) {
             )}
 
             <div className="space-y-6">
+              {/* Profile photo (proctored tests) */}
+              <div className="p-4 border border-gray-200 rounded-lg bg-gray-50/80">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Camera className="w-4 h-4 inline mr-2 align-text-bottom" />
+                  {t('lms.student.profile.photoLabel') || 'Фото для идентификации на экзамене'}
+                </label>
+                <p className="text-xs text-gray-600 mb-3">
+                  {t('lms.student.profile.photoHint') ||
+                    'Нужно для тестов с видеозаписью: система сверяет ваше лицо с этим фото. Лицо по центру, хорошее освещение.'}
+                </p>
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-200 border-2 border-gray-300 shrink-0 flex items-center justify-center">
+                    {displayPhotoUrl ? (
+                      <img src={displayPhotoUrl} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <User className="w-10 h-10 text-gray-400" />
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <input
+                      ref={photoInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+                      className="hidden"
+                      onChange={handlePhotoSelect}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => photoInputRef.current?.click()}
+                      className="px-4 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                    >
+                      {displayPhotoUrl
+                        ? t('lms.student.profile.photoReplace') || 'Заменить фото'
+                        : t('lms.student.profile.photoUpload') || 'Загрузить фото'}
+                    </button>
+                    {(displayPhotoUrl || user.profile_photo_url) && (
+                      <button
+                        type="button"
+                        onClick={handleRemovePhoto}
+                        className="px-4 py-2 text-sm text-red-700 border border-red-200 rounded-lg hover:bg-red-50 inline-flex items-center gap-1"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        {t('lms.student.profile.photoRemove') || 'Удалить фото'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               {/* Full Name */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -234,7 +350,7 @@ export function ProfileEditor({ user, onSave, onCancel }: ProfileEditorProps) {
                     onChange={handleChange}
                     required
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                    placeholder="+77081234567"
+                    placeholder={t('forms.login.phonePlaceholder')}
                   />
                 </div>
                 {phoneChanged && (

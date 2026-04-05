@@ -2,6 +2,34 @@ import { apiClient } from './api';
 import { User } from '../types/lms';
 import { PaginatedResponse, PaginationParams } from '../types/pagination';
 
+export type AdminUserPayload = Partial<
+  User & {
+    password?: string;
+    verification_code?: string;
+    profile_photo?: File | null;
+    clear_profile_photo?: boolean;
+  }
+>;
+
+function appendUserFieldsToFormData(form: FormData, user: AdminUserPayload): void {
+  const full_name = user.fullName || user.full_name;
+  if (full_name !== undefined) form.append('full_name', String(full_name));
+  if (user.phone !== undefined) form.append('phone', String(user.phone));
+  if (user.email !== undefined) form.append('email', String(user.email));
+  if (user.iin !== undefined) form.append('iin', String(user.iin ?? ''));
+  if (user.role !== undefined) form.append('role', String(user.role));
+  if (user.city !== undefined) form.append('city', String(user.city ?? ''));
+  const org = user.organization ?? (user as { company?: string }).company;
+  if (org !== undefined) form.append('organization', String(org ?? ''));
+  if (user.language !== undefined) form.append('language', String(user.language));
+  if (user.verified !== undefined) form.append('verified', user.verified ? 'true' : 'false');
+  if (user.is_active !== undefined) form.append('is_active', user.is_active ? 'true' : 'false');
+  if (user.password?.trim()) form.append('password', user.password);
+  if (user.verification_code) form.append('verification_code', user.verification_code);
+  const psm = (user as { protocol_sign_method?: string }).protocol_sign_method;
+  if (psm !== undefined) form.append('protocol_sign_method', String(psm));
+}
+
 const usersService = {
   async getUsers(params?: { 
     role?: string; 
@@ -56,40 +84,63 @@ const usersService = {
     return apiClient.get<User>(`/users/${id}/`);
   },
 
-  async createUser(user: Partial<User & { password?: string }>): Promise<User & { generated_password?: string }> {
-    // Convert frontend format to backend format
+  async createUser(user: AdminUserPayload): Promise<User & { generated_password?: string }> {
+    const profile_photo = user.profile_photo;
+    const hasFile = profile_photo instanceof File;
+
+    if (hasFile) {
+      const form = new FormData();
+      appendUserFieldsToFormData(form, user);
+      form.append('profile_photo', profile_photo);
+      return apiClient.post<User & { generated_password?: string }>('/users/', form);
+    }
+
     const backendUser: any = {
       ...user,
       full_name: user.fullName || user.full_name,
     };
-    // Remove frontend-specific fields
     delete backendUser.fullName;
-    delete backendUser.company; // Backend uses 'organization'
+    delete backendUser.company;
+    delete backendUser.profile_photo;
+    delete backendUser.clear_profile_photo;
     if (user.company) {
       backendUser.organization = user.company;
     }
-    // Пароль передается как есть (или не передается, тогда будет сгенерирован)
     const response = await apiClient.post<User & { generated_password?: string }>('/users/', backendUser);
     return response;
   },
 
-  async updateUser(id: string, user: Partial<User & { verification_code?: string }>): Promise<User> {
-    // Convert frontend format to backend format
+  async updateUser(id: string, user: AdminUserPayload): Promise<User> {
+    const profile_photo = user.profile_photo;
+    const clear_profile_photo = user.clear_profile_photo === true;
+    const hasFile = profile_photo instanceof File;
+
+    if (hasFile || clear_profile_photo) {
+      const form = new FormData();
+      appendUserFieldsToFormData(form, user);
+      if (hasFile && profile_photo) {
+        form.append('profile_photo', profile_photo);
+      }
+      if (clear_profile_photo) {
+        form.append('clear_profile_photo', 'true');
+      }
+      return apiClient.put<User>(`/users/${id}/`, form);
+    }
+
     const backendUser: any = {
       ...user,
       full_name: user.fullName || user.full_name,
     };
-    // Remove frontend-specific fields
     delete backendUser.fullName;
-    delete backendUser.company; // Backend uses 'organization'
+    delete backendUser.company;
+    delete backendUser.profile_photo;
+    delete backendUser.clear_profile_photo;
     if (user.company) {
       backendUser.organization = user.company;
     }
-    // Remove password if it's empty or not provided (don't send empty password)
     if (!backendUser.password || backendUser.password.trim() === '') {
       delete backendUser.password;
     }
-    // Keep verification_code if provided (for phone number change)
     if (user.verification_code) {
       backendUser.verification_code = user.verification_code;
     }

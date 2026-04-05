@@ -18,7 +18,7 @@ class Migration(migrations.Migration):
             name='Notification',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('type', models.CharField(choices=[('course_assigned', 'Course Assigned'), ('exam_available', 'Exam Available'), ('protocol_ready', 'Protocol Ready'), ('certificate_issued', 'Certificate Issued'), ('pdek_signature_request', 'PDEK Signature Request'), ('exam_passed', 'Exam Passed'), ('exam_failed', 'Exam Failed')], max_length=30)),
+                ('type', models.CharField(choices=[('course_assigned', 'Course Assigned'), ('exam_available', 'Exam Available'), ('protocol_ready', 'Protocol Ready'), ('certificate_issued', 'Certificate Issued'), ('pdek_signature_request', 'EC Signature Request'), ('exam_passed', 'Exam Passed'), ('exam_failed', 'Exam Failed')], max_length=30)),
                 ('title', models.CharField(max_length=255)),
                 ('message', models.TextField()),
                 ('read', models.BooleanField(default=False)),

@@ -1,4 +1,5 @@
 import { GraduationCap, Shield, ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 
@@ -35,8 +36,8 @@ export function HomeHero() {
           </div>
 
           <div className="max-w-2xl mx-auto mb-12">
-            <a
-              href="#education"
+            <Link
+              to="/education"
               className="group block bg-white/10 backdrop-blur-sm p-8 rounded-2xl border-2 border-white/20 hover:bg-white/20 hover:border-white/40 transition-all"
             >
               <div className="flex items-start gap-4 mb-4">
@@ -54,7 +55,7 @@ export function HomeHero() {
                 {t('homepage.hero.learnMore')}
                 <ArrowRight className="w-4 h-4" />
               </div>
-            </a>
+            </Link>
           </div>
         </div>
       </div>

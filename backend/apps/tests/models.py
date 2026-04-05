@@ -20,6 +20,7 @@ class Test(models.Model):
     max_attempts = models.IntegerField(default=3, help_text='Maximum attempts allowed')
     is_active = models.BooleanField(default=True)
     requires_video_recording = models.BooleanField(default=False, help_text='Require video recording during test')
+    requires_screen_recording = models.BooleanField(default=False, help_text='Require screen capture recording during test')
     shuffle_questions = models.BooleanField(default=True, help_text='Shuffle questions order for each attempt')
     show_results = models.BooleanField(default=True, help_text='Show test results to students after completion')
     language = models.CharField(max_length=2, choices=LANGUAGE_CHOICES, default='ru', help_text='Language of the test content')

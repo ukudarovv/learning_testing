@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Video, Download, Eye, Search, Filter, Calendar, User, FileQuestion, CheckCircle, XCircle, Clock, RefreshCw, X, Trash2, AlertCircle, Send } from 'lucide-react';
+import { Video, Monitor, Download, Eye, Search, Filter, Calendar, User, FileQuestion, CheckCircle, XCircle, Clock, RefreshCw, X, Trash2, AlertCircle, Send } from 'lucide-react';
 import { TestAttempt, Test } from '../../types/lms';
 import { examsService } from '../../services/exams';
 import { testsService } from '../../services/tests';
@@ -220,8 +220,18 @@ export function TestAttemptsManagement() {
     return !!(attempt.video_recording || attempt.videoRecording);
   };
 
+  const hasScreen = (attempt: TestAttempt): boolean => {
+    return !!(attempt.screen_recording || attempt.screenRecording);
+  };
+
+  const hasRecording = (attempt: TestAttempt): boolean => hasVideo(attempt) || hasScreen(attempt);
+
   const getVideoUrl = (attempt: TestAttempt): string | null => {
     return attempt.video_recording || attempt.videoRecording || null;
+  };
+
+  const getScreenUrl = (attempt: TestAttempt): string | null => {
+    return attempt.screen_recording || attempt.screenRecording || null;
   };
 
   if (loading) {
@@ -468,18 +478,25 @@ export function TestAttemptsManagement() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {hasVideo(attempt) ? (
-                          <span className="inline-flex items-center gap-1 text-green-600">
-                            <Video className="w-4 h-4" />
-                            <span className="text-sm font-medium">{t('admin.testAttempts.hasVideo') || 'Есть'}</span>
-                          </span>
-                        ) : (
-                          <span className="text-sm text-gray-400">{t('admin.testAttempts.noVideo') || 'Нет'}</span>
-                        )}
+                        <div className="flex flex-wrap items-center gap-2">
+                          {hasVideo(attempt) ? (
+                            <span className="inline-flex items-center gap-1 text-green-600" title={t('admin.testAttempts.hasVideo') || 'Камера'}>
+                              <Video className="w-4 h-4" />
+                            </span>
+                          ) : null}
+                          {hasScreen(attempt) ? (
+                            <span className="inline-flex items-center gap-1 text-amber-700" title={t('admin.testAttempts.hasScreen') || 'Экран'}>
+                              <Monitor className="w-4 h-4" />
+                            </span>
+                          ) : null}
+                          {!hasRecording(attempt) ? (
+                            <span className="text-sm text-gray-400">{t('admin.testAttempts.noVideo') || 'Нет'}</span>
+                          ) : null}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-2">
-                          {hasVideo(attempt) && (
+                          {hasRecording(attempt) && (
                             <button
                               onClick={() => handleViewVideo(attempt)}
                               className="flex items-center gap-1 px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
@@ -506,7 +523,7 @@ export function TestAttemptsManagement() {
             <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
               <div>
                 <h3 className="text-xl font-bold text-gray-900">
-                  {t('admin.testAttempts.videoRecording') || 'Видеозапись попытки'}
+                  {t('admin.testAttempts.recordingsTitle') || 'Записи попытки'}
                 </h3>
                 <p className="text-sm text-gray-600 mt-1">
                   {getUserName(selectedAttempt)} - {getTestTitle(selectedAttempt)}
@@ -524,45 +541,79 @@ export function TestAttemptsManagement() {
             </div>
 
             <div className="p-6">
-              {getVideoUrl(selectedAttempt) ? (
-                <div className="space-y-4">
-                  <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden">
-                    <video
-                      src={getVideoUrl(selectedAttempt)!}
-                      controls
-                      className="w-full h-full"
-                      style={{ maxHeight: '600px' }}
-                    >
-                      {t('admin.testAttempts.videoNotSupported') || 'Ваш браузер не поддерживает воспроизведение видео.'}
-                    </video>
-                  </div>
-                  <div className="flex items-center gap-4 flex-wrap">
-                    <a
-                      href={getVideoUrl(selectedAttempt)!}
-                      download
-                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      <Download className="w-4 h-4" />
-                      {t('admin.testAttempts.download') || 'Скачать видео'}
-                    </a>
+              {getVideoUrl(selectedAttempt) || getScreenUrl(selectedAttempt) ? (
+                <div className="space-y-6">
+                  {getVideoUrl(selectedAttempt) ? (
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                        <Video className="w-4 h-4" />
+                        {t('admin.testAttempts.cameraRecording') || 'Камера'}
+                      </h4>
+                      <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden">
+                        <video
+                          src={getVideoUrl(selectedAttempt)!}
+                          controls
+                          className="w-full h-full"
+                          style={{ maxHeight: '600px' }}
+                        >
+                          {t('admin.testAttempts.videoNotSupported') || 'Ваш браузер не поддерживает воспроизведение видео.'}
+                        </video>
+                      </div>
+                      <a
+                        href={getVideoUrl(selectedAttempt)!}
+                        download
+                        className="inline-flex items-center gap-2 mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                      >
+                        <Download className="w-4 h-4" />
+                        {t('admin.testAttempts.downloadCamera') || 'Скачать камеру'}
+                      </a>
+                    </div>
+                  ) : null}
+                  {getScreenUrl(selectedAttempt) ? (
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                        <Monitor className="w-4 h-4" />
+                        {t('admin.testAttempts.screenRecording') || 'Экран'}
+                      </h4>
+                      <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden">
+                        <video
+                          src={getScreenUrl(selectedAttempt)!}
+                          controls
+                          className="w-full h-full"
+                          style={{ maxHeight: '600px' }}
+                        >
+                          {t('admin.testAttempts.videoNotSupported') || 'Ваш браузер не поддерживает воспроизведение видео.'}
+                        </video>
+                      </div>
+                      <a
+                        href={getScreenUrl(selectedAttempt)!}
+                        download
+                        className="inline-flex items-center gap-2 mt-2 px-4 py-2 bg-amber-700 text-white rounded-lg hover:bg-amber-800 transition-colors text-sm"
+                      >
+                        <Download className="w-4 h-4" />
+                        {t('admin.testAttempts.downloadScreen') || 'Скачать экран'}
+                      </a>
+                    </div>
+                  ) : null}
+                  <div className="flex items-center gap-4 flex-wrap pt-2 border-t border-gray-200">
                     <button
                       onClick={handleRequestDeleteVideo}
                       disabled={deletingVideo}
                       className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Trash2 className="w-4 h-4" />
-                      {t('admin.testAttempts.deleteVideo') || 'Удалить видеозапись'}
+                      {t('admin.testAttempts.deleteRecordings') || 'Удалить записи (SMS)'}
                     </button>
                     <div className="text-sm text-gray-600">
                       <span className="font-medium">{t('admin.testAttempts.score') || 'Балл'}:</span>{' '}
-                      {selectedAttempt.score !== null && selectedAttempt.score !== undefined 
+                      {selectedAttempt.score !== null && selectedAttempt.score !== undefined
                         ? `${selectedAttempt.score.toFixed(1)}%`
                         : '—'}
                     </div>
                     <div className="text-sm text-gray-600">
                       <span className="font-medium">{t('admin.testAttempts.result') || 'Результат'}:</span>{' '}
                       {selectedAttempt.passed !== null && selectedAttempt.passed !== undefined
-                        ? (selectedAttempt.passed 
+                        ? (selectedAttempt.passed
                             ? t('admin.testAttempts.passed') || 'Пройдено'
                             : t('admin.testAttempts.failed') || 'Не пройдено')
                         : '—'}
@@ -572,7 +623,7 @@ export function TestAttemptsManagement() {
               ) : (
                 <div className="text-center py-12">
                   <Video className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-600">{t('admin.testAttempts.videoNotAvailable') || 'Видеозапись недоступна'}</p>
+                  <p className="text-gray-600">{t('admin.testAttempts.videoNotAvailable') || 'Записи недоступны'}</p>
                 </div>
               )}
             </div>

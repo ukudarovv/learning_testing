@@ -7,11 +7,11 @@ import string
 
 
 class Protocol(models.Model):
-    """Protocol model for PDEK"""
+    """Protocol model for EC (exam commission)"""
     
     STATUS_CHOICES = [
         ('generated', 'Generated'),
-        ('pending_pdek', 'Pending PDEK'),
+        ('pending_pdek', 'Pending EC'),
         ('signed_members', 'Signed by Members'),
         ('signed_chairman', 'Signed by Chairman'),
         ('rejected', 'Rejected'),

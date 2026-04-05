@@ -123,9 +123,9 @@ export function Header() {
             <a href="/#about" className="text-gray-700 hover:text-blue-600 transition-colors font-medium">
               {t('common.about')}
             </a>
-            <a href="/#education" className="text-gray-700 hover:text-blue-600 transition-colors font-medium">
+            <Link to="/education" className="text-gray-700 hover:text-blue-600 transition-colors font-medium">
               {t('common.education')}
-            </a>
+            </Link>
             <a href="/#contacts" className="text-gray-700 hover:text-blue-600 transition-colors font-medium">
               {t('common.contacts')}
             </a>
@@ -180,9 +180,9 @@ export function Header() {
               <a href="/#about" onClick={closeMobileMenu} className="text-gray-700 hover:text-blue-600 py-2">
                 О компании
               </a>
-              <a href="/#education" onClick={closeMobileMenu} className="text-gray-700 hover:text-blue-600 py-2">
+              <Link to="/education" onClick={closeMobileMenu} className="text-gray-700 hover:text-blue-600 py-2">
                 {t('common.education')}
-              </a>
+              </Link>
               <a href="/#contacts" onClick={closeMobileMenu} className="text-gray-700 hover:text-blue-600 py-2">
                 {t('common.contacts')}
               </a>

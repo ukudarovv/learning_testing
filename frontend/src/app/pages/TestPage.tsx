@@ -377,11 +377,19 @@ export function TestPage() {
     }
   }, [test, attemptId, starting, navigate, stateAttemptId, viewResults, isStandaloneTest, assignmentsLoaded, testAssignments, testRequests, isTestInCourse, t]);
 
-  const handleTestComplete = async (answers: Answer[], timeSpent: number, videoBlob?: Blob) => {
+  const handleTestComplete = async (
+    answers: Answer[],
+    timeSpent: number,
+    videoBlob?: Blob,
+    screenBlob?: Blob
+  ) => {
     if (!attemptId || !test) return;
 
     try {
-      const result = await examsService.submitTestAttempt(String(attemptId), videoBlob);
+      const result = await examsService.submitTestAttempt(String(attemptId), {
+        videoBlob,
+        screenBlob,
+      });
       
       // Удаляем сохраненный прогресс
       localStorage.removeItem(`test_${test.id}_progress`);
@@ -512,6 +520,7 @@ export function TestPage() {
         timeLimit={test.timeLimit || test.time_limit || 30}
         questions={test.questions || []}
         requiresVideoRecording={test.requiresVideoRecording || test.requires_video_recording || false}
+        requiresScreenRecording={test.requiresScreenRecording || test.requires_screen_recording || false}
         onComplete={handleTestComplete}
         onCancel={handleCancel}
         savedAnswers={savedAnswers || undefined}

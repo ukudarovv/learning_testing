@@ -1,32 +1,62 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, type RefObject } from 'react';
 
 export interface TestProtectionResult {
   violationCount: number;
   violationType: string | null;
   resetViolations: () => void;
+  /** Сообщить о нарушении (например контроль лица) — увеличивает общий счётчик */
+  reportViolation: (type: string) => void;
 }
 
-export function useTestProtection(enabled: boolean = true): TestProtectionResult {
+export interface UseTestProtectionOptions {
+  /** Элемент, переводимый в полноэкранный режим — для отслеживания выхода из fullscreen */
+  fullscreenContainerRef?: RefObject<HTMLElement | null>;
+}
+
+/** Запрос полноэкранного режима для контейнера теста (нужен пользовательский жест). Возвращает true при успехе. */
+export async function requestTestFullscreen(element: HTMLElement): Promise<boolean> {
+  try {
+    if (element.requestFullscreen) {
+      await element.requestFullscreen();
+      return true;
+    }
+    const el = element as HTMLElement & {
+      webkitRequestFullscreen?: () => void;
+      mozRequestFullScreen?: () => void;
+    };
+    if (el.webkitRequestFullscreen) {
+      el.webkitRequestFullscreen();
+      return true;
+    }
+    if (el.mozRequestFullScreen) {
+      el.mozRequestFullScreen();
+      return true;
+    }
+  } catch {
+    /* ignore */
+  }
+  return false;
+}
+
+export function useTestProtection(
+  enabled: boolean = true,
+  options?: UseTestProtectionOptions
+): TestProtectionResult {
+  const fullscreenContainerRef = options?.fullscreenContainerRef;
   const [violationCount, setViolationCount] = useState(0);
   const [violationType, setViolationType] = useState<string | null>(null);
-  const violationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const violationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wasInTestFullscreenRef = useRef(false);
 
   const handleViolation = useCallback((type: string) => {
-    // Очищаем предыдущий таймаут, если есть
     if (violationTimeoutRef.current) {
       clearTimeout(violationTimeoutRef.current);
     }
 
-    // Устанавливаем тип нарушения
     setViolationType(type);
 
-    // Увеличиваем счетчик нарушений
-    setViolationCount(prev => {
-      const newCount = prev + 1;
-      return newCount;
-    });
+    setViolationCount((prev) => prev + 1);
 
-    // Сбрасываем тип нарушения через 2 секунды
     violationTimeoutRef.current = setTimeout(() => {
       setViolationType(null);
     }, 2000);
@@ -42,11 +72,41 @@ export function useTestProtection(enabled: boolean = true): TestProtectionResult
   }, []);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) {
+      wasInTestFullscreenRef.current = false;
+      return;
+    }
 
-    // Блокировка Print Screen и комбинаций
+    const getFullscreenElement = (): Element | null => {
+      const d = document as Document & { webkitFullscreenElement?: Element | null };
+      return document.fullscreenElement ?? d.webkitFullscreenElement ?? null;
+    };
+
+    const isOurFullscreenElement = (el: Element | null): boolean => {
+      const target = fullscreenContainerRef?.current;
+      if (!el || !target) return false;
+      return el === target || target.contains(el);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        handleViolation('tab_switch');
+      }
+    };
+
+    const handleFullscreenChange = () => {
+      const el = getFullscreenElement();
+      if (el && isOurFullscreenElement(el)) {
+        wasInTestFullscreenRef.current = true;
+        return;
+      }
+      if (!el && wasInTestFullscreenRef.current) {
+        wasInTestFullscreenRef.current = false;
+        handleViolation('fullscreen_exit');
+      }
+    };
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Print Screen (код 44)
       if (e.key === 'PrintScreen' || e.keyCode === 44) {
         e.preventDefault();
         e.stopPropagation();
@@ -54,7 +114,6 @@ export function useTestProtection(enabled: boolean = true): TestProtectionResult
         return false;
       }
 
-      // Alt + Print Screen
       if (e.altKey && (e.key === 'PrintScreen' || e.keyCode === 44)) {
         e.preventDefault();
         e.stopPropagation();
@@ -62,7 +121,6 @@ export function useTestProtection(enabled: boolean = true): TestProtectionResult
         return false;
       }
 
-      // Windows + Print Screen
       if (e.metaKey && (e.key === 'PrintScreen' || e.keyCode === 44)) {
         e.preventDefault();
         e.stopPropagation();
@@ -70,7 +128,6 @@ export function useTestProtection(enabled: boolean = true): TestProtectionResult
         return false;
       }
 
-      // Win + Shift + S (Windows Snipping Tool)
       if (e.metaKey && e.shiftKey && (e.key === 's' || e.key === 'S' || e.keyCode === 83)) {
         e.preventDefault();
         e.stopPropagation();
@@ -78,25 +135,68 @@ export function useTestProtection(enabled: boolean = true): TestProtectionResult
         return false;
       }
 
-      // Блокировка горячих клавиш
-      const blockedKeys: { [key: string]: string } = {
-        'F12': 'devtools',
-        'F5': 'refresh',
-        'F11': 'fullscreen',
-      };
-
-      if (blockedKeys[e.key] || blockedKeys[`F${e.keyCode}`]) {
+      if (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === 'F4' || e.keyCode === 115)) {
         e.preventDefault();
         e.stopPropagation();
         handleViolation('hotkey');
         return false;
       }
 
-      // Ctrl + комбинации (сначала проверяем сложные комбинации с Shift)
+      const blockedKeys: { [key: string]: boolean } = {
+        F12: true,
+        F5: true,
+        F11: true,
+      };
+
+      if (blockedKeys[e.key] || blockedKeys[`F${e.keyCode}`]) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleViolation(e.key === 'F12' || e.keyCode === 123 ? 'devtools' : 'hotkey');
+        return false;
+      }
+
       if (e.ctrlKey || e.metaKey) {
         const key = e.key.toLowerCase();
-        
-        // Ctrl+Shift+I (DevTools) - приоритетная проверка
+
+        if (e.key === 'Tab') {
+          e.preventDefault();
+          e.stopPropagation();
+          handleViolation('hotkey');
+          return false;
+        }
+
+        if (!e.shiftKey) {
+          if (['w', 't', 'n'].includes(key)) {
+            e.preventDefault();
+            e.stopPropagation();
+            handleViolation('hotkey');
+            return false;
+          }
+        } else {
+          if (['t', 'n'].includes(key)) {
+            e.preventDefault();
+            e.stopPropagation();
+            handleViolation('hotkey');
+            return false;
+          }
+        }
+
+        if (!e.shiftKey) {
+          if (
+            e.code === 'Equal' ||
+            e.code === 'Minus' ||
+            e.code === 'NumpadAdd' ||
+            e.code === 'NumpadSubtract' ||
+            e.code === 'Digit0' ||
+            e.code === 'Numpad0'
+          ) {
+            e.preventDefault();
+            e.stopPropagation();
+            handleViolation('hotkey');
+            return false;
+          }
+        }
+
         if (e.shiftKey && (key === 'i' || e.keyCode === 73)) {
           e.preventDefault();
           e.stopPropagation();
@@ -104,7 +204,6 @@ export function useTestProtection(enabled: boolean = true): TestProtectionResult
           return false;
         }
 
-        // Ctrl+Shift+C (Element Inspector)
         if (e.shiftKey && (key === 'c' || e.keyCode === 67)) {
           e.preventDefault();
           e.stopPropagation();
@@ -112,7 +211,6 @@ export function useTestProtection(enabled: boolean = true): TestProtectionResult
           return false;
         }
 
-        // Ctrl+Shift+J (Console)
         if (e.shiftKey && (key === 'j' || e.keyCode === 74)) {
           e.preventDefault();
           e.stopPropagation();
@@ -120,9 +218,7 @@ export function useTestProtection(enabled: boolean = true): TestProtectionResult
           return false;
         }
 
-        // Простые Ctrl+комбинации (без Shift)
         if (!e.shiftKey) {
-          // Ctrl+C, Ctrl+V, Ctrl+X, Ctrl+A, Ctrl+S, Ctrl+P, Ctrl+U
           if (['c', 'v', 'x', 'a', 's', 'p', 'u'].includes(key)) {
             e.preventDefault();
             e.stopPropagation();
@@ -132,7 +228,6 @@ export function useTestProtection(enabled: boolean = true): TestProtectionResult
         }
       }
 
-      // Дополнительная проверка для Win+Shift+S (на случай, если предыдущая не сработала)
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 's' || e.key === 'S' || e.keyCode === 83)) {
         e.preventDefault();
         e.stopPropagation();
@@ -141,7 +236,6 @@ export function useTestProtection(enabled: boolean = true): TestProtectionResult
       }
     };
 
-    // Блокировка копирования через события
     const handleCopy = (e: ClipboardEvent) => {
       e.preventDefault();
       e.stopPropagation();
@@ -163,7 +257,6 @@ export function useTestProtection(enabled: boolean = true): TestProtectionResult
       return false;
     };
 
-    // Блокировка контекстного меню
     const handleContextMenu = (e: MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
@@ -171,7 +264,6 @@ export function useTestProtection(enabled: boolean = true): TestProtectionResult
       return false;
     };
 
-    // Блокировка выделения текста
     const handleSelectStart = (e: Event) => {
       e.preventDefault();
       e.stopPropagation();
@@ -184,30 +276,25 @@ export function useTestProtection(enabled: boolean = true): TestProtectionResult
       return false;
     };
 
-    // Обнаружение скринкастинга через Screen Capture API
+    const handleWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleViolation('hotkey');
+      }
+    };
+
     const originalGetDisplayMedia = navigator.mediaDevices?.getDisplayMedia;
     if (originalGetDisplayMedia) {
-      navigator.mediaDevices.getDisplayMedia = function(...args) {
+      navigator.mediaDevices.getDisplayMedia = function (..._args) {
         handleViolation('screencast');
         return Promise.reject(new Error('Screen capture is not allowed during test'));
       };
     }
 
-    // Обнаружение потери фокуса (может указывать на переключение окна)
-    const handleBlur = () => {
-      // Не считаем потерю фокуса нарушением, так как это может быть случайным
-      // Но можно добавить логику, если нужно
-    };
-
-    // Обнаружение изменения размера окна (может указывать на скриншот)
-    let lastWindowSize = { width: window.innerWidth, height: window.innerHeight };
-    const handleResize = () => {
-      const currentSize = { width: window.innerWidth, height: window.innerHeight };
-      // Резкое изменение размера может указывать на скриншот
-      // Но это может быть ложным срабатыванием, поэтому не используем
-    };
-
-    // Добавляем обработчики событий
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
     document.addEventListener('keydown', handleKeyDown, true);
     document.addEventListener('keyup', handleKeyDown, true);
     document.addEventListener('copy', handleCopy, true);
@@ -216,25 +303,12 @@ export function useTestProtection(enabled: boolean = true): TestProtectionResult
     document.addEventListener('contextmenu', handleContextMenu, true);
     document.addEventListener('selectstart', handleSelectStart, true);
     document.addEventListener('dragstart', handleDragStart, true);
-    window.addEventListener('blur', handleBlur);
-    window.addEventListener('resize', handleResize);
+    document.addEventListener('wheel', handleWheel, { capture: true, passive: false });
 
-    // Проверка активных потоков захвата экрана
-    const checkScreenCapture = async () => {
-      try {
-        const streams = await navigator.mediaDevices.enumerateDevices();
-        // Проверяем активные потоки через getTracks
-        // Это не идеальный метод, но может помочь обнаружить некоторые случаи
-      } catch (error) {
-        // Игнорируем ошибки
-      }
-    };
-
-    // Периодическая проверка (каждые 5 секунд)
-    const checkInterval = setInterval(checkScreenCapture, 5000);
-
-    // Очистка при размонтировании
     return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
       document.removeEventListener('keydown', handleKeyDown, true);
       document.removeEventListener('keyup', handleKeyDown, true);
       document.removeEventListener('copy', handleCopy, true);
@@ -243,11 +317,8 @@ export function useTestProtection(enabled: boolean = true): TestProtectionResult
       document.removeEventListener('contextmenu', handleContextMenu, true);
       document.removeEventListener('selectstart', handleSelectStart, true);
       document.removeEventListener('dragstart', handleDragStart, true);
-      window.removeEventListener('blur', handleBlur);
-      window.removeEventListener('resize', handleResize);
-      clearInterval(checkInterval);
+      document.removeEventListener('wheel', handleWheel, { capture: true });
 
-      // Восстанавливаем оригинальный метод
       if (originalGetDisplayMedia && navigator.mediaDevices) {
         navigator.mediaDevices.getDisplayMedia = originalGetDisplayMedia;
       }
@@ -256,11 +327,12 @@ export function useTestProtection(enabled: boolean = true): TestProtectionResult
         clearTimeout(violationTimeoutRef.current);
       }
     };
-  }, [enabled, handleViolation]);
+  }, [enabled, handleViolation, fullscreenContainerRef]);
 
   return {
     violationCount,
     violationType,
     resetViolations,
+    reportViolation: handleViolation,
   };
 }

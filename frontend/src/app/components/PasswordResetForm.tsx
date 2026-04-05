@@ -5,6 +5,7 @@ import { Phone, Lock, Eye, EyeOff, ArrowLeft, CheckCircle } from 'lucide-react';
 import { authService } from '../services/auth';
 import { ApiError } from '../services/api';
 import { BrandLogo } from './BrandLogo';
+import { formatRuKzPhoneInput } from '../utils/phoneInput';
 
 type Step = 'request' | 'verify' | 'setPassword';
 
@@ -121,14 +122,6 @@ export function PasswordResetForm() {
     setCode(value);
   };
 
-  const normalizePhone = (phoneValue: string) => {
-    let s = phoneValue.replace(/[^\d+]/g, '');
-    const plusCount = (s.match(/\+/g) || []).length;
-    if (plusCount > 1) s = s.replace(/\+/g, '');
-    else if (plusCount === 1 && !s.startsWith('+')) s = s.replace(/\+/g, '');
-    return s.slice(0, 12);
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center py-12 px-4">
       <div className="max-w-md w-full">
@@ -177,7 +170,7 @@ export function PasswordResetForm() {
                   <input
                     type="tel"
                     value={phone}
-                    onChange={(e) => setPhone(normalizePhone(e.target.value))}
+                    onChange={(e) => setPhone(formatRuKzPhoneInput(e.target.value))}
                     placeholder={t('forms.passwordReset.phonePlaceholder')}
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required

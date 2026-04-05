@@ -65,7 +65,7 @@ def generate_protocol_pdf(protocol):
     story.append(Spacer(1, 1*cm))
     
     # Signatures
-    story.append(Paragraph('Подписи комиссии ПДЭК:', styles['Heading3']))
+    story.append(Paragraph('Подписи комиссии ЭК:', styles['Heading3']))
     story.append(Spacer(1, 0.5*cm))
     
     signatures_data = [['Член комиссии', 'Подпись', 'Дата']]

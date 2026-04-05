@@ -37,8 +37,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     ROLE_CHOICES = [
         ('guest', 'Guest'),
         ('student', 'Student'),
-        ('pdek_member', 'PDEK Member'),
-        ('pdek_chairman', 'PDEK Chairman'),
+        ('pdek_member', 'EC Member'),
+        ('pdek_chairman', 'EC Chairman'),
         ('teacher', 'Teacher'),
         ('admin', 'Admin'),
     ]
@@ -58,8 +58,14 @@ class User(AbstractBaseUser, PermissionsMixin):
     language = models.CharField(max_length=2, choices=LANGUAGE_CHOICES, default='ru')
     city = models.CharField(max_length=100, blank=True)
     organization = models.CharField(max_length=255, blank=True)
+    profile_photo = models.ImageField(
+        upload_to='profiles/',
+        null=True,
+        blank=True,
+        help_text='Фото для идентификации при прохождении тестов с видеозаписью',
+    )
     
-    # PDEK: preferred protocol signing method (sms, eds, or both)
+    # EC: preferred protocol signing method (sms, eds, or both)
     PROTOCOL_SIGN_CHOICES = [
         ('both', 'SMS и ЭЦП'),
         ('sms', 'Только SMS'),
@@ -67,7 +73,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     ]
     protocol_sign_method = models.CharField(
         max_length=10, choices=PROTOCOL_SIGN_CHOICES, default='both',
-        help_text='Способ подписания протоколов для членов ПДЭК'
+        help_text='Способ подписания протоколов для членов ЭК'
     )
     
     is_staff = models.BooleanField(default=False)

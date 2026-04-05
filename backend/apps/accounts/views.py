@@ -2,7 +2,7 @@ from rest_framework import status, viewsets, permissions
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.parsers import JSONParser
+from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 from django.contrib.auth import logout
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
@@ -64,7 +64,7 @@ class LoginView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
         user = serializer.validated_data['user']
-        tokens = TokenSerializer.get_tokens_for_user(user)
+        tokens = TokenSerializer.get_tokens_for_user(user, request=request)
         logger.info(f"Login successful for user: {user.phone}")
         return Response(tokens, status=status.HTTP_200_OK)
 
@@ -95,7 +95,7 @@ class RegisterView(APIView):
                 except Exception as e:
                     logger.warning(f"Failed to send registration email to {user.email}: {e}")
         
-        tokens = TokenSerializer.get_tokens_for_user(user)
+        tokens = TokenSerializer.get_tokens_for_user(user, request=request)
         return Response(tokens, status=status.HTTP_201_CREATED)
 
 
@@ -115,10 +115,11 @@ class LogoutView(APIView):
 class MeView(APIView):
     """Get and update current user endpoint"""
     permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
     
     def get(self, request):
         """Get current user"""
-        serializer = UserSerializer(request.user)
+        serializer = UserSerializer(request.user, context={'request': request})
         return Response(serializer.data)
     
     def put(self, request):
@@ -126,14 +127,14 @@ class MeView(APIView):
         serializer = UserProfileUpdateSerializer(request.user, data=request.data, partial=False)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        return Response(UserSerializer(user).data, status=status.HTTP_200_OK)
+        return Response(UserSerializer(user, context={'request': request}).data, status=status.HTTP_200_OK)
     
     def patch(self, request):
         """Partially update current user profile"""
         serializer = UserProfileUpdateSerializer(request.user, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        return Response(UserSerializer(user).data, status=status.HTTP_200_OK)
+        return Response(UserSerializer(user, context={'request': request}).data, status=status.HTTP_200_OK)
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -181,7 +182,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 logger.warning(f"No password for registration email to {user.email}")
         
         # Если пароль был сгенерирован, возвращаем его в ответе
-        response_data = UserSerializer(user).data
+        response_data = UserSerializer(user, context={'request': request}).data
         if hasattr(user, '_generated_password'):
             response_data['generated_password'] = user._generated_password
         

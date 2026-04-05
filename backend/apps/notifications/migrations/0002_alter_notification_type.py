@@ -13,6 +13,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='notification',
             name='type',
-            field=models.CharField(choices=[('course_assigned', 'Course Assigned'), ('exam_available', 'Exam Available'), ('protocol_ready', 'Protocol Ready'), ('certificate_issued', 'Certificate Issued'), ('pdek_signature_request', 'PDEK Signature Request'), ('exam_passed', 'Exam Passed'), ('exam_failed', 'Exam Failed'), ('extra_attempt_request', 'Extra Attempt Request'), ('extra_attempt_approved', 'Extra Attempt Approved'), ('extra_attempt_rejected', 'Extra Attempt Rejected')], max_length=30),
+            field=models.CharField(choices=[('course_assigned', 'Course Assigned'), ('exam_available', 'Exam Available'), ('protocol_ready', 'Protocol Ready'), ('certificate_issued', 'Certificate Issued'), ('pdek_signature_request', 'EC Signature Request'), ('exam_passed', 'Exam Passed'), ('exam_failed', 'Exam Failed'), ('extra_attempt_request', 'Extra Attempt Request'), ('extra_attempt_approved', 'Extra Attempt Approved'), ('extra_attempt_rejected', 'Extra Attempt Rejected')], max_length=30),
         ),
     ]

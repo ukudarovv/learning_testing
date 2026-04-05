@@ -21,6 +21,7 @@ import { EditCoursePage } from './pages/EditCoursePage';
 import { VerifyCertificatePage } from './pages/VerifyCertificatePage';
 import { TermsPage } from './pages/TermsPage';
 import { PrivacyPage } from './pages/PrivacyPage';
+import { EducationPage } from './pages/EducationPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 function RedirectHome() {
@@ -34,7 +35,7 @@ export default function App() {
         {/* Public Routes */}
         <Route path="/" element={<HomePage />} />
         <Route path="/construction/*" element={<RedirectHome />} />
-        <Route path="/education" element={<RedirectHome />} />
+        <Route path="/education" element={<EducationPage />} />
         <Route path="/projects/*" element={<RedirectHome />} />
         <Route path="/news/*" element={<RedirectHome />} />
         <Route path="/contacts" element={<RedirectHome />} />
@@ -94,7 +95,7 @@ export default function App() {
           </ProtectedRoute>
         } />
         
-        {/* PDEK Routes */}
+        {/* EC (exam commission) routes */}
         <Route path="/pdek/dashboard" element={
           <ProtectedRoute requiredRole={['pdek_member', 'pdek_chairman']}>
             <PDEKDashboardPage />

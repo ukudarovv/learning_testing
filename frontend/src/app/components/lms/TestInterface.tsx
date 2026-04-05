@@ -1,12 +1,15 @@
-import { useState, useEffect, useRef } from 'react';
-import { Clock, CheckCircle, Circle, AlertTriangle, ArrowLeft, ArrowRight, Flag, X } from 'lucide-react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Clock, CheckCircle, Circle, AlertTriangle, ArrowLeft, ArrowRight, Flag, X, Camera, RefreshCw, PauseCircle } from 'lucide-react';
 import { Question, Answer } from '../../types/lms';
 import { examsService } from '../../services/exams';
-import { VideoPermissionModal } from './VideoPermissionModal';
+import { TestRecordingSetupModal } from './TestRecordingSetupModal';
 import { useVideoRecorder } from '../../hooks/useVideoRecorder';
-import { useTestProtection } from '../../hooks/useTestProtection';
+import { useTestProtection, requestTestFullscreen } from '../../hooks/useTestProtection';
+import { useFaceProctoring } from '../../hooks/useFaceProctoring';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { useUser } from '../../contexts/UserContext';
 
 interface TestInterfaceProps {
   testId: string;
@@ -14,8 +17,9 @@ interface TestInterfaceProps {
   title: string;
   timeLimit?: number; // минуты
   questions: Question[];
-  requiresVideoRecording?: boolean; // Требуется ли видеозапись
-  onComplete: (answers: Answer[], timeSpent: number, videoBlob?: Blob) => void;
+  requiresVideoRecording?: boolean; // Требуется ли видеозапись с камеры
+  requiresScreenRecording?: boolean; // Требуется ли запись экрана
+  onComplete: (answers: Answer[], timeSpent: number, videoBlob?: Blob, screenBlob?: Blob) => void;
   onCancel: () => void;
   inModal?: boolean; // Флаг для использования в модальном окне
   savedAnswers?: Record<string, any>; // Сохраненные ответы для восстановления
@@ -29,6 +33,7 @@ export function TestInterface({
   timeLimit, 
   questions,
   requiresVideoRecording = false,
+  requiresScreenRecording = false,
   onComplete, 
   onCancel,
   inModal = false,
@@ -36,16 +41,35 @@ export function TestInterface({
   startedAt
 }: TestInterfaceProps) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { user, refreshUser } = useUser();
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [videoModalClosed, setVideoModalClosed] = useState(false); // Флаг, что пользователь закрыл модальное окно
   const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
-  const [videoPermissionGranted, setVideoPermissionGranted] = useState(false);
+  const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
   const { isRecording, startRecording, stopRecording, error: videoError, recordingTime } = useVideoRecorder();
+  const {
+    isRecording: isScreenRecording,
+    startRecording: startScreenRecording,
+    stopRecording: stopScreenRecording,
+    error: screenError,
+    recordingTime: screenRecordingTime,
+  } = useVideoRecorder();
+
+  const needsRecording = requiresVideoRecording || requiresScreenRecording;
+  const needsProfilePhoto = Boolean(requiresVideoRecording && !user?.profile_photo_url);
+  const [profilePhotoCheckLoading, setProfilePhotoCheckLoading] = useState(false);
   const [showViolationWarning, setShowViolationWarning] = useState(false);
   const [isTerminating, setIsTerminating] = useState(false);
   const previousViolationCountRef = useRef(0);
-  
+  const testRootRef = useRef<HTMLDivElement>(null);
+  const proctorVideoRef = useRef<HTMLVideoElement>(null);
+  const [protectionRulesBarDismissed, setProtectionRulesBarDismissed] = useState(false);
+  const [watermarkTick, setWatermarkTick] = useState(0);
+  /** Пауза без штрафа: лицо не в кадре (таймер и ответы остановлены до появления лица) */
+  const [faceMissingPaused, setFaceMissingPaused] = useState(false);
+
   // Восстанавливаем сохраненные ответы, если они есть
   const initialAnswers = savedAnswers 
     ? questions.map(q => {
@@ -78,104 +102,155 @@ export function TestInterface({
   const [startTime] = useState(startedAt ? new Date(startedAt).getTime() : Date.now());
   const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
   const [autoSaveStatus, setAutoSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
-  // Инициализация testStarted: если требуется видеозапись, тест не должен начинаться без разрешения камеры
-  // Даже если тест был начат ранее (есть startedAt), при продолжении нужно проверить камеру заново
+  // Тест не начинается, пока не настроены все требуемые источники записи (камера и/или экран)
   const [testStarted, setTestStarted] = useState(() => {
-    // Если не требуется видеозапись, тест может начаться сразу
-    if (!requiresVideoRecording) {
+    if (!requiresVideoRecording && !requiresScreenRecording) {
       return true;
     }
-    // Если требуется видеозапись, тест не должен начинаться до разрешения камеры
-    // Даже если тест был начат ранее, при продолжении нужно запросить камеру заново
-    // Это важно для безопасности - нужно убедиться, что камера доступна при продолжении
     return false;
   });
   
   // Защита от скриншотов и нарушений (после объявления testStarted)
-  const { violationCount, violationType, resetViolations } = useTestProtection(testStarted);
-  
-  // Автоматически показываем модальное окно с запросом разрешения, если требуется видеозапись и тест не начат
-  // Но только если пользователь еще не закрывал его вручную
+  const { violationCount, violationType, resetViolations, reportViolation } = useTestProtection(testStarted, {
+    fullscreenContainerRef: testRootRef,
+  });
+
+  /** Лицо не в кадре: только напоминание и пауза — не вызываем reportViolation, штрафы не начисляются */
+  const handleFaceHidden = useCallback(() => {
+    setFaceMissingPaused(true);
+    toast.message(t('lms.test.faceMissingPausedToast'), {
+      description: t('lms.test.faceMissingToastNoPenalty'),
+      duration: 8000,
+    });
+  }, [t]);
+
+  const handleFaceVisible = useCallback(() => {
+    setFaceMissingPaused(false);
+  }, []);
+
+  useFaceProctoring({
+    enabled:
+      Boolean(
+        requiresVideoRecording &&
+          testStarted &&
+          user?.profile_photo_url &&
+          videoStream
+      ),
+    videoRef: proctorVideoRef,
+    referenceImageUrl: user?.profile_photo_url,
+    reportViolation,
+    onFaceHidden: handleFaceHidden,
+    onFaceVisible: handleFaceVisible,
+  });
+
   useEffect(() => {
-    if (requiresVideoRecording && !testStarted && !showVideoModal && !videoModalClosed) {
+    const el = proctorVideoRef.current;
+    if (!el || !videoStream) return;
+    el.srcObject = videoStream;
+    el.muted = true;
+    el.playsInline = true;
+    void el.play().catch(() => {});
+    return () => {
+      el.srcObject = null;
+    };
+  }, [videoStream]);
+
+  useEffect(() => {
+    if (!testStarted) return;
+    const id = window.setInterval(() => setWatermarkTick((n) => n + 1), 60000);
+    return () => clearInterval(id);
+  }, [testStarted]);
+  
+  useEffect(() => {
+    if (
+      needsRecording &&
+      !testStarted &&
+      !showVideoModal &&
+      !videoModalClosed &&
+      !needsProfilePhoto
+    ) {
       setShowVideoModal(true);
     }
-  }, [requiresVideoRecording, testStarted, showVideoModal, videoModalClosed]);
+  }, [needsRecording, testStarted, showVideoModal, videoModalClosed, needsProfilePhoto]);
 
-  // Check if video recording is required on mount
   useEffect(() => {
-    if (!requiresVideoRecording) {
+    if (!needsRecording) {
       setTestStarted(true);
     }
-  }, [requiresVideoRecording]);
+  }, [needsRecording]);
 
-  // Handle video permission granted
-  const handleVideoPermissionGranted = async (stream: MediaStream) => {
-    setVideoStream(stream);
-    setVideoPermissionGranted(true);
-    setShowVideoModal(false);
-    setVideoModalClosed(false); // Сбрасываем флаг при успешном разрешении
-    setTestStarted(true);
-    
-    // Start recording
-    try {
-      await startRecording(stream);
-    } catch (error) {
-      console.error('Error starting video recording:', error);
-    }
+  const recordingRequiredToast = () => {
+    toast.error(
+      t('lms.test.recordingRequired') ||
+        'Для прохождения этого теста требуется запись (камера и/или экран). Без этого тест недоступен.'
+    );
   };
 
-  // Handle video permission denied
-  const handleVideoPermissionDenied = () => {
+  const handleRecordingSetupComplete = async (streams: { video?: MediaStream | null; screen?: MediaStream | null }) => {
+    if (streams.video) {
+      setVideoStream(streams.video);
+    }
+    if (streams.screen) {
+      setScreenStream(streams.screen);
+    }
     setShowVideoModal(false);
-    // If video recording is required, don't allow test to proceed
-    if (requiresVideoRecording) {
-      // Show error and don't start test
-      toast.error(t('lms.test.videoRequired') || 'Для прохождения этого теста требуется видеозапись. Без видеозаписи тест не может быть пройден.');
-      // Don't set testStarted to true - user must grant permission
-      // Модальное окно снова откроется через useEffect
+    setVideoModalClosed(false);
+
+    try {
+      if (streams.video) {
+        await startRecording(streams.video);
+      }
+      if (streams.screen) {
+        await startScreenRecording(streams.screen);
+      }
+    } catch (error) {
+      console.error('Error starting recording:', error);
+    }
+
+    setTestStarted(true);
+  };
+
+  const handleRecordingSetupDenied = () => {
+    setShowVideoModal(false);
+    if (needsRecording) {
+      recordingRequiredToast();
       return;
     }
-    // If video is not required, allow proceeding without video
     setTestStarted(true);
   };
 
-  // Handle modal close (just close, don't show error)
   const handleModalClose = () => {
     setShowVideoModal(false);
-    setVideoModalClosed(true); // Помечаем, что пользователь закрыл модальное окно
-    if (requiresVideoRecording) {
-      // Don't start test if video is required
-      // Показываем сообщение об ошибке
-      toast.error(t('lms.test.videoRequired') || 'Для прохождения этого теста требуется видеозапись. Без видеозаписи тест не может быть пройден.');
+    setVideoModalClosed(true);
+    if (needsRecording) {
+      recordingRequiredToast();
       return;
     }
-    // If video is not required, allow proceeding without video
     setTestStarted(true);
   };
 
   const currentQuestion = questions[currentQuestionIndex];
   const currentAnswer = answers[currentQuestionIndex];
 
-  // Таймер
+  // Таймер (не идёт во время паузы «лицо не в кадре»)
   useEffect(() => {
-    if (timeLeft === null || !testStarted) return; // Добавить проверку testStarted
-    
+    if (timeLeft === null || !testStarted || faceMissingPaused) return;
+
     if (timeLeft <= 0) {
       handleSubmit().catch(console.error);
       return;
     }
 
     const timer = setInterval(() => {
-      setTimeLeft(prev => prev ? prev - 1 : 0);
+      setTimeLeft((prev) => (prev ? prev - 1 : 0));
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [timeLeft, testStarted]); // Добавить testStarted в зависимости
+  }, [timeLeft, testStarted, faceMissingPaused]);
 
   // Автосохранение
   useEffect(() => {
-    if (!testStarted) return; // Не сохранять до начала теста
+    if (!testStarted || faceMissingPaused) return;
     
     const saveAnswer = async () => {
       if (answers[currentQuestionIndex]?.questionId) {
@@ -244,26 +319,7 @@ export function TestInterface({
 
     const saveTimer = setTimeout(saveAnswer, 1000);
     return () => clearTimeout(saveTimer);
-  }, [answers, currentQuestionIndex, testId, testStarted]); // Добавить testStarted
-
-  // Обработка нарушений защиты
-  useEffect(() => {
-    if (!testStarted || isTerminating) return;
-
-    // Если количество нарушений увеличилось
-    if (violationCount > previousViolationCountRef.current) {
-      previousViolationCountRef.current = violationCount;
-
-      // Если достигли 3 нарушений - завершаем тест
-      if (violationCount >= 3) {
-        handleTerminateTest();
-        return;
-      }
-
-      // Показываем предупреждение
-      setShowViolationWarning(true);
-    }
-  }, [violationCount, testStarted, isTerminating]);
+  }, [answers, currentQuestionIndex, testId, testStarted, faceMissingPaused]);
 
   // Предотвращение случайного закрытия
   useEffect(() => {
@@ -276,16 +332,16 @@ export function TestInterface({
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, []);
 
-  // Функция досрочного завершения теста
-  const handleTerminateTest = async () => {
+  const handleTerminateTest = async (reasonOverride?: string) => {
     if (isTerminating) return;
     
     setIsTerminating(true);
     setShowViolationWarning(false);
 
-    // Определяем причину завершения
     let reason = 'Нарушение правил прохождения теста';
-    if (violationType === 'screenshot') {
+    if (reasonOverride) {
+      reason = reasonOverride;
+    } else if (violationType === 'screenshot') {
       reason = 'Обнаружена попытка сделать скриншот';
     } else if (violationType === 'screencast') {
       reason = 'Обнаружена попытка записи экрана';
@@ -295,11 +351,19 @@ export function TestInterface({
       reason = 'Использование запрещенных горячих клавиш';
     } else if (violationType === 'contextmenu') {
       reason = 'Попытка открыть контекстное меню';
+    } else if (violationType === 'tab_switch') {
+      reason = 'Переключение вкладки или окна браузера';
+    } else if (violationType === 'fullscreen_exit') {
+      reason = 'Выход из полноэкранного режима во время теста';
+    } else if (violationType === 'face_pose') {
+      reason = 'Отворот от камеры (контроль экзамена)';
+    } else if (violationType === 'face_mismatch') {
+      reason = 'Лицо не совпадает с фото профиля (контроль экзамена)';
     }
 
     try {
-      // Останавливаем видеозапись, если активна
       let videoBlob: Blob | null = null;
+      let screenBlob: Blob | null = null;
       if (isRecording) {
         try {
           videoBlob = await stopRecording();
@@ -307,11 +371,21 @@ export function TestInterface({
           console.error('Error stopping video recording:', error);
         }
       }
+      if (isScreenRecording) {
+        try {
+          screenBlob = await stopScreenRecording();
+        } catch (error) {
+          console.error('Error stopping screen recording:', error);
+        }
+      }
 
-      // Останавливаем видеопоток
       if (videoStream) {
         videoStream.getTracks().forEach((track) => track.stop());
         setVideoStream(null);
+      }
+      if (screenStream) {
+        screenStream.getTracks().forEach((track) => track.stop());
+        setScreenStream(null);
       }
 
       // Сохраняем текущие ответы
@@ -337,9 +411,12 @@ export function TestInterface({
       }
 
       // Завершаем тест через API
-      if (attemptId) {
+      const savedProgressForTerminate = localStorage.getItem(`test_${testId}_progress`);
+      const progressTerminate = savedProgressForTerminate ? JSON.parse(savedProgressForTerminate) : null;
+      const terminateAttemptId = attemptId ?? progressTerminate?.attemptId;
+      if (terminateAttemptId) {
         try {
-          await examsService.terminateTestAttempt(String(attemptId), reason);
+          await examsService.terminateTestAttempt(String(terminateAttemptId), reason);
         } catch (error) {
           console.error('Error terminating test attempt:', error);
         }
@@ -348,14 +425,48 @@ export function TestInterface({
       // Удаляем сохраненный прогресс
       localStorage.removeItem(`test_${testId}_progress`);
 
-      // Вызываем onComplete с текущими ответами
       const timeSpent = Math.floor((Date.now() - startTime) / 1000);
-      onComplete(answers, timeSpent, videoBlob || undefined);
+      onComplete(answers, timeSpent, videoBlob || undefined, screenBlob || undefined);
     } catch (error) {
       console.error('Error terminating test:', error);
       toast.error(t('lms.test.terminationError') || 'Ошибка при завершении теста');
     }
   };
+
+  const handleTerminateTestRef = useRef(handleTerminateTest);
+  handleTerminateTestRef.current = handleTerminateTest;
+
+  useEffect(() => {
+    if (!testStarted || !screenStream) return;
+    const track = screenStream.getVideoTracks()[0];
+    if (!track) return;
+    const endedReason =
+      t('lms.test.screenShareEndedReason') || 'Демонстрация экрана остановлена пользователем';
+    const onEnded = () => {
+      toast.error(
+        t('lms.test.screenShareEnded') ||
+          'Демонстрация экрана остановлена. Тест будет завершён.'
+      );
+      void handleTerminateTestRef.current?.(endedReason);
+    };
+    track.addEventListener('ended', onEnded);
+    return () => track.removeEventListener('ended', onEnded);
+  }, [testStarted, screenStream, t]);
+
+  useEffect(() => {
+    if (!testStarted || isTerminating) return;
+
+    if (violationCount > previousViolationCountRef.current) {
+      previousViolationCountRef.current = violationCount;
+
+      if (violationCount >= 3) {
+        void handleTerminateTestRef.current?.();
+        return;
+      }
+
+      setShowViolationWarning(true);
+    }
+  }, [violationCount, testStarted, isTerminating]);
 
   const handleAnswerChange = (answer: string | string[]) => {
     const newAnswers = [...answers];
@@ -379,46 +490,78 @@ export function TestInterface({
   };
 
   const handleSubmit = async () => {
-    // Проверка: если требуется видео, оно должно быть записано
+    if (faceMissingPaused) {
+      toast.message(t('lms.test.faceMissingSubmitBlocked'));
+      return;
+    }
     if (requiresVideoRecording && !isRecording && !videoStream) {
       toast.error(
-        t('lms.test.videoRequiredForSubmission') || 
-        'Для завершения этого теста требуется видеозапись. Пожалуйста, убедитесь, что запись активна.'
+        t('lms.test.videoRequiredForSubmission') ||
+          'Для завершения этого теста требуется видеозапись. Пожалуйста, убедитесь, что запись активна.'
       );
-      return; // Не позволяем завершить тест без видео
+      return;
     }
-    
-    // Stop video recording if active
+    if (requiresScreenRecording && !isScreenRecording && !screenStream) {
+      toast.error(
+        t('lms.test.screenRequiredForSubmission') ||
+          'Для завершения теста требуется активная запись экрана.'
+      );
+      return;
+    }
+
     let videoBlob: Blob | null = null;
+    let screenBlob: Blob | null = null;
     if (isRecording) {
       try {
         videoBlob = await stopRecording();
       } catch (error) {
         console.error('Error stopping video recording:', error);
-        // Если требуется видео, но не удалось остановить запись, не позволяем завершить
         if (requiresVideoRecording) {
           toast.error(
-            t('lms.test.videoRecordingError') || 
-            'Ошибка при остановке видеозаписи. Тест не может быть завершен.'
+            t('lms.test.videoRecordingError') ||
+              'Ошибка при остановке видеозаписи. Тест не может быть завершен.'
+          );
+          return;
+        }
+      }
+    }
+    if (isScreenRecording) {
+      try {
+        screenBlob = await stopScreenRecording();
+      } catch (error) {
+        console.error('Error stopping screen recording:', error);
+        if (requiresScreenRecording) {
+          toast.error(
+            t('lms.test.screenRecordingError') ||
+              'Ошибка при остановке записи экрана. Тест не может быть завершен.'
           );
           return;
         }
       }
     }
 
-    // Если требуется видео, но его нет, не позволяем завершить
     if (requiresVideoRecording && !videoBlob && !isRecording) {
       toast.error(
-        t('lms.test.videoRequiredForSubmission') || 
-        'Для завершения этого теста требуется видеозапись.'
+        t('lms.test.videoRequiredForSubmission') ||
+          'Для завершения этого теста требуется видеозапись.'
+      );
+      return;
+    }
+    if (requiresScreenRecording && !screenBlob && !isScreenRecording) {
+      toast.error(
+        t('lms.test.screenRequiredForSubmission') ||
+          'Для завершения теста требуется запись экрана.'
       );
       return;
     }
 
-    // Stop video stream if active
     if (videoStream) {
       videoStream.getTracks().forEach((track) => track.stop());
       setVideoStream(null);
+    }
+    if (screenStream) {
+      screenStream.getTracks().forEach((track) => track.stop());
+      setScreenStream(null);
     }
 
     // Сохраняем все ответы перед завершением
@@ -447,7 +590,7 @@ export function TestInterface({
     
     const timeSpent = Math.floor((Date.now() - startTime) / 1000);
     localStorage.removeItem(`test_${testId}_progress`);
-    onComplete(answers, timeSpent, videoBlob || undefined);
+    onComplete(answers, timeSpent, videoBlob || undefined, screenBlob || undefined);
   };
 
   const formatTime = (seconds: number | null) => {
@@ -467,6 +610,27 @@ export function TestInterface({
 
   const answeredCount = answers.filter((_, i) => isAnswered(i)).length;
 
+  const watermarkLabel = useMemo(
+    () =>
+      `${user?.phone || user?.full_name || user?.fullName || '—'} · #${attemptId ?? '—'} · ${new Date().toLocaleString()}`,
+    [user?.phone, user?.full_name, user?.fullName, attemptId, watermarkTick]
+  );
+
+  const handleEnterFullscreenClick = async () => {
+    const el = testRootRef.current;
+    if (!el) {
+      setProtectionRulesBarDismissed(true);
+      return;
+    }
+    const ok = await requestTestFullscreen(el);
+    if (!ok) {
+      toast.message(
+        t('lms.test.fullscreenUnavailable') ||
+          'Полноэкранный режим недоступен в этом браузере. Тест можно продолжить.'
+      );
+    }
+    setProtectionRulesBarDismissed(true);
+  };
 
   // Получаем текст предупреждения в зависимости от типа нарушения
   const getViolationMessage = () => {
@@ -482,20 +646,88 @@ export function TestInterface({
         return t('lms.test.hotkeyWarning') || 'Использование горячих клавиш запрещено';
       case 'contextmenu':
         return t('lms.test.contextMenuWarning') || 'Контекстное меню запрещено';
+      case 'tab_switch':
+        return t('lms.test.tabSwitchWarning') || 'Запрещено переключать вкладку или сворачивать окно';
+      case 'fullscreen_exit':
+        return t('lms.test.fullscreenExitWarning') || 'Запрещено выходить из полноэкранного режима';
+      case 'face_pose':
+        return t('lms.test.facePoseWarning') || 'Смотрите прямо в камеру, не отворачивайтесь';
+      case 'face_mismatch':
+        return t('lms.test.faceMismatchWarning') || 'Лицо не совпадает с фото в профиле';
       default:
         return t('lms.test.violationDetected') || 'Обнаружено нарушение правил';
     }
   };
 
+  const handleGoToProfileForPhoto = () => {
+    navigate('/student/dashboard');
+  };
+
+  const handleRefreshProfilePhoto = async () => {
+    setProfilePhotoCheckLoading(true);
+    try {
+      await refreshUser();
+      toast.success(t('lms.test.profilePhotoRefreshed') || 'Данные профиля обновлены');
+    } catch {
+      toast.error(t('lms.test.profilePhotoRefreshError') || 'Не удалось обновить профиль');
+    } finally {
+      setProfilePhotoCheckLoading(false);
+    }
+  };
+
   return (
     <>
+      {needsRecording && needsProfilePhoto && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/80 p-4 backdrop-blur-sm">
+          <div className="max-w-md w-full rounded-xl bg-white p-6 shadow-2xl">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-amber-100">
+              <Camera className="h-6 w-6 text-amber-800" />
+            </div>
+            <h2 className="text-lg font-bold text-gray-900 mb-2">
+              {t('lms.test.profilePhotoRequiredTitle') || 'Нужно фото в профиле'}
+            </h2>
+            <p className="text-sm text-gray-600 mb-6">
+              {t('lms.test.profilePhotoRequiredBody') ||
+                'Для этого теста включена видеозапись с камеры. Загрузите фото лица в профиле — по нему выполняется проверка личности во время экзамена.'}
+            </p>
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={handleGoToProfileForPhoto}
+                className="w-full rounded-lg bg-blue-600 px-4 py-3 text-white font-medium hover:bg-blue-700"
+              >
+                {t('lms.test.profilePhotoGoToProfile') || 'Открыть профиль'}
+              </button>
+              <button
+                type="button"
+                onClick={handleRefreshProfilePhoto}
+                disabled={profilePhotoCheckLoading}
+                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-800 font-medium hover:bg-gray-50 inline-flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                <RefreshCw className={`h-4 w-4 ${profilePhotoCheckLoading ? 'animate-spin' : ''}`} />
+                {t('lms.test.profilePhotoRefresh') || 'Я загрузил фото — обновить'}
+              </button>
+              <button
+                type="button"
+                onClick={onCancel}
+                className="w-full rounded-lg px-4 py-2 text-sm text-gray-600 hover:text-gray-900"
+              >
+                {t('common.back') || 'Назад'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Модальное окно с запросом разрешения на камеру */}
-      {requiresVideoRecording && !testStarted && (
-        <VideoPermissionModal
+      {needsRecording && !testStarted && !needsProfilePhoto && (
+        <TestRecordingSetupModal
           isOpen={showVideoModal}
+          requiresVideoRecording={requiresVideoRecording}
+          requiresScreenRecording={requiresScreenRecording}
           onClose={handleModalClose}
-          onPermissionGranted={handleVideoPermissionGranted}
-          onPermissionDenied={handleVideoPermissionDenied}
+          onDenied={handleRecordingSetupDenied}
+          onComplete={handleRecordingSetupComplete}
         />
       )}
       
@@ -536,10 +768,25 @@ export function TestInterface({
         </div>
       )}
 
+      {faceMissingPaused && testStarted && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-xl border-2 border-amber-200 bg-amber-50/95 p-8 text-center shadow-2xl ring-1 ring-amber-100">
+            <p className="mb-4 inline-block rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">
+              {t('lms.test.faceMissingNoPenaltyBadge')}
+            </p>
+            <PauseCircle className="mx-auto mb-4 h-12 w-12 text-amber-600" />
+            <h3 className="mb-2 text-xl font-bold text-amber-950">{t('lms.test.faceMissingPauseTitle')}</h3>
+            <p className="text-sm leading-relaxed text-amber-950/90">{t('lms.test.faceMissingPauseBody')}</p>
+            <p className="mt-5 text-xs font-medium text-amber-800/90">{t('lms.test.faceMissingPauseHint')}</p>
+          </div>
+        </div>
+      )}
+
       {/* Показываем интерфейс теста только если тест начат или видеозапись не требуется */}
-      {(testStarted || !requiresVideoRecording) && (
+      {(testStarted || !needsRecording) && (
       <div 
-        className={inModal ? "bg-gray-50" : "min-h-screen bg-gray-50 pt-20"}
+        ref={testRootRef}
+        className={inModal ? "relative bg-gray-50" : "relative min-h-screen bg-gray-50 pt-20"}
         style={{ 
           userSelect: 'none',
           WebkitUserSelect: 'none',
@@ -564,7 +811,73 @@ export function TestInterface({
           }
         }}
       >
-      <div className={inModal ? "px-4 py-4 max-w-6xl" : "container mx-auto px-4 py-8 max-w-6xl"}>
+        {requiresVideoRecording && videoStream && testStarted && (
+          <div
+            className={`fixed bottom-4 right-4 w-44 overflow-hidden rounded-xl border-2 border-red-500/70 bg-slate-900 shadow-2xl ring-2 ring-red-500/20 sm:bottom-6 sm:right-6 sm:w-52 ${
+              faceMissingPaused ? 'z-[70]' : 'z-[48]'
+            }`}
+            role="region"
+            aria-label={t('lms.test.cameraPreviewAria')}
+          >
+            <div className="relative aspect-video w-full bg-black">
+              <video
+                ref={proctorVideoRef}
+                muted
+                playsInline
+                autoPlay
+                className="h-full w-full scale-x-[-1] object-cover"
+              />
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent px-2 pb-2 pt-6">
+                <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-white sm:text-xs">
+                  <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" />
+                  {t('lms.test.cameraPreviewLabel')}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+        {testStarted && (
+          <div
+            className="pointer-events-none absolute inset-0 z-[5] overflow-hidden select-none"
+            aria-hidden
+          >
+            <div className="absolute left-1/2 top-1/2 w-[220%] -translate-x-1/2 -translate-y-1/2 -rotate-[17deg]">
+              <div className="flex flex-wrap content-center justify-center gap-x-12 gap-y-14 py-10 text-[10px] font-semibold uppercase tracking-wide text-slate-700/[0.12]">
+                {Array.from({ length: 40 }).map((_, i) => (
+                  <span key={i}>{watermarkLabel}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {testStarted && !protectionRulesBarDismissed && (
+          <div className="relative z-[15] mx-auto mb-2 max-w-6xl px-4 pt-3">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 shadow-sm">
+              <p className="mb-2 leading-snug text-amber-900">
+                {t('lms.test.protectionRulesHint')}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={handleEnterFullscreenClick}
+                  className="rounded-md bg-amber-800 px-3 py-1.5 text-white hover:bg-amber-900"
+                >
+                  {t('lms.test.enterFullscreenButton')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setProtectionRulesBarDismissed(true)}
+                  className="rounded-md border border-amber-300 bg-white px-3 py-1.5 text-amber-900 hover:bg-amber-100/80"
+                >
+                  {t('lms.test.continueWithoutFullscreen')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+      <div className={`relative z-[1] ${inModal ? "px-4 py-4 max-w-6xl" : "container mx-auto px-4 py-8 max-w-6xl"}`}>
         {/* Header */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
@@ -597,9 +910,32 @@ export function TestInterface({
                   <p className="text-xs text-red-700 mt-1">
                     {t('lms.test.videoRecordingNotice') || 'Ваше прохождение теста записывается на видео. Пожалуйста, не закрывайте вкладку браузера.'}
                   </p>
+                  <p className="text-xs text-red-700/90 mt-1">
+                    {t('lms.test.faceProctoringHint')}
+                  </p>
                 </div>
                 <div className="text-sm font-bold text-red-600">
                   {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
+                </div>
+              </div>
+            </div>
+          )}
+          {requiresScreenRecording && isScreenRecording && (
+            <div className="mb-4 bg-amber-50 border-2 border-amber-200 rounded-lg p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 bg-amber-600 rounded-full animate-pulse"></div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-amber-900">
+                    {t('lms.test.screenRecordingActive') || 'Идёт запись экрана'}
+                  </p>
+                  <p className="text-xs text-amber-800 mt-1">
+                    {t('lms.test.screenRecordingNotice') ||
+                      'Не останавливайте демонстрацию экрана до завершения теста.'}
+                  </p>
+                </div>
+                <div className="text-sm font-bold text-amber-800">
+                  {Math.floor(screenRecordingTime / 60)}:
+                  {(screenRecordingTime % 60).toString().padStart(2, '0')}
                 </div>
               </div>
             </div>
@@ -662,12 +998,30 @@ export function TestInterface({
             {isRecording && (
               <div className="flex items-center gap-2 text-red-600">
                 <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse" />
-                <span>{t('lms.test.recording') || 'Идет запись'}: {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}</span>
+                <span>
+                  {t('lms.test.recording') || 'Камера'}: {Math.floor(recordingTime / 60)}:
+                  {(recordingTime % 60).toString().padStart(2, '0')}
+                </span>
+              </div>
+            )}
+            {isScreenRecording && (
+              <div className="flex items-center gap-2 text-amber-700">
+                <div className="w-2 h-2 bg-amber-600 rounded-full animate-pulse" />
+                <span>
+                  {t('lms.test.screenRecordingShort') || 'Экран'}:{' '}
+                  {Math.floor(screenRecordingTime / 60)}:
+                  {(screenRecordingTime % 60).toString().padStart(2, '0')}
+                </span>
               </div>
             )}
             {videoError && (
               <div className="text-red-600 text-xs">
                 {t('lms.test.recordingError') || 'Ошибка записи'}: {videoError}
+              </div>
+            )}
+            {screenError && (
+              <div className="text-amber-800 text-xs">
+                {t('lms.test.screenRecordingErrorShort') || 'Экран'}: {screenError}
               </div>
             )}
           </div>

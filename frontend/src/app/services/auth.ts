@@ -95,8 +95,38 @@ const authService = {
     return response.access;
   },
 
-  async updateProfile(data: Partial<User> & { verification_code?: string }): Promise<User> {
-    return apiClient.patch<User>('/auth/me/', data);
+  async updateProfile(
+    data: Partial<User> & {
+      verification_code?: string;
+      profile_photo?: File | null;
+      clear_profile_photo?: boolean;
+    }
+  ): Promise<User> {
+    const profile_photo = data.profile_photo;
+    const clear_profile_photo = data.clear_profile_photo === true;
+    const hasFile = profile_photo instanceof File;
+    const { profile_photo: _ph, clear_profile_photo: _cl, ...rest } = data;
+
+    if (!hasFile && !clear_profile_photo) {
+      return apiClient.patch<User>('/auth/me/', rest);
+    }
+
+    const form = new FormData();
+    for (const [key, value] of Object.entries(rest)) {
+      if (value === undefined || value === null) continue;
+      if (typeof value === 'boolean') {
+        form.append(key, value ? 'true' : 'false');
+      } else if (typeof value === 'string' || typeof value === 'number') {
+        form.append(key, String(value));
+      }
+    }
+    if (hasFile && profile_photo) {
+      form.append('profile_photo', profile_photo);
+    }
+    if (clear_profile_photo) {
+      form.append('clear_profile_photo', 'true');
+    }
+    return apiClient.patch<User>('/auth/me/', form);
   },
 
   async requestPasswordReset(phone: string): Promise<{

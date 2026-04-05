@@ -178,7 +178,7 @@ class CourseEnrollment(models.Model):
         ('in_progress', 'In Progress'),
         ('exam_available', 'Exam Available'),
         ('exam_passed', 'Exam Passed'),
-        ('pending_pdek', 'Pending PDEK Review'),
+        ('pending_pdek', 'Pending EC Review'),
         ('completed', 'Completed'),
         ('failed', 'Failed'),
         ('annulled', 'Annulled'),

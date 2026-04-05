@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FileText, Eye, Search, Filter, Calendar, User, CheckCircle, XCircle, Clock, RefreshCw, Video, ChevronDown, ChevronUp, X, Download, Upload } from 'lucide-react';
+import { FileText, Eye, Search, Filter, Calendar, User, CheckCircle, XCircle, Clock, RefreshCw, Video, Monitor, ChevronDown, ChevronUp, X, Download, Upload } from 'lucide-react';
 import { Protocol, TestAttempt } from '../../types/lms';
 import { protocolsService } from '../../services/protocols';
 import { examsService } from '../../services/exams';
@@ -229,7 +229,7 @@ export function ProtocolManagement() {
             >
               <option value="all">{t('admin.protocols.allStatuses') || 'Все статусы'}</option>
               <option value="generated">{t('admin.protocols.status.generated') || 'Создан'}</option>
-              <option value="pending_pdek">{t('admin.protocols.status.pendingPdek') || 'Ожидает ПДЭК'}</option>
+              <option value="pending_pdek">{t('admin.protocols.status.pendingPdek') || 'Ожидает ЭК'}</option>
               <option value="signed_members">{t('admin.protocols.status.signedMembers') || 'Подписан членами'}</option>
               <option value="signed_chairman">{t('admin.protocols.status.signedChairman') || 'Подписан председателем'}</option>
               <option value="rejected">{t('admin.protocols.status.rejected') || 'Отклонен'}</option>
@@ -551,7 +551,7 @@ export function ProtocolManagement() {
               {/* Signatures */}
               {selectedProtocol.signatures && selectedProtocol.signatures.length > 0 && (
                 <div>
-                  <h3 className="font-bold text-gray-900 mb-3">{t('admin.protocols.signatures') || 'Подписи ПДЭК'}</h3>
+                  <h3 className="font-bold text-gray-900 mb-3">{t('admin.protocols.signatures') || 'Подписи ЭК'}</h3>
                   <div className="space-y-3">
                     {selectedProtocol.signatures.map((sig, index) => (
                       <div key={sig.userId || sig.id || `sig-${index}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -559,8 +559,8 @@ export function ProtocolManagement() {
                           <p className="font-medium">{sig.userName || '—'}</p>
                           <p className="text-sm text-gray-600">
                             {sig.role === 'chairman' 
-                              ? (t('admin.protocols.chairmanRole') || 'Председатель ПДЭК')
-                              : (t('admin.protocols.memberRole') || 'Член ПДЭК')}
+                              ? (t('admin.protocols.chairmanRole') || 'Председатель ЭК')
+                              : (t('admin.protocols.memberRole') || 'Член ЭК')}
                             {sig.signType === 'eds' && (
                               <span className="ml-2 text-emerald-600">(ЭЦП)</span>
                             )}
@@ -620,6 +620,29 @@ export function ProtocolManagement() {
                         <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden">
                           <video
                             src={testAttempt.video_recording || testAttempt.videoRecording || ''}
+                            controls
+                            className="w-full h-full"
+                            style={{ maxHeight: '400px' }}
+                          >
+                            {t('admin.protocols.videoNotSupported') || 'Ваш браузер не поддерживает воспроизведение видео.'}
+                          </video>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {(testAttempt.screen_recording || testAttempt.screenRecording) && (
+                    <div className="mb-6">
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <div className="flex items-center gap-3 mb-3">
+                          <Monitor className="w-5 h-5 text-amber-700" />
+                          <h4 className="font-semibold text-gray-900">
+                            {t('admin.protocols.screenRecording') || 'Запись экрана'}
+                          </h4>
+                        </div>
+                        <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden">
+                          <video
+                            src={testAttempt.screen_recording || testAttempt.screenRecording || ''}
                             controls
                             className="w-full h-full"
                             style={{ maxHeight: '400px' }}

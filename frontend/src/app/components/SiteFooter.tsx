@@ -21,8 +21,8 @@ export function SiteFooter() {
   };
 
   const educationLinks = [
-    { name: t('education.about'), href: '#education', isHash: true },
-    { name: t('education.programs'), href: '#education', isHash: true },
+    { name: t('education.about'), href: '/education', isLink: true },
+    { name: t('education.programs'), href: '/education', isLink: true },
     { name: t('education.certificateVerification'), href: '/verify', isLink: true },
     { name: t('education.cabinet'), href: '/login', isLink: true },
   ];

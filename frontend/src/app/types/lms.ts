@@ -83,11 +83,13 @@ export interface User {
   email?: string;
   city?: string;
   organization?: string;
+  /** Absolute URL of profile photo (proctored tests with camera) */
+  profile_photo_url?: string | null;
   verified: boolean;
   is_active?: boolean; // Backend format
   isActive?: boolean; // Frontend format (for compatibility)
   language: 'ru' | 'kz' | 'en';
-  protocol_sign_method?: 'sms' | 'eds' | 'both'; // PDEK: preferred signing method
+  protocol_sign_method?: 'sms' | 'eds' | 'both'; // EC: preferred signing method
   created_at?: string;
   updated_at?: string;
 }
@@ -213,6 +215,8 @@ export interface Test {
   is_active?: boolean; // Backend format
   requires_video_recording?: boolean; // Backend format
   requiresVideoRecording?: boolean; // Frontend format (for compatibility)
+  requires_screen_recording?: boolean;
+  requiresScreenRecording?: boolean;
   category?: Category; // Backend format
   categoryId?: string; // Frontend format (for compatibility)
   is_standalone?: boolean; // Backend format
@@ -270,6 +274,8 @@ export interface TestAttempt {
   answerDetails?: AnswerDetail[]; // Frontend format
   video_recording?: string; // Backend format (URL)
   videoRecording?: string; // Frontend format (URL)
+  screen_recording?: string;
+  screenRecording?: string;
   attempts_count?: number; // Backend format
   attemptsCount?: number; // Frontend format
   max_attempts?: number; // Backend format
@@ -431,7 +437,7 @@ export interface PendingCertificate {
   needs_upload: boolean;
 }
 
-export interface PDEKCommission {
+export interface ECCommission {
   id: string;
   name: string;
   chairman: User;

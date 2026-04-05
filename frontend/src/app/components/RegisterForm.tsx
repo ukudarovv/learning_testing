@@ -9,6 +9,7 @@ import { SMSVerification } from './lms/SMSVerification';
 import { smsService } from '../services/smsService';
 import { settingsService } from '../services/settings';
 import { BrandLogo } from './BrandLogo';
+import { formatRuKzPhoneInput } from '../utils/phoneInput';
 
 export function RegisterForm() {
   const { t } = useTranslation();
@@ -40,7 +41,11 @@ export function RegisterForm() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    if (name === 'phone') {
+      setFormData(prev => ({ ...prev, phone: formatRuKzPhoneInput(value) }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
     setError('');
   };
 

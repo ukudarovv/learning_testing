@@ -64,6 +64,8 @@ export function TestEditor({ test, onSave, onCancel }: TestEditorProps) {
     is_standalone: test?.is_standalone !== undefined ? test.is_standalone : (test?.isStandalone !== undefined ? test.isStandalone : true),
     requiresVideoRecording: test?.requiresVideoRecording !== undefined ? test.requiresVideoRecording : (test?.requires_video_recording !== undefined ? test.requires_video_recording : false),
     requires_video_recording: test?.requires_video_recording !== undefined ? test.requires_video_recording : (test?.requiresVideoRecording !== undefined ? test.requiresVideoRecording : false),
+    requiresScreenRecording: test?.requiresScreenRecording !== undefined ? test.requiresScreenRecording : (test?.requires_screen_recording !== undefined ? test.requires_screen_recording : false),
+    requires_screen_recording: test?.requires_screen_recording !== undefined ? test.requires_screen_recording : (test?.requiresScreenRecording !== undefined ? test.requiresScreenRecording : false),
   });
 
   const [questions, setQuestions] = useState<Question[]>(test?.questions || []);
@@ -132,11 +134,13 @@ export function TestEditor({ test, onSave, onCancel }: TestEditorProps) {
         is_standalone: test.is_standalone !== undefined ? test.is_standalone : (test.isStandalone !== undefined ? test.isStandalone : true),
         requiresVideoRecording: test.requiresVideoRecording !== undefined ? test.requiresVideoRecording : (test.requires_video_recording !== undefined ? test.requires_video_recording : false),
         requires_video_recording: test.requires_video_recording !== undefined ? test.requires_video_recording : (test.requiresVideoRecording !== undefined ? test.requiresVideoRecording : false),
+        requiresScreenRecording: test.requiresScreenRecording !== undefined ? test.requiresScreenRecording : (test.requires_screen_recording !== undefined ? test.requires_screen_recording : false),
+        requires_screen_recording: test.requires_screen_recording !== undefined ? test.requires_screen_recording : (test.requiresScreenRecording !== undefined ? test.requiresScreenRecording : false),
         shuffleQuestions: test.shuffleQuestions !== undefined ? test.shuffleQuestions : (test.shuffle_questions !== undefined ? test.shuffle_questions : prev.shuffleQuestions),
         showResults: test.showResults !== undefined ? test.showResults : (test.show_results !== undefined ? test.show_results : false),
       }));
     }
-  }, [test?.id, test?.title, test?.description, test?.timeLimit, test?.time_limit, test?.passingScore, test?.passing_score, test?.maxAttempts, test?.max_attempts, test?.category, test?.is_standalone, test?.isStandalone, test?.requires_video_recording, test?.requiresVideoRecording]);
+  }, [test?.id, test?.title, test?.description, test?.timeLimit, test?.time_limit, test?.passingScore, test?.passing_score, test?.maxAttempts, test?.max_attempts, test?.category, test?.is_standalone, test?.isStandalone, test?.requires_video_recording, test?.requiresVideoRecording, test?.requires_screen_recording, test?.requiresScreenRecording]);
 
   const questionTypes = [
     { value: 'single_choice', label: t('admin.tests.questionTypes.singleChoice') },
@@ -281,6 +285,14 @@ export function TestEditor({ test, onSave, onCancel }: TestEditorProps) {
     } else {
       // Если ни одно значение не определено, устанавливаем false явно
       cleanFormData.requires_video_recording = false;
+    }
+
+    if (cleanFormData.requiresScreenRecording !== undefined) {
+      cleanFormData.requires_screen_recording = cleanFormData.requiresScreenRecording;
+    } else if (cleanFormData.requires_screen_recording !== undefined) {
+      cleanFormData.requires_screen_recording = cleanFormData.requires_screen_recording;
+    } else {
+      cleanFormData.requires_screen_recording = false;
     }
 
     // Убеждаемся, что categoryId передается правильно
@@ -450,7 +462,7 @@ export function TestEditor({ test, onSave, onCancel }: TestEditorProps) {
                 </div>
               </div>
 
-              <div className="flex gap-6">
+              <div className="flex flex-col gap-3 sm:flex-row sm:gap-6">
                 <label className="flex items-center gap-2">
                   <input
                     type="checkbox"
@@ -463,6 +475,19 @@ export function TestEditor({ test, onSave, onCancel }: TestEditorProps) {
                     className="rounded"
                   />
                   <span className="text-sm text-gray-700">{t('admin.tests.requiresVideoRecording') || 'Требуется видеозапись'}</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.requiresScreenRecording || formData.requires_screen_recording || false}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      requiresScreenRecording: e.target.checked,
+                      requires_screen_recording: e.target.checked,
+                    })}
+                    className="rounded"
+                  />
+                  <span className="text-sm text-gray-700">{t('admin.tests.requiresScreenRecording') || 'Требуется запись экрана'}</span>
                 </label>
               </div>
 

@@ -72,11 +72,11 @@ class Command(BaseCommand):
             teacher.save()
             self.stdout.write(self.style.SUCCESS(f'Created teacher: {teacher.phone} / teacher123'))
         
-        # Create PDEK members
+        # Create EC members
         pdek_member, created = User.objects.get_or_create(
             phone='77775555555',
             defaults={
-                'full_name': 'Член ПДЭК',
+                'full_name': 'Член ЭК',
                 'email': 'pdek@aqlant.com',
                 'role': 'pdek_member',
                 'verified': True,
@@ -85,12 +85,12 @@ class Command(BaseCommand):
         if created:
             pdek_member.set_password('pdek123')
             pdek_member.save()
-            self.stdout.write(self.style.SUCCESS(f'Created PDEK member: {pdek_member.phone} / pdek123'))
+            self.stdout.write(self.style.SUCCESS(f'Created EC member: {pdek_member.phone} / pdek123'))
         
         pdek_chairman, created = User.objects.get_or_create(
             phone='77776666666',
             defaults={
-                'full_name': 'Председатель ПДЭК',
+                'full_name': 'Председатель ЭК',
                 'email': 'chairman@aqlant.com',
                 'role': 'pdek_chairman',
                 'verified': True,
@@ -99,7 +99,7 @@ class Command(BaseCommand):
         if created:
             pdek_chairman.set_password('chairman123')
             pdek_chairman.save()
-            self.stdout.write(self.style.SUCCESS(f'Created PDEK chairman: {pdek_chairman.phone} / chairman123'))
+            self.stdout.write(self.style.SUCCESS(f'Created EC chairman: {pdek_chairman.phone} / chairman123'))
         
         # Create test course
         course, created = Course.objects.get_or_create(
@@ -231,6 +231,6 @@ class Command(BaseCommand):
         self.stdout.write('Admin: 77771234567 / admin123')
         self.stdout.write('Student: 77771111111 / student123')
         self.stdout.write('Teacher: 77774444444 / teacher123')
-        self.stdout.write('PDEK Member: 77775555555 / pdek123')
-        self.stdout.write('PDEK Chairman: 77776666666 / chairman123')
+        self.stdout.write('EC Member: 77775555555 / pdek123')
+        self.stdout.write('EC Chairman: 77776666666 / chairman123')
 

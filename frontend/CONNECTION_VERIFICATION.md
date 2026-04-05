@@ -11,7 +11,7 @@
 - ✅ `src/app/services/analytics.ts` - Аналитика
 - ✅ `src/app/services/certificates.ts` - Сертификаты
 - ✅ `src/app/services/exams.ts` - Экзамены
-- ✅ `src/app/services/protocols.ts` - Протоколы ПДЭК
+- ✅ `src/app/services/protocols.ts` - Протоколы ЭК
 - ✅ `src/app/services/notifications.ts` - Уведомления
 - ✅ `src/app/services/index.ts` - Экспорт всех сервисов
 

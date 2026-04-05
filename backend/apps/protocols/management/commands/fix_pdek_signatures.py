@@ -1,5 +1,5 @@
 """
-Добавляет недостающие подписи ПДЭК для существующих протоколов.
+Добавляет недостающие подписи ЭК для существующих протоколов.
 Запуск: python manage.py fix_pdek_signatures
 """
 from django.core.management.base import BaseCommand
@@ -8,7 +8,7 @@ from apps.accounts.models import User
 
 
 class Command(BaseCommand):
-    help = 'Добавить подписи ПДЭК для протоколов, где член комиссии ещё не назначен подписантом'
+    help = 'Добавить подписи ЭК для протоколов, где член комиссии ещё не назначен подписантом'
 
     def handle(self, *args, **options):
         pdek_users = User.objects.filter(role__in=['pdek_member', 'pdek_chairman'])
@@ -35,4 +35,4 @@ class Command(BaseCommand):
         if added:
             self.stdout.write(self.style.SUCCESS(f'Добавлено подписей: {added}'))
         else:
-            self.stdout.write('Все протоколы уже имеют подписи для всех членов ПДЭК.')
+            self.stdout.write('Все протоколы уже имеют подписи для всех членов ЭК.')

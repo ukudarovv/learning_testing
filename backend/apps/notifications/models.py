@@ -10,7 +10,7 @@ class Notification(models.Model):
         ('exam_available', 'Exam Available'),
         ('protocol_ready', 'Protocol Ready'),
         ('certificate_issued', 'Certificate Issued'),
-        ('pdek_signature_request', 'PDEK Signature Request'),
+        ('pdek_signature_request', 'EC Signature Request'),
         ('exam_passed', 'Exam Passed'),
         ('exam_failed', 'Exam Failed'),
         ('extra_attempt_request', 'Extra Attempt Request'),

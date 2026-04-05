@@ -25,7 +25,7 @@ class Migration(migrations.Migration):
                 ('score', models.FloatField()),
                 ('passing_score', models.FloatField()),
                 ('result', models.CharField(choices=[('passed', 'Passed'), ('failed', 'Failed')], max_length=10)),
-                ('status', models.CharField(choices=[('generated', 'Generated'), ('pending_pdek', 'Pending PDEK'), ('signed_members', 'Signed by Members'), ('signed_chairman', 'Signed by Chairman'), ('rejected', 'Rejected'), ('annulled', 'Annulled')], default='generated', max_length=20)),
+                ('status', models.CharField(choices=[('generated', 'Generated'), ('pending_pdek', 'Pending EC'), ('signed_members', 'Signed by Members'), ('signed_chairman', 'Signed by Chairman'), ('rejected', 'Rejected'), ('annulled', 'Annulled')], default='generated', max_length=20)),
                 ('rejection_reason', models.TextField(blank=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),

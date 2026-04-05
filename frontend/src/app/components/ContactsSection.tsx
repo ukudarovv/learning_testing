@@ -3,6 +3,7 @@ import { MapPin, Phone, Mail, Clock, Building2, CheckCircle, AlertCircle } from 
 import { useTranslation } from 'react-i18next';
 import { contactsService, ContactMessageCreate } from '../services/contacts';
 import { toast } from 'sonner';
+import { formatRuKzPhoneInput } from '../utils/phoneInput';
 
 export function ContactsSection() {
   const { t } = useTranslation();
@@ -167,7 +168,9 @@ export function ContactsSection() {
                       id="contact-phone"
                       required
                       value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, phone: formatRuKzPhoneInput(e.target.value) })
+                      }
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all"
                       placeholder={t('homepage.contacts.form.phonePlaceholder')}
                       disabled={loading}

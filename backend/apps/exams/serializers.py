@@ -11,6 +11,7 @@ class TestAttemptSerializer(serializers.ModelSerializer):
     answer_details = serializers.SerializerMethodField()
     
     video_recording = serializers.SerializerMethodField()
+    screen_recording = serializers.SerializerMethodField()
     attempts_count = serializers.SerializerMethodField()
     max_attempts = serializers.SerializerMethodField()
     approved_extra_attempts = serializers.SerializerMethodField()
@@ -22,11 +23,11 @@ class TestAttemptSerializer(serializers.ModelSerializer):
         model = TestAttempt
         fields = [
             'id', 'test', 'user', 'started_at', 'completed_at',
-            'score', 'passed', 'answers', 'answer_details', 'video_recording', 'ip_address', 'user_agent',
+            'score', 'passed', 'answers', 'answer_details', 'video_recording', 'screen_recording', 'ip_address', 'user_agent',
             'attempts_count', 'max_attempts', 'approved_extra_attempts', 
             'has_pending_request', 'has_approved_request', 'limit_reached'
         ]
-        read_only_fields = ['id', 'started_at', 'completed_at', 'score', 'passed', 'answer_details', 'video_recording',
+        read_only_fields = ['id', 'started_at', 'completed_at', 'score', 'passed', 'answer_details', 'video_recording', 'screen_recording',
                            'attempts_count', 'max_attempts', 'approved_extra_attempts', 
                            'has_pending_request', 'has_approved_request', 'limit_reached']
     
@@ -37,6 +38,15 @@ class TestAttemptSerializer(serializers.ModelSerializer):
             if request:
                 return request.build_absolute_uri(obj.video_recording.url)
             return obj.video_recording.url
+        return None
+
+    def get_screen_recording(self, obj):
+        """Return screen recording URL if available"""
+        if obj.screen_recording:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.screen_recording.url)
+            return obj.screen_recording.url
         return None
     
     def get_answer_details(self, obj):

@@ -125,7 +125,7 @@ export function CoursePage() {
         
         const enrollmentStatus = updatedCourse?.enrollment_status || updatedCourse?.status;
         if (enrollmentStatus === 'pending_pdek') {
-          toast.success('Курс отправлен на проверку PDEK. Вы получите уведомление после проверки.');
+          toast.success('Курс отправлен на проверку ЭК. Вы получите уведомление после проверки.');
         } else if (enrollmentStatus === 'completed') {
           toast.success('Курс завершен! Сертификат выдан.');
         } else {

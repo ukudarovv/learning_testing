@@ -35,18 +35,18 @@ class ProtocolViewSet(viewsets.ModelViewSet):
     ordering = ['-created_at']
     
     def get_queryset(self):
-        """Students see only their protocols; admin and PDEK see all"""
+        """Students see only their protocols; admin and EC see all"""
         queryset = super().get_queryset()
         user = self.request.user
         if not user.is_authenticated:
             return queryset.none()
         if user.role == 'student' and not user.is_admin:
             queryset = queryset.filter(student=user)
-        # Admin и PDEK видят все протоколы
+        # Admin и ЭК видят все протоколы
         return queryset
     
     def get_permissions(self):
-        """Allow PDEK members to list, retrieve, request signature and sign protocols"""
+        """Allow EC members to list, retrieve, request signature and sign protocols"""
         if self.action in ['request_signature', 'sign', 'sign_eds']:
             return [permissions.IsAuthenticated()]
         return [IsAdminOrPdekOrReadOnly()]
@@ -94,7 +94,7 @@ class ProtocolViewSet(viewsets.ModelViewSet):
                     result=serializer.validated_data['result'],
                 )
                 
-                # Create signatures for PDEK members
+                # Create signatures for EC members
                 pdek_members = User.objects.filter(role__in=['pdek_member', 'pdek_chairman'])
                 for member in pdek_members:
                     ProtocolSignature.objects.create(
@@ -103,7 +103,7 @@ class ProtocolViewSet(viewsets.ModelViewSet):
                         role='chairman' if member.role == 'pdek_chairman' else 'member'
                     )
 
-                # Уведомление членов ПДЭК по email
+                # Уведомление членов ЭК по email
                 from apps.notifications.utils import send_protocol_pdek_notification
                 send_protocol_pdek_notification(protocol)
 
@@ -112,7 +112,7 @@ class ProtocolViewSet(viewsets.ModelViewSet):
                 pass
         
         protocol = serializer.save()
-        # Уведомление членов ПДЭК по email
+        # Уведомление членов ЭК по email
         from apps.notifications.utils import send_protocol_pdek_notification
         send_protocol_pdek_notification(protocol)
         return Response(ProtocolSerializer(protocol).data, status=status.HTTP_201_CREATED)
@@ -126,10 +126,10 @@ class ProtocolViewSet(viewsets.ModelViewSet):
         protocol = self.get_object()
         logger.info(f'Request signature for protocol {protocol.id}: student={protocol.student}, course={protocol.course}')
         
-        # Check if user is PDEK member
+        # Check if user is EC member
         if request.user.role not in ['pdek_member', 'pdek_chairman']:
             return Response(
-                {'error': 'Only PDEK members can sign protocols'},
+                {'error': 'Only EC members can sign protocols'},
                 status=status.HTTP_403_FORBIDDEN
             )
         
@@ -312,7 +312,7 @@ class ProtocolViewSet(viewsets.ModelViewSet):
         
         if request.user.role not in ['pdek_member', 'pdek_chairman']:
             return Response(
-                {'error': 'Only PDEK members can sign protocols'},
+                {'error': 'Only EC members can sign protocols'},
                 status=status.HTTP_403_FORBIDDEN
             )
         

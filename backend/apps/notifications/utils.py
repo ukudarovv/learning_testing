@@ -303,7 +303,7 @@ def send_course_reminder(
 
 def send_protocol_pdek_notification(protocol, fail_silently: bool = True) -> int:
     """
-    Отправка email членам и председателям ПДЭК о новом протоколе для подписания.
+    Отправка email членам и председателям ЭК о новом протоколе для подписания.
 
     Args:
         protocol: Протокол (Protocol instance)
@@ -324,12 +324,12 @@ def send_protocol_pdek_notification(protocol, fail_silently: bool = True) -> int
     skipped = [u for u in all_pdek if not (u.email and str(u.email).strip())]
     if skipped:
         logger.warning(
-            f"Protocol {protocol.number}: PDEK users without email (no notification sent): "
+            f"Protocol {protocol.number}: EC users without email (no notification sent): "
             f"{[(u.full_name or u.phone, u.role) for u in skipped]}"
         )
     
     if not recipient_list:
-        logger.warning(f"Protocol {protocol.number}: No PDEK users with email, skipping notification")
+        logger.warning(f"Protocol {protocol.number}: No EC users with email, skipping notification")
         return 0
 
     logger.info(f"Protocol {protocol.number}: Sending notification to: {recipient_list}")
@@ -384,10 +384,10 @@ def send_protocol_pdek_notification(protocol, fail_silently: bool = True) -> int
             fail_silently=fail_silently
         )
         if sent:
-            logger.info(f"Protocol PDEK notification sent to {sent} recipients for protocol {protocol.number}")
+            logger.info(f"Protocol EC notification sent to {sent} recipients for protocol {protocol.number}")
         return sent
     except Exception as e:
-        logger.exception(f"Failed to send protocol PDEK notification for {protocol.number}: {e}")
+        logger.exception(f"Failed to send protocol EC notification for {protocol.number}: {e}")
         if not fail_silently:
             raise
         return 0

@@ -29,7 +29,7 @@ class IsAdminOrPublicReadOnly(permissions.BasePermission):
 
 
 class IsAdminOrPdekOrReadOnly(permissions.BasePermission):
-    """Разрешение: админ — полный доступ; ПДЭК и студенты — чтение протоколов"""
+    """Разрешение: админ — полный доступ; ЭК и студенты — чтение протоколов"""
     
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:

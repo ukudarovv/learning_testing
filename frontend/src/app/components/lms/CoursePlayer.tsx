@@ -310,14 +310,19 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
     }
   };
 
-  const handleTestComplete = async (answers: Answer[], timeSpent: number, videoBlob?: Blob) => {
+  const handleTestComplete = async (
+    answers: Answer[],
+    timeSpent: number,
+    videoBlob?: Blob,
+    screenBlob?: Blob
+  ) => {
     if (!test || !testAttemptId) return;
 
     // Check if this is the final test
     const isFinalTest = course.final_test_id && String(test.id) === String(course.final_test_id);
     
     if (isFinalTest) {
-      handleFinalTestComplete(answers, timeSpent, videoBlob);
+      handleFinalTestComplete(answers, timeSpent, videoBlob, screenBlob);
       return;
     }
 
@@ -329,7 +334,10 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
       });
 
       await examsService.saveTestAttempt(String(testAttemptId), answersData);
-      const result = await examsService.submitTestAttempt(String(testAttemptId), videoBlob);
+      const result = await examsService.submitTestAttempt(String(testAttemptId), {
+        videoBlob,
+        screenBlob,
+      });
 
       // Удаляем сохраненный прогресс
       localStorage.removeItem(`test_${test.id}_progress`);
@@ -379,7 +387,12 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
     setTestAttemptId(null);
   };
 
-  const handleFinalTestComplete = async (answers: Answer[], timeSpent: number, videoBlob?: Blob) => {
+  const handleFinalTestComplete = async (
+    answers: Answer[],
+    timeSpent: number,
+    videoBlob?: Blob,
+    screenBlob?: Blob
+  ) => {
     if (!test || !testAttemptId) return;
 
     try {
@@ -394,7 +407,10 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
       });
 
       await examsService.saveAllAnswers(testAttemptId, answersData);
-      const result = await examsService.submitTestAttempt(String(testAttemptId), videoBlob);
+      const result = await examsService.submitTestAttempt(String(testAttemptId), {
+        videoBlob,
+        screenBlob,
+      });
 
       // Удаляем сохраненный прогресс
       localStorage.removeItem(`test_${test.id}_progress`);
@@ -1765,6 +1781,9 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
                 requiresVideoRecording={test.requiresVideoRecording !== undefined 
                   ? test.requiresVideoRecording 
                   : (test.requires_video_recording !== undefined ? test.requires_video_recording : false)}
+                requiresScreenRecording={test.requiresScreenRecording !== undefined
+                  ? test.requiresScreenRecording
+                  : (test.requires_screen_recording !== undefined ? test.requires_screen_recording : false)}
                 onComplete={handleTestComplete}
                 onCancel={handleTestCancel}
                 inModal={true}

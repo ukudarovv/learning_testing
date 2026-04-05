@@ -13,6 +13,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='courseenrollment',
             name='status',
-            field=models.CharField(choices=[('assigned', 'Assigned'), ('in_progress', 'In Progress'), ('exam_available', 'Exam Available'), ('exam_passed', 'Exam Passed'), ('pending_pdek', 'Pending PDEK Review'), ('completed', 'Completed'), ('failed', 'Failed'), ('annulled', 'Annulled')], default='assigned', max_length=20),
+            field=models.CharField(choices=[('assigned', 'Assigned'), ('in_progress', 'In Progress'), ('exam_available', 'Exam Available'), ('exam_passed', 'Exam Passed'), ('pending_pdek', 'Pending EC Review'), ('completed', 'Completed'), ('failed', 'Failed'), ('annulled', 'Annulled')], default='assigned', max_length=20),
         ),
     ]

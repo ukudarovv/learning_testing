@@ -24,7 +24,7 @@ class Migration(migrations.Migration):
                 ('email', models.EmailField(blank=True, max_length=254, null=True)),
                 ('iin', models.CharField(blank=True, db_index=True, max_length=12, null=True)),
                 ('full_name', models.CharField(blank=True, max_length=255)),
-                ('role', models.CharField(choices=[('guest', 'Guest'), ('student', 'Student'), ('pdek_member', 'PDEK Member'), ('pdek_chairman', 'PDEK Chairman'), ('teacher', 'Teacher'), ('admin', 'Admin')], default='guest', max_length=20)),
+                ('role', models.CharField(choices=[('guest', 'Guest'), ('student', 'Student'), ('pdek_member', 'EC Member'), ('pdek_chairman', 'EC Chairman'), ('teacher', 'Teacher'), ('admin', 'Admin')], default='guest', max_length=20)),
                 ('verified', models.BooleanField(default=False)),
                 ('language', models.CharField(choices=[('ru', 'Russian'), ('kz', 'Kazakh'), ('en', 'English')], default='ru', max_length=2)),
                 ('city', models.CharField(blank=True, max_length=100)),

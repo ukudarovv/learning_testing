@@ -21,7 +21,7 @@ VITE_API_URL=http://localhost:8000/api
 - `src/app/services/courses.ts` - управление курсами
 - `src/app/services/tests.ts` - управление тестами
 - `src/app/services/exams.ts` - прохождение экзаменов
-- `src/app/services/protocols.ts` - протоколы ПДЭК
+- `src/app/services/protocols.ts` - протоколы ЭК
 - `src/app/services/certificates.ts` - сертификаты
 - `src/app/services/notifications.ts` - уведомления
 - `src/app/services/users.ts` - управление пользователями

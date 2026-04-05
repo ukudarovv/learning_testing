@@ -166,7 +166,7 @@ export function TestResultPage({
         }
       }
       
-      toast.success(t('lms.test.testCompletedSuccess') || 'Тест завершен. Протокол создан и отправлен на подписание ПДЭК.');
+      toast.success(t('lms.test.testCompletedSuccess') || 'Тест завершен. Протокол создан и отправлен на подписание ЭК.');
     } catch (error: any) {
       toast.error(error.message || t('lms.test.smsVerifyError') || 'Ошибка при верификации SMS кода');
       console.error('Failed to verify completion OTP:', error);
@@ -179,7 +179,7 @@ export function TestResultPage({
   const getProtocolStatusText = (status: string, t: any): string => {
     const statusMap: Record<string, string> = {
       'generated': t('lms.pdek.status.generated') || 'Создан',
-      'pending_pdek': t('lms.pdek.status.pendingPdek') || 'Ожидает подписания ПДЭК',
+      'pending_pdek': t('lms.pdek.status.pendingPdek') || 'Ожидает подписания ЭК',
       'signed_members': t('lms.pdek.status.signedMembers') || 'Подписан членами',
       'signed_chairman': t('lms.pdek.status.signedChairman') || 'Подписан председателем',
       'rejected': t('lms.pdek.status.rejected') || 'Отклонен',
@@ -297,7 +297,7 @@ export function TestResultPage({
                   {isStandalone && protocol ? (
                     <div className="space-y-2">
                       <p className="text-sm font-semibold text-blue-900">
-                        {t('lms.test.protocolCreated') || 'Протокол экзамена создан и отправлен на подписание комиссией ПДЭК. После подписания протокола вы получите сертификат.'}
+                        {t('lms.test.protocolCreated') || 'Протокол экзамена создан и отправлен на подписание комиссией ЭК. После подписания протокола вы получите сертификат.'}
                       </p>
                       <div className="flex items-center gap-2 mt-2">
                         <span className="text-xs text-blue-700">

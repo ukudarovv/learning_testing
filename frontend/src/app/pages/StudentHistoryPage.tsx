@@ -2,7 +2,7 @@ import { Header } from '../components/Header';
 import { SiteFooter } from '../components/SiteFooter';
 import { useMyEnrollments } from '../hooks/useMyEnrollments';
 import { Link } from 'react-router-dom';
-import { BookOpen, CheckCircle2, Award, FileQuestion, Video, Eye, X, Calendar } from 'lucide-react';
+import { BookOpen, CheckCircle2, Award, FileQuestion, Video, Monitor, Eye, X, Calendar } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useState, useEffect } from 'react';
 import { TestAttempt } from '../types/lms';
@@ -212,7 +212,8 @@ export function StudentHistoryPage() {
                   const completedAt = attempt.completed_at || attempt.completedAt;
                   const completedDate = completedAt ? new Date(completedAt) : null;
                   const hasVideo = !!(attempt.video_recording || attempt.videoRecording);
-                  const videoUrl = attempt.video_recording || attempt.videoRecording;
+                  const hasScreen = !!(attempt.screen_recording || attempt.screenRecording);
+                  const hasRecording = hasVideo || hasScreen;
 
                   return (
                     <div key={attempt.id} className="bg-white rounded-lg shadow-md overflow-hidden border-l-4 border-orange-500">
@@ -263,7 +264,13 @@ export function StudentHistoryPage() {
                             {hasVideo && (
                               <span className="ml-2 inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                                 <Video className="w-3 h-3" />
-                                {t('lms.student.historyPage.hasVideo') || 'Есть видео'}
+                                {t('lms.student.historyPage.hasVideo') || 'Камера'}
+                              </span>
+                            )}
+                            {hasScreen && (
+                              <span className="ml-2 inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-900">
+                                <Monitor className="w-3 h-3" />
+                                {t('lms.student.historyPage.hasScreen') || 'Экран'}
                               </span>
                             )}
                           </div>
@@ -280,7 +287,7 @@ export function StudentHistoryPage() {
                               {t('lms.student.historyPage.viewDetails') || 'Детали'}
                             </Link>
                           )}
-                          {hasVideo && videoUrl && (
+                          {hasRecording && (
                             <button
                               onClick={() => {
                                 setSelectedAttempt(attempt);
@@ -289,7 +296,7 @@ export function StudentHistoryPage() {
                               className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
                             >
                               <Eye className="w-4 h-4" />
-                              {t('lms.student.historyPage.viewVideo') || 'Видео'}
+                              {t('lms.student.historyPage.viewRecordings') || 'Записи'}
                             </button>
                           )}
                         </div>
@@ -323,7 +330,7 @@ export function StudentHistoryPage() {
             <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
               <div>
                 <h3 className="text-xl font-bold text-gray-900">
-                  {t('lms.student.historyPage.videoRecording') || 'Видеозапись теста'}
+                  {t('lms.student.historyPage.recordingsTitle') || 'Записи теста'}
                 </h3>
                 <p className="text-sm text-gray-600 mt-1">
                   {typeof selectedAttempt.test === 'object' ? selectedAttempt.test?.title : t('lms.student.historyPage.test')}
@@ -341,29 +348,58 @@ export function StudentHistoryPage() {
             </div>
 
             <div className="p-6">
-              {selectedAttempt.video_recording || selectedAttempt.videoRecording ? (
-                <div className="space-y-4">
-                  <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden">
-                    <video
-                      src={selectedAttempt.video_recording || selectedAttempt.videoRecording || ''}
-                      controls
-                      className="w-full h-full"
-                      style={{ maxHeight: '600px' }}
-                    >
-                      {t('lms.student.historyPage.videoNotSupported') || 'Ваш браузер не поддерживает воспроизведение видео.'}
-                    </video>
-                  </div>
+              {selectedAttempt.video_recording ||
+              selectedAttempt.videoRecording ||
+              selectedAttempt.screen_recording ||
+              selectedAttempt.screenRecording ? (
+                <div className="space-y-6">
+                  {(selectedAttempt.video_recording || selectedAttempt.videoRecording) && (
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                        <Video className="w-4 h-4" />
+                        {t('lms.student.historyPage.cameraRecording') || 'Камера'}
+                      </h4>
+                      <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden">
+                        <video
+                          src={selectedAttempt.video_recording || selectedAttempt.videoRecording || ''}
+                          controls
+                          className="w-full h-full"
+                          style={{ maxHeight: '600px' }}
+                        >
+                          {t('lms.student.historyPage.videoNotSupported') || 'Ваш браузер не поддерживает воспроизведение видео.'}
+                        </video>
+                      </div>
+                    </div>
+                  )}
+                  {(selectedAttempt.screen_recording || selectedAttempt.screenRecording) && (
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                        <Monitor className="w-4 h-4" />
+                        {t('lms.student.historyPage.screenRecording') || 'Экран'}
+                      </h4>
+                      <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden">
+                        <video
+                          src={selectedAttempt.screen_recording || selectedAttempt.screenRecording || ''}
+                          controls
+                          className="w-full h-full"
+                          style={{ maxHeight: '600px' }}
+                        >
+                          {t('lms.student.historyPage.videoNotSupported') || 'Ваш браузер не поддерживает воспроизведение видео.'}
+                        </video>
+                      </div>
+                    </div>
+                  )}
                   <div className="flex items-center gap-4 flex-wrap">
                     <div className="text-sm text-gray-600">
                       <span className="font-medium">{t('lms.student.historyPage.score') || 'Балл'}:</span>{' '}
-                      {selectedAttempt.score !== null && selectedAttempt.score !== undefined 
+                      {selectedAttempt.score !== null && selectedAttempt.score !== undefined
                         ? `${selectedAttempt.score.toFixed(1)}%`
                         : '—'}
                     </div>
                     <div className="text-sm text-gray-600">
                       <span className="font-medium">{t('lms.student.historyPage.result') || 'Результат'}:</span>{' '}
                       {selectedAttempt.passed !== null && selectedAttempt.passed !== undefined
-                        ? (selectedAttempt.passed 
+                        ? (selectedAttempt.passed
                             ? t('lms.student.historyPage.passed') || 'Пройдено'
                             : t('lms.student.historyPage.failed') || 'Не пройдено')
                         : '—'}
@@ -373,7 +409,7 @@ export function StudentHistoryPage() {
               ) : (
                 <div className="text-center py-12">
                   <Video className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-600">{t('lms.student.historyPage.videoNotAvailable') || 'Видеозапись недоступна'}</p>
+                  <p className="text-gray-600">{t('lms.student.historyPage.videoNotAvailable') || 'Записи недоступны'}</p>
                 </div>
               )}
             </div>

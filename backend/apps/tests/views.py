@@ -232,7 +232,7 @@ class TestViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['post'])
     def verify_completion_otp(self, request, pk=None):
-        """Verify OTP and create protocol for PDEK review"""
+        """Verify OTP and create protocol for EC review"""
         test = self.get_object()
         serializer = OTPVerifySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -308,7 +308,7 @@ class TestViewSet(viewsets.ModelViewSet):
         if existing:
             logger.info(f"Protocol already exists for attempt {test_attempt.id}, returning existing protocol {existing.id}")
             return Response({
-                'message': 'Test completion verified. Protocol already created for PDEK review.',
+                'message': 'Test completion verified. Protocol already created for EC review.',
                 'protocol_id': existing.id
             }, status=status.HTTP_200_OK)
         
@@ -335,7 +335,7 @@ class TestViewSet(viewsets.ModelViewSet):
             status='pending_pdek'
         )
         
-        # Create signatures for PDEK members
+        # Create signatures for EC members
         pdek_members = User.objects.filter(role__in=['pdek_member', 'pdek_chairman'])
         for member in pdek_members:
             ProtocolSignature.objects.create(
@@ -344,7 +344,7 @@ class TestViewSet(viewsets.ModelViewSet):
                 role='chairman' if member.role == 'pdek_chairman' else 'member'
             )
         
-        # Create notification for PDEK members
+        # Create notification for EC members
         from apps.notifications.models import Notification
         for member in pdek_members:
             Notification.objects.create(
@@ -354,12 +354,12 @@ class TestViewSet(viewsets.ModelViewSet):
                 message=f'Протокол {protocol.number} для теста "{test.title}" готов к подписанию'
             )
         
-        # Send email notification to PDEK members
+        # Send email notification to EC members
         from apps.notifications.utils import send_protocol_pdek_notification
         send_protocol_pdek_notification(protocol)
         
         return Response({
-            'message': 'Test completion verified. Protocol created for PDEK review.',
+            'message': 'Test completion verified. Protocol created for EC review.',
             'protocol_id': protocol.id
         }, status=status.HTTP_200_OK)
     

@@ -1,20 +1,41 @@
+from django.core.validators import FileExtensionValidator
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import User, SMSVerificationCode
 
+PROFILE_PHOTO_MAX_BYTES = 5 * 1024 * 1024  # 5 MB
+PROFILE_PHOTO_VALIDATORS = [FileExtensionValidator(['jpg', 'jpeg', 'png', 'webp'])]
+
+
+def validate_profile_photo_size(value):
+    if value and hasattr(value, 'size') and value.size > PROFILE_PHOTO_MAX_BYTES:
+        raise serializers.ValidationError('Размер файла не должен превышать 5 МБ.')
+    return value
+
 
 class UserSerializer(serializers.ModelSerializer):
     """User serializer"""
-    
+    profile_photo_url = serializers.SerializerMethodField()
+
+    def get_profile_photo_url(self, obj):
+        request = self.context.get('request')
+        if not obj.profile_photo:
+            return None
+        url = obj.profile_photo.url
+        if request:
+            return request.build_absolute_uri(url)
+        return url
+
     class Meta:
         model = User
         fields = [
             'id', 'phone', 'email', 'iin', 'full_name', 'role',
             'verified', 'is_active', 'language', 'city', 'organization',
             'protocol_sign_method',
+            'profile_photo_url',
             'created_at', 'updated_at', 'date_joined'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'date_joined']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'date_joined', 'profile_photo_url']
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
@@ -23,10 +44,18 @@ class UserCreateSerializer(serializers.ModelSerializer):
     verification_code = serializers.CharField(write_only=True, required=False, allow_blank=True)
     email = serializers.EmailField(required=True)
     iin = serializers.CharField(required=False, allow_blank=True, max_length=12, default='')
+    profile_photo = serializers.ImageField(
+        required=False,
+        allow_null=True,
+        validators=PROFILE_PHOTO_VALIDATORS,
+    )
 
     class Meta:
         model = User
-        fields = ['phone', 'password', 'full_name', 'email', 'iin', 'role', 'city', 'organization', 'language', 'verified', 'is_active', 'verification_code']
+        fields = [
+            'phone', 'password', 'full_name', 'email', 'iin', 'role', 'city', 'organization',
+            'language', 'verified', 'is_active', 'verification_code', 'profile_photo',
+        ]
 
     def validate_iin(self, value):
         """Normalize IIN to digits only and validate length 12 if provided"""
@@ -42,6 +71,9 @@ class UserCreateSerializer(serializers.ModelSerializer):
         if value and len(value) < 8:
             raise serializers.ValidationError('Password must be at least 8 characters long.')
         return value
+
+    def validate_profile_photo(self, value):
+        return validate_profile_photo_size(value)
     
     def validate(self, data):
         """Validate SMS verification code - required when require_sms_on_registration is True"""
@@ -108,20 +140,33 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
 
 class UserUpdateSerializer(serializers.ModelSerializer):
-    """Serializer for admin updating user - includes protocol_sign_method for PDEK"""
+    """Serializer for admin updating user - includes protocol_sign_method for EC"""
     password = serializers.CharField(write_only=True, required=False, allow_blank=True)
     phone = serializers.CharField(required=False, max_length=20)
     verification_code = serializers.CharField(write_only=True, required=False, allow_blank=True)
-    
+    profile_photo = serializers.ImageField(
+        required=False,
+        allow_null=True,
+        validators=PROFILE_PHOTO_VALIDATORS,
+    )
+    clear_profile_photo = serializers.BooleanField(required=False, write_only=True)
+
     class Meta:
         model = User
-        fields = ['phone', 'full_name', 'email', 'iin', 'language', 'city', 'organization', 'role', 'verified', 'is_active', 'password', 'verification_code', 'protocol_sign_method']
+        fields = [
+            'phone', 'full_name', 'email', 'iin', 'language', 'city', 'organization',
+            'role', 'verified', 'is_active', 'password', 'verification_code',
+            'protocol_sign_method', 'profile_photo', 'clear_profile_photo',
+        ]
     
     def validate_password(self, value):
         """Validate password if provided"""
         if value and len(value) < 8:
             raise serializers.ValidationError('Password must be at least 8 characters long.')
         return value
+
+    def validate_profile_photo(self, value):
+        return validate_profile_photo_size(value)
     
     def validate(self, data):
         """Validate SMS verification code if phone is being changed"""
@@ -165,6 +210,11 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         
         # Remove verification_code, it's not a model field
         validated_data.pop('verification_code', None)
+        clear_photo = validated_data.pop('clear_profile_photo', False)
+        if clear_photo:
+            if instance.profile_photo:
+                instance.profile_photo.delete(save=False)
+            instance.profile_photo = None
         
         # Normalize phone if it's being changed
         if 'phone' in validated_data and validated_data['phone']:
@@ -175,6 +225,10 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             if not normalized_phone.startswith('7'):
                 normalized_phone = '7' + normalized_phone
             validated_data['phone'] = normalized_phone
+
+        new_photo = validated_data.get('profile_photo')
+        if new_photo and instance.profile_photo:
+            instance.profile_photo.delete(save=False)
         
         # Update other fields
         for attr, value in validated_data.items():
@@ -187,7 +241,10 @@ class UserUpdateSerializer(serializers.ModelSerializer):
 class UserProfileUpdateSerializer(UserUpdateSerializer):
     """Serializer for user self-profile update (auth/me) - excludes admin-only fields like protocol_sign_method"""
     class Meta(UserUpdateSerializer.Meta):
-        fields = ['phone', 'full_name', 'email', 'iin', 'language', 'city', 'organization', 'password', 'verification_code']
+        fields = [
+            'phone', 'full_name', 'email', 'iin', 'language', 'city', 'organization',
+            'password', 'verification_code', 'profile_photo', 'clear_profile_photo',
+        ]
 
 
 class LoginSerializer(serializers.Serializer):
@@ -251,12 +308,13 @@ class TokenSerializer(serializers.Serializer):
     user = UserSerializer(read_only=True)
     
     @classmethod
-    def get_tokens_for_user(cls, user):
+    def get_tokens_for_user(cls, user, request=None):
         refresh = RefreshToken.for_user(user)
+        ctx = {'request': request} if request is not None else {}
         return {
             'access': str(refresh.access_token),
             'refresh': str(refresh),
-            'user': UserSerializer(user).data
+            'user': UserSerializer(user, context=ctx).data
         }
 
 

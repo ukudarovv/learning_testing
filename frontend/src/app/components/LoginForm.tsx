@@ -5,6 +5,7 @@ import { User, Lock, Phone, Eye, EyeOff } from 'lucide-react';
 import { useUser } from '../contexts/UserContext';
 import { ApiError } from '../services/api';
 import { BrandLogo } from './BrandLogo';
+import { formatRuKzPhoneInput } from '../utils/phoneInput';
 
 export function LoginForm() {
   const { t } = useTranslation();
@@ -119,7 +120,7 @@ export function LoginForm() {
                 <input
                   type="tel"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={(e) => setPhone(formatRuKzPhoneInput(e.target.value))}
                   placeholder={t('forms.login.phonePlaceholder')}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required

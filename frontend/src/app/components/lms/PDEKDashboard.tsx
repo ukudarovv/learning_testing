@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FileText, CheckCircle, Clock, AlertTriangle, Phone, Video, ChevronDown, ChevronUp, XCircle, Shield } from 'lucide-react';
+import { FileText, CheckCircle, Clock, AlertTriangle, Phone, Video, Monitor, ChevronDown, ChevronUp, XCircle, Shield } from 'lucide-react';
 import { Protocol, TestAttempt } from '../../types/lms';
 import { SMSVerification } from './SMSVerification';
 import { EDSSignModal } from './EDSSignModal';
@@ -490,7 +490,7 @@ export function PDEKDashboard() {
                 </div>
               </div>
 
-              {/* Test Attempt Details - для членов ПДЭК показываем все детали */}
+              {/* Test Attempt Details - для членов ЭК показываем все детали */}
               {loadingAttempt ? (
                 <div className="text-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
@@ -511,6 +511,29 @@ export function PDEKDashboard() {
                         <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden">
                           <video
                             src={testAttempt.video_recording || testAttempt.videoRecording || ''}
+                            controls
+                            className="w-full h-full"
+                            style={{ maxHeight: '400px' }}
+                          >
+                            {t('lms.pdek.videoNotSupported') || 'Ваш браузер не поддерживает воспроизведение видео.'}
+                          </video>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {(testAttempt.screen_recording || testAttempt.screenRecording) && (
+                    <div className="mb-6">
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <div className="flex items-center gap-3 mb-3">
+                          <Monitor className="w-5 h-5 text-amber-700" />
+                          <h4 className="font-semibold text-gray-900">
+                            {t('lms.pdek.screenRecording') || 'Запись экрана'}
+                          </h4>
+                        </div>
+                        <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden">
+                          <video
+                            src={testAttempt.screen_recording || testAttempt.screenRecording || ''}
                             controls
                             className="w-full h-full"
                             style={{ maxHeight: '400px' }}
@@ -579,7 +602,7 @@ export function PDEKDashboard() {
                                           </span>
                                         </div>
                                         
-                                        {/* Для ПДЭК всегда показываем правильный ответ */}
+                                        {/* Для ЭК всегда показываем правильный ответ */}
                                         {!detail.is_correct && (
                                           <div>
                                             <span className="font-medium text-gray-700">{t('lms.pdek.correctAnswer') || 'Правильный ответ'}: </span>

@@ -626,7 +626,7 @@ class CourseViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['post'])
     def verify_completion_otp(self, request, pk=None):
-        """Verify OTP and create protocol for PDEK review"""
+        """Verify OTP and create protocol for EC review"""
         course = self.get_object()
         serializer = OTPVerifySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -693,7 +693,7 @@ class CourseViewSet(viewsets.ModelViewSet):
         if existing:
             logger.info(f"Protocol already exists for enrollment {enrollment.id}, returning existing protocol {existing.id}")
             return Response({
-                'message': 'Course completion verified. Protocol already created for PDEK review.',
+                'message': 'Course completion verified. Protocol already created for EC review.',
                 'protocol_id': existing.id
             }, status=status.HTTP_200_OK)
         
@@ -738,7 +738,7 @@ class CourseViewSet(viewsets.ModelViewSet):
             status='pending_pdek'
         )
         
-        # Create signatures for PDEK members
+        # Create signatures for EC members
         pdek_members = User.objects.filter(role__in=['pdek_member', 'pdek_chairman'])
         for member in pdek_members:
             ProtocolSignature.objects.create(
@@ -751,9 +751,9 @@ class CourseViewSet(viewsets.ModelViewSet):
         enrollment.status = 'pending_pdek'
         enrollment.save()
         
-        # After all PDEK members sign, enrollment status will be changed to 'completed' in protocols/views.py
+        # After all EC members sign, enrollment status will be changed to 'completed' in protocols/views.py
         
-        # Create notification for PDEK members
+        # Create notification for EC members
         from apps.notifications.models import Notification
         for member in pdek_members:
             Notification.objects.create(
@@ -763,12 +763,12 @@ class CourseViewSet(viewsets.ModelViewSet):
                 message=f'Протокол {protocol.number} для курса "{course.title}" готов к подписанию'
             )
         
-        # Send email notification to PDEK members
+        # Send email notification to EC members
         from apps.notifications.utils import send_protocol_pdek_notification
         send_protocol_pdek_notification(protocol)
         
         return Response({
-            'message': 'Course completion verified. Protocol created for PDEK review.',
+            'message': 'Course completion verified. Protocol created for EC review.',
             'protocol_id': protocol.id
         }, status=status.HTTP_200_OK)
 

@@ -139,7 +139,7 @@ export function SiteSettingsEditor() {
             <option value="eds">{t('admin.settings.protocolSignEds') || 'Только ЭЦП'}</option>
           </select>
           <p className="text-sm text-gray-500">
-            {t('admin.settings.defaultProtocolSignMethodHint') || 'Способ подписания протоколов для членов ПДЭК'}
+            {t('admin.settings.defaultProtocolSignMethodHint') || 'Способ подписания протоколов для членов ЭК'}
           </p>
         </div>
 

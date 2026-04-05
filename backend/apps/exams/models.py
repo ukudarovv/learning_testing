@@ -10,6 +10,12 @@ def test_attempt_video_upload_to(instance, filename):
     return f"test_attempts/{instance.id}/video{ext}"
 
 
+def test_attempt_screen_upload_to(instance, filename):
+    """Generate upload path for test attempt screen recording"""
+    ext = os.path.splitext(filename)[1]
+    return f"test_attempts/{instance.id}/screen{ext}"
+
+
 class ExtraAttemptRequest(models.Model):
     """Request for additional test attempts"""
     
@@ -59,6 +65,7 @@ class TestAttempt(models.Model):
     passed = models.BooleanField(null=True, blank=True)
     answers = models.JSONField(default=dict, help_text='User answers: {question_id: answer}')
     video_recording = models.FileField(upload_to=test_attempt_video_upload_to, null=True, blank=True, help_text='Video recording of test attempt')
+    screen_recording = models.FileField(upload_to=test_attempt_screen_upload_to, null=True, blank=True, help_text='Screen recording of test attempt')
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.CharField(max_length=255, blank=True)
     termination_reason = models.TextField(null=True, blank=True, help_text='Reason for early test termination')

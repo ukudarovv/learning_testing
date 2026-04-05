@@ -175,6 +175,7 @@ const testsService = {
       test.shuffleQuestions = test.shuffle_questions !== undefined ? test.shuffle_questions : true;
       test.showResults = test.show_results !== undefined ? test.show_results : true;
       test.requiresVideoRecording = test.requires_video_recording !== undefined ? test.requires_video_recording : false;
+      test.requiresScreenRecording = test.requires_screen_recording !== undefined ? test.requires_screen_recording : false;
       
       return test;
     });
@@ -224,10 +225,12 @@ const testsService = {
     data.shuffleQuestions = data.shuffle_questions !== undefined ? data.shuffle_questions : true;
     data.showResults = data.show_results !== undefined ? data.show_results : true;
     data.requiresVideoRecording = data.requires_video_recording !== undefined ? data.requires_video_recording : false;
+    data.requiresScreenRecording = data.requires_screen_recording !== undefined ? data.requires_screen_recording : false;
 
     console.log(`testsService.getTest(${id}) - After conversion:`, {
       requiresVideoRecording: data.requiresVideoRecording,
-      requires_video_recording: data.requires_video_recording
+      requires_video_recording: data.requires_video_recording,
+      requiresScreenRecording: data.requiresScreenRecording,
     });
 
     return data as Test;
@@ -286,6 +289,8 @@ const testsService = {
     // Удаляем frontend поля и старое значение requires_video_recording перед установкой нового
     delete backendTest.requiresVideoRecording; // Удаляем frontend поле
     delete backendTest.requires_video_recording; // Удаляем старое значение, если оно есть из ...test
+    delete backendTest.requiresScreenRecording;
+    delete backendTest.requires_screen_recording;
     
     // Конвертируем frontend поля в backend формат
     backendTest.shuffle_questions = test.shuffleQuestions !== undefined ? test.shuffleQuestions : true;
@@ -294,6 +299,9 @@ const testsService = {
     backendTest.requires_video_recording = test.requiresVideoRecording !== undefined 
       ? test.requiresVideoRecording 
       : (test.requires_video_recording !== undefined ? test.requires_video_recording : false);
+    backendTest.requires_screen_recording = test.requiresScreenRecording !== undefined
+      ? test.requiresScreenRecording
+      : (test.requires_screen_recording !== undefined ? test.requires_screen_recording : false);
     
     // Удаляем остальные frontend поля
     delete backendTest.shuffleQuestions; // Удаляем frontend поле
@@ -375,6 +383,8 @@ const testsService = {
     // Удаляем frontend поля и старое значение requires_video_recording перед установкой нового
     delete backendTest.requiresVideoRecording; // Удаляем frontend поле
     delete backendTest.requires_video_recording; // Удаляем старое значение, если оно есть из ...test
+    delete backendTest.requiresScreenRecording;
+    delete backendTest.requires_screen_recording;
     
     // Конвертируем frontend поля в backend формат
     backendTest.shuffle_questions = test.shuffleQuestions !== undefined ? test.shuffleQuestions : true;
@@ -383,10 +393,14 @@ const testsService = {
     backendTest.requires_video_recording = test.requiresVideoRecording !== undefined 
       ? test.requiresVideoRecording 
       : (test.requires_video_recording !== undefined ? test.requires_video_recording : false);
+    backendTest.requires_screen_recording = test.requiresScreenRecording !== undefined
+      ? test.requiresScreenRecording
+      : (test.requires_screen_recording !== undefined ? test.requires_screen_recording : false);
     
     // Отладочное логирование для проверки отправляемых данных
     console.log(`testsService.updateTest(${id}) - Sending to backend:`, {
       requires_video_recording: backendTest.requires_video_recording,
+      requires_screen_recording: backendTest.requires_screen_recording,
       test_requiresVideoRecording: test.requiresVideoRecording,
       test_requires_video_recording: test.requires_video_recording,
       backendTest_keys: Object.keys(backendTest)

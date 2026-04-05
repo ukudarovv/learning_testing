@@ -628,7 +628,7 @@ function formatDate(date: Date, t: any): string {
 function getProtocolStatusText(status: string, t: any): string {
   const statusMap: Record<string, string> = {
     'generated': t('lms.pdek.status.generated') || t('lms.certificate.status.created') || 'Создан',
-    'pending_pdek': t('lms.pdek.status.pendingPdek') || t('lms.certificate.status.pendingPdek') || 'Ожидает ПДЭК',
+    'pending_pdek': t('lms.pdek.status.pendingPdek') || t('lms.certificate.status.pendingPdek') || 'Ожидает ЭК',
     'signed_members': t('lms.pdek.status.signedMembers') || 'Подписан членами',
     'signed_chairman': t('lms.pdek.status.signedChairman') || 'Подписан председателем',
     'rejected': t('lms.pdek.status.rejected') || t('lms.certificate.status.rejected') || 'Отклонен',

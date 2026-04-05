@@ -1,5 +1,5 @@
 """
-Отправка тестовых писем на почты членов и председателей ПДЭК.
+Отправка тестовых писем на почты членов и председателей ЭК.
 Запуск: python manage.py send_pdek_test_email
 """
 import time
@@ -10,7 +10,7 @@ from apps.accounts.models import User
 
 
 class Command(BaseCommand):
-    help = 'Отправить тестовое письмо на почты всех членов и председателей ПДЭК'
+    help = 'Отправить тестовое письмо на почты всех членов и председателей ЭК'
 
     def handle(self, *args, **options):
         pdek_users = User.objects.filter(
@@ -21,7 +21,7 @@ class Command(BaseCommand):
         recipient_list = list(pdek_users.values_list('email', flat=True))
 
         if not recipient_list:
-            self.stdout.write(self.style.WARNING('Нет пользователей ПДЭК с указанным email'))
+            self.stdout.write(self.style.WARNING('Нет пользователей ЭК с указанным email'))
             return
 
         self.stdout.write(f"Отправка тестовых писем на: {recipient_list}")

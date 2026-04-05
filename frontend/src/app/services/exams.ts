@@ -10,11 +10,20 @@ const examsService = {
     return apiClient.post<TestAttempt>(`/exams/${attemptId}/save/`, { answers });
   },
 
-  async submitTestAttempt(attemptId: string, videoBlob?: Blob): Promise<TestAttempt> {
-    if (videoBlob) {
-      // Send video as FormData
+  async submitTestAttempt(
+    attemptId: string,
+    blobs?: { videoBlob?: Blob; screenBlob?: Blob }
+  ): Promise<TestAttempt> {
+    const { videoBlob, screenBlob } = blobs || {};
+    if (videoBlob || screenBlob) {
       const formData = new FormData();
-      formData.append('video_recording', videoBlob, `test_attempt_${attemptId}_${Date.now()}.webm`);
+      const ts = Date.now();
+      if (videoBlob) {
+        formData.append('video_recording', videoBlob, `test_attempt_${attemptId}_${ts}_cam.webm`);
+      }
+      if (screenBlob) {
+        formData.append('screen_recording', screenBlob, `test_attempt_${attemptId}_${ts}_screen.webm`);
+      }
       return apiClient.post<TestAttempt>(`/exams/${attemptId}/submit/`, formData);
     }
     return apiClient.post<TestAttempt>(`/exams/${attemptId}/submit/`);
