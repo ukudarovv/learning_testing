@@ -39,6 +39,123 @@ from apps.core.models import get_site_config
 from apps.core.export_utils import export_to_excel, create_excel_response
 
 
+def _course_completion_eligibility(user, course):
+    """Returns (enrollment, None) or (None, Response)."""
+    enrollment = CourseEnrollment.objects.filter(user=user, course=course).first()
+    if not enrollment:
+        return None, Response(
+            {'error': 'Not enrolled in this course'},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    total_lessons = Lesson.objects.filter(module__course=course).count()
+    completed_lessons = LessonProgress.objects.filter(
+        enrollment=enrollment,
+        completed=True,
+    ).count()
+    if completed_lessons < total_lessons:
+        return None, Response(
+            {'error': 'Not all lessons are completed'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    if course.final_test:
+        final_ok = TestAttempt.objects.filter(
+            user=user,
+            test=course.final_test,
+            passed=True,
+        ).exists()
+        if not final_ok:
+            return None, Response(
+                {'error': 'Final test not passed yet'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+    return enrollment, None
+
+
+def _finalize_course_protocol_creation(request, course, enrollment):
+    """Create protocol after course completion (after OTP or when SMS not required)."""
+    from apps.protocols.models import Protocol, ProtocolSignature
+    from apps.notifications.models import Notification
+    from apps.notifications.utils import send_protocol_pdek_notification
+
+    existing = Protocol.objects.filter(enrollment=enrollment).first()
+    if existing:
+        logger.info(
+            'Protocol already exists for enrollment %s, returning existing protocol %s',
+            enrollment.id,
+            existing.id,
+        )
+        return Response(
+            {
+                'message': 'Course completion verified. Protocol already created for EC review.',
+                'protocol_id': existing.id,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    final_test_attempt = None
+    if course.final_test:
+        final_test_attempt = TestAttempt.objects.filter(
+            user=request.user,
+            test=course.final_test,
+            passed=True,
+        ).order_by('-completed_at').first()
+        if not final_test_attempt:
+            return Response(
+                {'error': 'Final test attempt not found'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    if final_test_attempt:
+        exam_date = final_test_attempt.completed_at or timezone.now()
+        score = final_test_attempt.score or 0
+        passing_score = course.final_test.passing_score
+    else:
+        exam_date = timezone.now()
+        score = 0
+        passing_score = course.passing_score
+
+    protocol = Protocol.objects.create(
+        student=request.user,
+        course=course,
+        attempt=final_test_attempt,
+        enrollment=enrollment,
+        exam_date=exam_date,
+        score=score,
+        passing_score=passing_score,
+        result='passed',
+        status='pending_pdek',
+    )
+
+    pdek_members = User.objects.filter(role__in=['pdek_member', 'pdek_chairman'])
+    for member in pdek_members:
+        ProtocolSignature.objects.create(
+            protocol=protocol,
+            signer=member,
+            role='chairman' if member.role == 'pdek_chairman' else 'member',
+        )
+
+    enrollment.status = 'pending_pdek'
+    enrollment.save()
+
+    for member in pdek_members:
+        Notification.objects.create(
+            user=member,
+            type='protocol_ready',
+            title='Новый протокол для подписания',
+            message=f'Протокол {protocol.number} для курса "{course.title}" готов к подписанию',
+        )
+
+    send_protocol_pdek_notification(protocol)
+
+    return Response(
+        {
+            'message': 'Course completion verified. Protocol created for EC review.',
+            'protocol_id': protocol.id,
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
 class CategoryViewSet(viewsets.ModelViewSet):
     """Category ViewSet"""
     queryset = Category.objects.all()
@@ -78,7 +195,8 @@ class CourseViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         """Allow read access to all, write access only to admins"""
         # Allow authenticated users to request and verify completion OTP, self-enroll, and view course with progress
-        if self.action in ['request_completion_otp', 'verify_completion_otp', 'enroll', 'with_progress']:
+        if self.action in ['request_completion_otp', 'verify_completion_otp', 'finalize_completion',
+                           'enroll', 'with_progress']:
             return [permissions.IsAuthenticated()]
         if self.action in ['list', 'retrieve']:
             return [permissions.AllowAny()]
@@ -95,8 +213,8 @@ class CourseViewSet(viewsets.ModelViewSet):
         
         # Для detail actions (retrieve, with_progress и т.д.) не применяем фильтрацию по языку
         # чтобы можно было открыть любой курс по ID независимо от языка
-        is_detail_action = self.action in ['retrieve', 'with_progress', 'enroll', 'students', 
-                                          'request_completion_otp', 'verify_completion_otp',
+        is_detail_action = self.action in ['retrieve', 'with_progress', 'enroll', 'students',
+                                          'request_completion_otp', 'verify_completion_otp', 'finalize_completion',
                                           'revoke_enrollment', 'update', 'partial_update', 'destroy']
         
         # Для неавторизованных пользователей показываем только опубликованные курсы
@@ -687,90 +805,22 @@ class CourseViewSet(viewsets.ModelViewSet):
         
         logger.info(f"OTP verification successful for course {course.id}, user {request.user.id}")
 
-        # Протокол уже создан (повторное нажатие) — возвращаем существующий
-        from apps.protocols.models import Protocol
-        existing = Protocol.objects.filter(enrollment=enrollment).first()
-        if existing:
-            logger.info(f"Protocol already exists for enrollment {enrollment.id}, returning existing protocol {existing.id}")
-            return Response({
-                'message': 'Course completion verified. Protocol already created for EC review.',
-                'protocol_id': existing.id
-            }, status=status.HTTP_200_OK)
-        
-        # Get final test attempt if exists
-        final_test_attempt = None
-        if course.final_test:
-            final_test_attempt = TestAttempt.objects.filter(
-                user=request.user,
-                test=course.final_test,
-                passed=True
-            ).order_by('-completed_at').first()
-            
-            if not final_test_attempt:
-                return Response(
-                    {'error': 'Final test attempt not found'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-        
-        # Create Protocol
-        from apps.protocols.models import Protocol, ProtocolSignature
-        from django.utils import timezone
-        
-        # Determine protocol parameters
-        if final_test_attempt:
-            exam_date = final_test_attempt.completed_at or timezone.now()
-            score = final_test_attempt.score or 0
-            passing_score = course.final_test.passing_score
-        else:
-            exam_date = timezone.now()
-            score = 0
-            passing_score = course.passing_score
-        
-        protocol = Protocol.objects.create(
-            student=request.user,
-            course=course,
-            attempt=final_test_attempt,  # Can be None if no final test
-            enrollment=enrollment,
-            exam_date=exam_date,
-            score=score,
-            passing_score=passing_score,
-            result='passed',
-            status='pending_pdek'
-        )
-        
-        # Create signatures for EC members
-        pdek_members = User.objects.filter(role__in=['pdek_member', 'pdek_chairman'])
-        for member in pdek_members:
-            ProtocolSignature.objects.create(
-                protocol=protocol,
-                signer=member,
-                role='chairman' if member.role == 'pdek_chairman' else 'member'
+        return _finalize_course_protocol_creation(request, course, enrollment)
+
+    @action(detail=True, methods=['post'])
+    def finalize_completion(self, request, pk=None):
+        """Complete course and create protocol without SMS when disabled in site settings."""
+        course = self.get_object()
+        cfg = get_site_config()
+        if cfg.require_sms_for_course_completion:
+            return Response(
+                {'error': 'SMS confirmation is required for course completion'},
+                status=status.HTTP_403_FORBIDDEN,
             )
-        
-        # Update enrollment status to 'pending_pdek' after protocol creation
-        enrollment.status = 'pending_pdek'
-        enrollment.save()
-        
-        # After all EC members sign, enrollment status will be changed to 'completed' in protocols/views.py
-        
-        # Create notification for EC members
-        from apps.notifications.models import Notification
-        for member in pdek_members:
-            Notification.objects.create(
-                user=member,
-                type='protocol_ready',
-                title='Новый протокол для подписания',
-                message=f'Протокол {protocol.number} для курса "{course.title}" готов к подписанию'
-            )
-        
-        # Send email notification to EC members
-        from apps.notifications.utils import send_protocol_pdek_notification
-        send_protocol_pdek_notification(protocol)
-        
-        return Response({
-            'message': 'Course completion verified. Protocol created for EC review.',
-            'protocol_id': protocol.id
-        }, status=status.HTTP_200_OK)
+        enrollment, err = _course_completion_eligibility(request.user, course)
+        if err:
+            return err
+        return _finalize_course_protocol_creation(request, course, enrollment)
 
 
 class LessonViewSet(viewsets.ReadOnlyModelViewSet):

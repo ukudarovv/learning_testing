@@ -102,12 +102,18 @@ export function CourseEditor({ course, onSave, onCancel }: CourseEditorProps) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(false);
 
-  // Фильтруем тесты для финального теста - только тесты, используемые в курсах
+  // Финальный тест в форме — только standalone; но если в БД уже привязан другой тест, показываем его в списке, чтобы было видно привязку и можно было снять.
   const availableFinalTests = useMemo(() => {
-    return availableTests.filter(test => 
-      test.is_standalone === true || test.isStandalone === true
+    const standalone = availableTests.filter(
+      (test) => test.is_standalone === true || test.isStandalone === true
     );
-  }, [availableTests]);
+    const id = formData.final_test_id ?? formData.finalTestId;
+    if (id == null) return standalone;
+    const linked = availableTests.find((x) => String(x.id) === String(id));
+    if (!linked) return standalone;
+    if (standalone.some((s) => String(s.id) === String(id))) return standalone;
+    return [linked, ...standalone];
+  }, [availableTests, formData.final_test_id, formData.finalTestId]);
 
   // Загружаем категории из API
   useEffect(() => {

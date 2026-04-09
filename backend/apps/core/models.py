@@ -58,6 +58,14 @@ class SiteConfig(models.Model):
         default='both',
         verbose_name='Способ подписания протоколов по умолчанию'
     )
+    require_sms_for_course_completion = models.BooleanField(
+        default=True,
+        verbose_name='Требовать SMS для завершения курса',
+    )
+    require_sms_for_test_completion = models.BooleanField(
+        default=True,
+        verbose_name='Требовать SMS для завершения отдельного теста',
+    )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата обновления')
 
@@ -79,6 +87,8 @@ def get_site_config():
             'require_course_enrollment_request': True,
             'require_test_enrollment_request': True,
             'default_protocol_sign_method': 'both',
+            'require_sms_for_course_completion': True,
+            'require_sms_for_test_completion': True,
         }
     )
     return config

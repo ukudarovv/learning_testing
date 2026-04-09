@@ -28,6 +28,7 @@ class SiteConfigSerializer(serializers.ModelSerializer):
             'id', 'require_sms_on_registration',
             'require_course_enrollment_request', 'require_test_enrollment_request',
             'default_protocol_sign_method',
+            'require_sms_for_course_completion', 'require_sms_for_test_completion',
             'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
@@ -41,5 +42,6 @@ class SiteConfigUpdateSerializer(serializers.ModelSerializer):
         fields = [
             'require_sms_on_registration',
             'require_course_enrollment_request', 'require_test_enrollment_request',
-            'default_protocol_sign_method'
+            'default_protocol_sign_method',
+            'require_sms_for_course_completion', 'require_sms_for_test_completion',
         ]

@@ -1,10 +1,11 @@
 import { CheckCircle, XCircle, Clock, RotateCcw, ArrowLeft, ChevronDown, ChevronUp, Send, Video } from 'lucide-react';
 import { Test, TestAttempt, Protocol, ExtraAttemptRequest } from '../../types/lms';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SMSVerification } from './SMSVerification';
 import { useUser } from '../../contexts/UserContext';
 import { testsService } from '../../services/tests';
+import { settingsService } from '../../services/settings';
 import { protocolsService } from '../../services/protocols';
 import { examsService } from '../../services/exams';
 import { ExtraAttemptRequestModal } from './ExtraAttemptRequestModal';
@@ -48,7 +49,17 @@ export function TestResultPage({
   const [showExtraAttemptModal, setShowExtraAttemptModal] = useState(false);
   const [extraAttemptRequests, setExtraAttemptRequests] = useState<ExtraAttemptRequest[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(false);
+  const [requireSmsForTestCompletion, setRequireSmsForTestCompletion] = useState(true);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const finalizeWithoutSmsStartedRef = useRef(false);
   const answerDetails = result.answer_details || result.answerDetails || [];
+
+  useEffect(() => {
+    settingsService.getSettings()
+      .then((s) => setRequireSmsForTestCompletion(s.require_sms_for_test_completion ?? true))
+      .catch(() => {})
+      .finally(() => setSettingsLoaded(true));
+  }, []);
   
   // Проверяем, нужно ли показывать результаты
   const showResults = test.showResults !== undefined ? test.showResults : (test.show_results !== undefined ? test.show_results : true);
@@ -80,14 +91,69 @@ export function TestResultPage({
     checkProtocol();
   }, [isStandalone, passed, result?.id]);
   
-  // Автоматически показываем SMS верификацию для standalone тестов, если тест сдан и протокол еще не создан
+  // Автоматически: SMS или финализация без SMS (по настройкам сайта)
   useEffect(() => {
-    if (isStandalone && passed && !protocolCreated && !showSMSVerification && user && test?.id && !loadingProtocol && !protocol) {
-      handleRequestCompletionOTP();
+    if (!settingsLoaded) return;
+    if (!isStandalone || !passed || protocolCreated || !user || !test?.id || loadingProtocol || protocol) return;
+
+    if (requireSmsForTestCompletion) {
+      if (showSMSVerification) return;
+      (async () => {
+        try {
+          setLoadingOTP(true);
+          const response = await testsService.requestCompletionOTP(String(test.id));
+          setShowSMSVerification(true);
+          if (response.otp_is_new !== false) {
+            toast.success(t('lms.test.smsSent') || 'SMS отправлено');
+          }
+        } catch (error: any) {
+          toast.error(error.message || t('lms.test.smsRequestError') || 'Ошибка при запросе SMS кода');
+          console.error('Failed to request completion OTP:', error);
+        } finally {
+          setLoadingOTP(false);
+        }
+      })();
+      return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isStandalone, passed, protocolCreated, showSMSVerification, user, test?.id, loadingProtocol, protocol]);
-  
+
+    if (finalizeWithoutSmsStartedRef.current) return;
+    finalizeWithoutSmsStartedRef.current = true;
+    (async () => {
+      try {
+        setLoadingOTP(true);
+        const response = await testsService.finalizeTestCompletion(String(test.id));
+        setProtocolCreated(true);
+        if (response.protocol_id) {
+          try {
+            const createdProtocol = await protocolsService.getProtocol(String(response.protocol_id));
+            setProtocol(createdProtocol);
+          } catch (e) {
+            console.error('Failed to load created protocol:', e);
+          }
+        }
+        toast.success(t('lms.test.testCompletedSuccess') || 'Тест завершен. Протокол создан и отправлен на подписание ЭК.');
+      } catch (error: any) {
+        finalizeWithoutSmsStartedRef.current = false;
+        toast.error(error.message || t('lms.test.smsVerifyError') || 'Ошибка при завершении теста');
+        console.error('Failed to finalize test completion:', error);
+      } finally {
+        setLoadingOTP(false);
+      }
+    })();
+  }, [
+    settingsLoaded,
+    requireSmsForTestCompletion,
+    isStandalone,
+    passed,
+    protocolCreated,
+    showSMSVerification,
+    user,
+    test?.id,
+    loadingProtocol,
+    protocol,
+    t,
+  ]);
+
   // Загружаем запросы на дополнительные попытки
   useEffect(() => {
     const loadRequests = async () => {
@@ -125,25 +191,6 @@ export function TestResultPage({
       return `${mins} мин ${secs} сек`;
     }
     return `${secs} сек`;
-  };
-
-  const handleRequestCompletionOTP = async () => {
-    if (!test?.id) return;
-
-    try {
-      setLoadingOTP(true);
-      const response = await testsService.requestCompletionOTP(String(test.id));
-      setShowSMSVerification(true);
-      
-      if (response.otp_is_new !== false) {
-        toast.success(t('lms.test.smsSent') || 'SMS отправлено');
-      }
-    } catch (error: any) {
-      toast.error(error.message || t('lms.test.smsRequestError') || 'Ошибка при запросе SMS кода');
-      console.error('Failed to request completion OTP:', error);
-    } finally {
-      setLoadingOTP(false);
-    }
   };
 
   const handleSMSVerified = async (otp: string) => {

@@ -12,16 +12,16 @@ const DETECTOR_OPTIONS = new faceapi.TinyFaceDetectorOptions({
 /** Ниже — «слабый» кадр: не сбрасываем пропуски и не штрафуем за позу/совпадение (иначе мерцание = 3 штрафа). */
 const MIN_RELIABLE_DETECTION_SCORE = 0.58;
 /** Сколько подряд надёжных кадров ждём, прежде чем включать штрафы поза/несовпадение. */
-const STABLE_RELIABLE_TICKS_BEFORE_PENALTIES = 5;
+const STABLE_RELIABLE_TICKS_BEFORE_PENALTIES = 10;
 /** После снятия паузы «лицо не в кадре» не штрафовать за позу/совпадение (камера и оценка позы нестабильны). */
-const GRACE_MS_AFTER_FACE_VISIBLE = 12_000;
+const GRACE_MS_AFTER_FACE_VISIBLE = 25_000;
 
 const MATCH_DISTANCE_MAX = 0.55;
 const YAW_ABS_MAX = 0.38;
 const PITCH_MIN = -0.14;
 const PITCH_MAX = 0.45;
 const TICK_MS = 700;
-const VIOLATION_COOLDOWN_MS = 2800;
+const VIOLATION_COOLDOWN_MS = 7000;
 const FACE_MISS_FRAMES = 4;
 
 let modelsLoadPromise: Promise<void> | null = null;
@@ -63,11 +63,13 @@ export interface UseFaceProctoringOptions {
   enabled: boolean;
   videoRef: RefObject<HTMLVideoElement | null>;
   referenceImageUrl: string | null | undefined;
-  /** Штрафные нарушения (счётчик 3/3): отворот, несовпадение лица */
-  reportViolation: (type: 'face_pose' | 'face_mismatch') => void;
+  /** Штрафные нарушения (счётчик 3/3): только несовпадение лица; отворот — через onBadPose без штрафа */
+  reportViolation: (type: 'face_mismatch') => void;
   /** Лицо не в кадре — без штрафа: пауза теста на стороне UI */
   onFaceHidden?: () => void;
-  /** Лицо снова в кадре — снять паузу */
+  /** Отворот / «не смотрите в камеру» — без штрафа: пауза и напоминание, как при отсутствии лица */
+  onBadPose?: () => void;
+  /** Лицо снова в кадре / поза нормализовалась — снять паузу */
   onFaceVisible?: () => void;
 }
 
@@ -80,6 +82,7 @@ export function useFaceProctoring({
   referenceImageUrl,
   reportViolation,
   onFaceHidden,
+  onBadPose,
   onFaceVisible,
 }: UseFaceProctoringOptions): void {
   const refDescriptorRef = useRef<Float32Array | null>(null);
@@ -90,10 +93,13 @@ export function useFaceProctoring({
   const reportViolationRef = useRef(reportViolation);
   reportViolationRef.current = reportViolation;
   const onFaceHiddenRef = useRef(onFaceHidden);
+  const onBadPoseRef = useRef(onBadPose);
   const onFaceVisibleRef = useRef(onFaceVisible);
   onFaceHiddenRef.current = onFaceHidden;
+  onBadPoseRef.current = onBadPose;
   onFaceVisibleRef.current = onFaceVisible;
   const pausedForMissingRef = useRef(false);
+  const pausedForBadPoseRef = useRef(false);
   const penaltiesBlockedUntilRef = useRef(0);
 
   const canReport = (type: string): boolean => {
@@ -143,10 +149,16 @@ export function useFaceProctoring({
       missStreakRef.current = 0;
       stableReliableTicksRef.current = 0;
       penaltiesBlockedUntilRef.current = 0;
+      let needVisible = false;
       if (pausedForMissingRef.current) {
         pausedForMissingRef.current = false;
-        onFaceVisibleRef.current?.();
+        needVisible = true;
       }
+      if (pausedForBadPoseRef.current) {
+        pausedForBadPoseRef.current = false;
+        needVisible = true;
+      }
+      if (needVisible) onFaceVisibleRef.current?.();
       return;
     }
 
@@ -191,6 +203,7 @@ export function useFaceProctoring({
         missStreakRef.current += 1;
         if (missStreakRef.current >= FACE_MISS_FRAMES && !pausedForMissingRef.current) {
           pausedForMissingRef.current = true;
+          pausedForBadPoseRef.current = false;
           onFaceHiddenRef.current?.();
         }
         return;
@@ -215,10 +228,16 @@ export function useFaceProctoring({
 
       const { yaw, pitch } = headPoseFromLandmarks(detection!.landmarks);
       if (Math.abs(yaw) > YAW_ABS_MAX || pitch < PITCH_MIN || pitch > PITCH_MAX) {
-        if (canReport('face_pose')) {
-          reportViolationRef.current('face_pose');
+        if (!pausedForBadPoseRef.current) {
+          pausedForBadPoseRef.current = true;
+          onBadPoseRef.current?.();
         }
         return;
+      }
+
+      if (pausedForBadPoseRef.current) {
+        pausedForBadPoseRef.current = false;
+        onFaceVisibleRef.current?.();
       }
 
       const refDesc = refDescriptorRef.current;
@@ -240,10 +259,16 @@ export function useFaceProctoring({
       missStreakRef.current = 0;
       stableReliableTicksRef.current = 0;
       penaltiesBlockedUntilRef.current = 0;
+      let needVisible = false;
       if (pausedForMissingRef.current) {
         pausedForMissingRef.current = false;
-        onFaceVisibleRef.current?.();
+        needVisible = true;
       }
+      if (pausedForBadPoseRef.current) {
+        pausedForBadPoseRef.current = false;
+        needVisible = true;
+      }
+      if (needVisible) onFaceVisibleRef.current?.();
     };
   }, [enabled, videoRef]);
 }

@@ -13,6 +13,8 @@ export function SiteSettingsEditor() {
   const [requireCourseEnrollmentRequest, setRequireCourseEnrollmentRequest] = useState(true);
   const [requireTestEnrollmentRequest, setRequireTestEnrollmentRequest] = useState(true);
   const [defaultProtocolSignMethod, setDefaultProtocolSignMethod] = useState<'both' | 'sms' | 'eds'>('both');
+  const [requireSmsForCourseCompletion, setRequireSmsForCourseCompletion] = useState(true);
+  const [requireSmsForTestCompletion, setRequireSmsForTestCompletion] = useState(true);
 
   useEffect(() => {
     settingsService.getSettings()
@@ -22,6 +24,8 @@ export function SiteSettingsEditor() {
         setRequireCourseEnrollmentRequest(data.require_course_enrollment_request ?? true);
         setRequireTestEnrollmentRequest(data.require_test_enrollment_request ?? true);
         setDefaultProtocolSignMethod((data.default_protocol_sign_method as 'both' | 'sms' | 'eds') || 'both');
+        setRequireSmsForCourseCompletion(data.require_sms_for_course_completion ?? true);
+        setRequireSmsForTestCompletion(data.require_sms_for_test_completion ?? true);
       })
       .catch(() => toast.error(t('admin.settings.loadError') || 'Ошибка загрузки настроек'))
       .finally(() => setLoading(false));
@@ -35,6 +39,8 @@ export function SiteSettingsEditor() {
         require_course_enrollment_request: requireCourseEnrollmentRequest,
         require_test_enrollment_request: requireTestEnrollmentRequest,
         default_protocol_sign_method: defaultProtocolSignMethod,
+        require_sms_for_course_completion: requireSmsForCourseCompletion,
+        require_sms_for_test_completion: requireSmsForTestCompletion,
       });
       setConfig(updated);
       toast.success(t('admin.settings.saveSuccess') || 'Настройки сохранены');
@@ -120,6 +126,44 @@ export function SiteSettingsEditor() {
               </span>
               <p className="text-sm text-gray-500 mt-1">
                 {t('admin.settings.requireTestEnrollmentRequestHint') || 'При включении студенты должны подать запрос или получить назначение от администратора'}
+              </p>
+            </div>
+          </label>
+        </div>
+
+        <div className="flex items-start gap-4 mt-4">
+          <label className="flex items-center gap-3 cursor-pointer flex-1">
+            <input
+              type="checkbox"
+              checked={requireSmsForCourseCompletion}
+              onChange={(e) => setRequireSmsForCourseCompletion(e.target.checked)}
+              className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <div>
+              <span className="font-medium text-gray-900">
+                {t('admin.settings.requireSmsForCourseCompletion') || 'Требовать SMS для завершения курса'}
+              </span>
+              <p className="text-sm text-gray-500 mt-1">
+                {t('admin.settings.requireSmsForCourseCompletionHint') || 'При включении для завершения курса и создания протокола нужен код из SMS'}
+              </p>
+            </div>
+          </label>
+        </div>
+
+        <div className="flex items-start gap-4 mt-4">
+          <label className="flex items-center gap-3 cursor-pointer flex-1">
+            <input
+              type="checkbox"
+              checked={requireSmsForTestCompletion}
+              onChange={(e) => setRequireSmsForTestCompletion(e.target.checked)}
+              className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <div>
+              <span className="font-medium text-gray-900">
+                {t('admin.settings.requireSmsForTestCompletion') || 'Требовать SMS для завершения отдельного теста'}
+              </span>
+              <p className="text-sm text-gray-500 mt-1">
+                {t('admin.settings.requireSmsForTestCompletionHint') || 'При включении после сдачи теста из программы обучения нужен код из SMS для протокола'}
               </p>
             </div>
           </label>

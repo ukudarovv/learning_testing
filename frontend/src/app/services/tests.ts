@@ -578,6 +578,10 @@ const testsService = {
     });
   },
 
+  async finalizeTestCompletion(testId: string): Promise<{ message: string; protocol_id: number }> {
+    return await apiClient.post(`/tests/${testId}/finalize_completion/`, {});
+  },
+
   async createEnrollmentRequest(testId: string): Promise<TestEnrollmentRequest> {
     const data = await apiClient.post<TestEnrollmentRequest>(
       '/tests/enrollment-requests/',

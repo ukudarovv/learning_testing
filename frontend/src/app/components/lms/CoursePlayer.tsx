@@ -11,6 +11,7 @@ import { TestResultModal } from './TestResultModal';
 import { ExtraAttemptRequestModal } from './ExtraAttemptRequestModal';
 import { SMSVerification } from './SMSVerification';
 import { coursesService } from '../../services/courses';
+import { settingsService } from '../../services/settings';
 import { useUser } from '../../contexts/UserContext';
 import { toast } from 'sonner';
 import { PdfViewer } from './PdfViewer';
@@ -54,7 +55,14 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
   const [finalTestExtraAttemptRequests, setFinalTestExtraAttemptRequests] = useState<ExtraAttemptRequest[]>([]);
   const [finalTestData, setFinalTestData] = useState<Test | null>(null);
   const [showFinalTestExtraAttemptModal, setShowFinalTestExtraAttemptModal] = useState(false);
+  const [requireSmsForCourseCompletion, setRequireSmsForCourseCompletion] = useState(true);
   const { user } = useUser();
+
+  useEffect(() => {
+    settingsService.getSettings()
+      .then((s) => setRequireSmsForCourseCompletion(s.require_sms_for_course_completion ?? true))
+      .catch(() => {});
+  }, []);
 
   const toggleModule = (moduleId: string) => {
     setExpandedModules(prev =>
@@ -365,7 +373,7 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
       } else {
         // Если результаты не показываются, просто показываем сообщение о завершении
         toast.success(
-          passed 
+          result.passed
             ? t('lms.coursePlayer.testCompletedNoResults') || 'Тест завершен. Результаты будут доступны после проверки.'
             : t('lms.coursePlayer.testFailedNoResults') || 'Тест завершен. Результаты будут доступны после проверки.'
         );
@@ -464,6 +472,25 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
     } catch (error: any) {
       toast.error(error.message || t('lms.coursePlayer.smsRequestError'));
       console.error('Failed to request completion OTP:', error);
+    } finally {
+      setLoadingOTP(false);
+    }
+  };
+
+  const handleCourseCompleteClick = async () => {
+    if (!course.id) return;
+    if (requireSmsForCourseCompletion) {
+      await handleRequestCompletionOTP();
+      return;
+    }
+    try {
+      setLoadingOTP(true);
+      await coursesService.finalizeCourseCompletion(course.id);
+      toast.success(t('lms.coursePlayer.courseCompletedSuccess'));
+      await onCourseComplete();
+    } catch (error: any) {
+      toast.error(error.message || t('lms.coursePlayer.smsVerifyError'));
+      console.error('Failed to finalize course completion:', error);
     } finally {
       setLoadingOTP(false);
     }
@@ -1250,7 +1277,7 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
                             {t('lms.coursePlayer.readyToCompleteDesc', { finalTest: course.final_test_id ? t('lms.coursePlayer.readyToCompleteDescWithTest') : '' })}
                           </p>
                           <button
-                            onClick={handleRequestCompletionOTP}
+                            onClick={handleCourseCompleteClick}
                             disabled={loadingOTP}
                             className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                           >

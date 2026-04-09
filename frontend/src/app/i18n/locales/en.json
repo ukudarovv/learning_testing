@@ -706,6 +706,10 @@
       "protocolSignSms": "SMS only",
       "protocolSignEds": "EDS only",
       "defaultProtocolSignMethodHint": "Protocol signing method for EC members",
+      "requireSmsForCourseCompletion": "Require SMS to complete a course",
+      "requireSmsForCourseCompletionHint": "When enabled, completing a course and creating a protocol requires an SMS code",
+      "requireSmsForTestCompletion": "Require SMS to complete a standalone test",
+      "requireSmsForTestCompletionHint": "When enabled, after passing a training program test an SMS code is required for the protocol",
       "loadError": "Error loading settings",
       "saveSuccess": "Settings saved",
       "saveError": "Error saving settings"
@@ -1475,6 +1479,10 @@
       "faceMissingPauseBody": "The camera cannot see your face. Stay centered in the frame with good lighting.",
       "faceMissingPauseHint": "The timer and answers resume automatically when your face is visible again. This does not count toward the three-strike warning limit.",
       "faceMissingSubmitBlocked": "Bring your face into the frame first (reminder only, not a violation).",
+      "faceBadPosePausedToast": "Look at the camera; do not turn away",
+      "faceBadPosePauseTitle": "Reminder",
+      "faceBadPosePauseBody": "Face the camera directly. Turning away triggers only this reminder—no strike and no change to the three-warning limit.",
+      "faceBadPoseSubmitBlocked": "Look at the camera first (reminder only, not a violation).",
       "facePoseWarning": "Look straight at the camera; do not turn away",
       "faceMismatchWarning": "Face does not match your profile photo",
       "faceProctoringHint": "Keep your face in frame and look at the camera—automatic comparison with your profile photo is running.",
@@ -1515,7 +1523,8 @@
         "cameraDenied": "Camera access was denied.",
         "cameraNotFound": "Camera not found.",
         "screenError": "Could not start screen sharing.",
-        "screenDenied": "Screen sharing was denied."
+        "screenDenied": "Screen sharing was denied.",
+        "screenPickBrowserTab": "Please select the browser tab with the test (not the entire screen and not a window)."
       },
       "terminationError": "Error terminating test"
     }

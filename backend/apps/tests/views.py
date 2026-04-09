@@ -3,8 +3,13 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
+import logging
 from django.db.models import Max
 from django.utils import timezone
+
+from apps.exams.models import TestAttempt
+from apps.accounts.models import User
+from apps.core.models import get_site_config
 
 from .models import Test, Question, TestCompletionVerification, TestEnrollmentRequest, TestAssignment
 from .serializers import (
@@ -20,6 +25,93 @@ from apps.accounts.permissions import IsAdminOrReadOnly
 from apps.core.utils import get_request_language
 from apps.courses.serializers import OTPVerifySerializer
 
+logger = logging.getLogger(__name__)
+
+
+def _standalone_test_passed_attempt(user, test):
+    """Returns (test_attempt, None) or (None, Response). Training program test with category only."""
+    if test.is_standalone or not test.category:
+        return None, Response(
+            {'error': 'This test is not a standalone test'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    test_attempt = TestAttempt.objects.filter(
+        user=user,
+        test=test,
+        passed=True,
+    ).order_by('-completed_at').first()
+    if not test_attempt:
+        return None, Response(
+            {'error': 'Test attempt not found'},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    return test_attempt, None
+
+
+def _finalize_standalone_test_protocol(request, test, test_attempt):
+    """Create protocol after standalone test completion (OTP verified or SMS disabled)."""
+    from apps.protocols.models import Protocol, ProtocolSignature
+    from apps.notifications.models import Notification
+    from apps.notifications.utils import send_protocol_pdek_notification
+
+    existing = Protocol.objects.filter(attempt=test_attempt).first()
+    if existing:
+        logger.info(
+            'Protocol already exists for attempt %s, returning existing protocol %s',
+            test_attempt.id,
+            existing.id,
+        )
+        return Response(
+            {
+                'message': 'Test completion verified. Protocol already created for EC review.',
+                'protocol_id': existing.id,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    exam_date = test_attempt.completed_at or timezone.now()
+    score = test_attempt.score or 0
+    passing_score = test.passing_score
+
+    protocol = Protocol.objects.create(
+        student=request.user,
+        test=test,
+        course=None,
+        attempt=test_attempt,
+        enrollment=None,
+        exam_date=exam_date,
+        score=score,
+        passing_score=passing_score,
+        result='passed',
+        status='pending_pdek',
+    )
+
+    pdek_members = User.objects.filter(role__in=['pdek_member', 'pdek_chairman'])
+    for member in pdek_members:
+        ProtocolSignature.objects.create(
+            protocol=protocol,
+            signer=member,
+            role='chairman' if member.role == 'pdek_chairman' else 'member',
+        )
+
+    for member in pdek_members:
+        Notification.objects.create(
+            user=member,
+            type='protocol_ready',
+            title='Новый протокол для подписания',
+            message=f'Протокол {protocol.number} для теста "{test.title}" готов к подписанию',
+        )
+
+    send_protocol_pdek_notification(protocol)
+
+    return Response(
+        {
+            'message': 'Test completion verified. Protocol created for EC review.',
+            'protocol_id': protocol.id,
+        },
+        status=status.HTTP_200_OK,
+    )
+
 
 class TestViewSet(viewsets.ModelViewSet):
     """Test ViewSet"""
@@ -34,7 +126,7 @@ class TestViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         """Allow read access to all, write access only to admins"""
         # Allow authenticated users to request and verify completion OTP
-        if self.action in ['request_completion_otp', 'verify_completion_otp']:
+        if self.action in ['request_completion_otp', 'verify_completion_otp', 'finalize_completion']:
             return [permissions.IsAuthenticated()]
         if self.action in ['list', 'retrieve']:
             return [permissions.AllowAny()]
@@ -238,28 +330,11 @@ class TestViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         
         otp_code = serializer.validated_data['otp_code']
-        
-        # Check if test is standalone (must have category and is_standalone=False - displayed on Training Programs page)
-        if test.is_standalone or not test.category:
-            return Response(
-                {'error': 'This test is not a standalone test'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Get test attempt
-        from apps.exams.models import TestAttempt
-        test_attempt = TestAttempt.objects.filter(
-            user=request.user,
-            test=test,
-            passed=True
-        ).order_by('-completed_at').first()
-        
-        if not test_attempt:
-            return Response(
-                {'error': 'Test attempt not found'},
-                status=status.HTTP_404_NOT_FOUND
-            )
-        
+
+        test_attempt, err = _standalone_test_passed_attempt(request.user, test)
+        if err:
+            return err
+
         # Get verification
         try:
             verification = TestCompletionVerification.objects.get(test_attempt=test_attempt)
@@ -302,67 +377,23 @@ class TestViewSet(viewsets.ModelViewSet):
         
         logger.info(f"OTP verification successful for test {test.id}, user {request.user.id}")
 
-        # Протокол уже создан (повторное нажатие) — возвращаем существующий
-        from apps.protocols.models import Protocol
-        existing = Protocol.objects.filter(attempt=test_attempt).first()
-        if existing:
-            logger.info(f"Protocol already exists for attempt {test_attempt.id}, returning existing protocol {existing.id}")
-            return Response({
-                'message': 'Test completion verified. Protocol already created for EC review.',
-                'protocol_id': existing.id
-            }, status=status.HTTP_200_OK)
-        
-        # Create Protocol
-        from apps.protocols.models import Protocol, ProtocolSignature
-        from apps.accounts.models import User
-        from django.utils import timezone
-        
-        # Determine protocol parameters
-        exam_date = test_attempt.completed_at or timezone.now()
-        score = test_attempt.score or 0
-        passing_score = test.passing_score
-        
-        protocol = Protocol.objects.create(
-            student=request.user,
-            test=test,  # For standalone tests
-            course=None,  # No course for standalone tests
-            attempt=test_attempt,
-            enrollment=None,  # No enrollment for standalone tests
-            exam_date=exam_date,
-            score=score,
-            passing_score=passing_score,
-            result='passed',
-            status='pending_pdek'
-        )
-        
-        # Create signatures for EC members
-        pdek_members = User.objects.filter(role__in=['pdek_member', 'pdek_chairman'])
-        for member in pdek_members:
-            ProtocolSignature.objects.create(
-                protocol=protocol,
-                signer=member,
-                role='chairman' if member.role == 'pdek_chairman' else 'member'
+        return _finalize_standalone_test_protocol(request, test, test_attempt)
+
+    @action(detail=True, methods=['post'])
+    def finalize_completion(self, request, pk=None):
+        """Create protocol without SMS when disabled in site settings."""
+        test = self.get_object()
+        cfg = get_site_config()
+        if cfg.require_sms_for_test_completion:
+            return Response(
+                {'error': 'SMS confirmation is required for test completion'},
+                status=status.HTTP_403_FORBIDDEN,
             )
-        
-        # Create notification for EC members
-        from apps.notifications.models import Notification
-        for member in pdek_members:
-            Notification.objects.create(
-                user=member,
-                type='protocol_ready',
-                title='Новый протокол для подписания',
-                message=f'Протокол {protocol.number} для теста "{test.title}" готов к подписанию'
-            )
-        
-        # Send email notification to EC members
-        from apps.notifications.utils import send_protocol_pdek_notification
-        send_protocol_pdek_notification(protocol)
-        
-        return Response({
-            'message': 'Test completion verified. Protocol created for EC review.',
-            'protocol_id': protocol.id
-        }, status=status.HTTP_200_OK)
-    
+        test_attempt, err = _standalone_test_passed_attempt(request.user, test)
+        if err:
+            return err
+        return _finalize_standalone_test_protocol(request, test, test_attempt)
+
     @action(detail=True, methods=['post'])
     def assign(self, request, pk=None):
         """Assign test to students (admin only)"""

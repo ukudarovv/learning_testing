@@ -62,13 +62,15 @@ export function TestInterface({
   const [profilePhotoCheckLoading, setProfilePhotoCheckLoading] = useState(false);
   const [showViolationWarning, setShowViolationWarning] = useState(false);
   const [isTerminating, setIsTerminating] = useState(false);
+  const [wasForceTerminated, setWasForceTerminated] = useState(false);
   const previousViolationCountRef = useRef(0);
   const testRootRef = useRef<HTMLDivElement>(null);
   const proctorVideoRef = useRef<HTMLVideoElement>(null);
   const [protectionRulesBarDismissed, setProtectionRulesBarDismissed] = useState(false);
   const [watermarkTick, setWatermarkTick] = useState(0);
-  /** Пауза без штрафа: лицо не в кадре (таймер и ответы остановлены до появления лица) */
-  const [faceMissingPaused, setFaceMissingPaused] = useState(false);
+  /** Пауза без штрафа: лицо не в кадре или отворот головы (таймер и ответы остановлены) */
+  const [facePauseKind, setFacePauseKind] = useState<null | 'missing' | 'bad_pose'>(null);
+  const faceMissingPaused = facePauseKind !== null;
 
   // Восстанавливаем сохраненные ответы, если они есть
   const initialAnswers = savedAnswers 
@@ -117,15 +119,24 @@ export function TestInterface({
 
   /** Лицо не в кадре: только напоминание и пауза — не вызываем reportViolation, штрафы не начисляются */
   const handleFaceHidden = useCallback(() => {
-    setFaceMissingPaused(true);
+    setFacePauseKind('missing');
     toast.message(t('lms.test.faceMissingPausedToast'), {
       description: t('lms.test.faceMissingToastNoPenalty'),
       duration: 8000,
     });
   }, [t]);
 
+  /** Отворот от камеры: только напоминание и пауза — без штрафа и без счётчика 3/3 */
+  const handleBadPose = useCallback(() => {
+    setFacePauseKind('bad_pose');
+    toast.message(t('lms.test.faceBadPosePausedToast'), {
+      description: t('lms.test.faceMissingToastNoPenalty'),
+      duration: 8000,
+    });
+  }, [t]);
+
   const handleFaceVisible = useCallback(() => {
-    setFaceMissingPaused(false);
+    setFacePauseKind(null);
   }, []);
 
   useFaceProctoring({
@@ -140,6 +151,7 @@ export function TestInterface({
     referenceImageUrl: user?.profile_photo_url,
     reportViolation,
     onFaceHidden: handleFaceHidden,
+    onBadPose: handleBadPose,
     onFaceVisible: handleFaceVisible,
   });
 
@@ -336,6 +348,7 @@ export function TestInterface({
     if (isTerminating) return;
     
     setIsTerminating(true);
+    setWasForceTerminated(true);
     setShowViolationWarning(false);
 
     let reason = 'Нарушение правил прохождения теста';
@@ -490,8 +503,20 @@ export function TestInterface({
   };
 
   const handleSubmit = async () => {
+    setShowConfirmSubmit(false);
+    if (wasForceTerminated) {
+      toast.error(
+        t('lms.test.testTerminated') || 'Тест досрочно завершен из-за нарушений правил'
+      );
+      onCancel();
+      return;
+    }
     if (faceMissingPaused) {
-      toast.message(t('lms.test.faceMissingSubmitBlocked'));
+      toast.message(
+        facePauseKind === 'bad_pose'
+          ? t('lms.test.faceBadPoseSubmitBlocked')
+          : t('lms.test.faceMissingSubmitBlocked')
+      );
       return;
     }
     if (requiresVideoRecording && !isRecording && !videoStream) {
@@ -775,8 +800,16 @@ export function TestInterface({
               {t('lms.test.faceMissingNoPenaltyBadge')}
             </p>
             <PauseCircle className="mx-auto mb-4 h-12 w-12 text-amber-600" />
-            <h3 className="mb-2 text-xl font-bold text-amber-950">{t('lms.test.faceMissingPauseTitle')}</h3>
-            <p className="text-sm leading-relaxed text-amber-950/90">{t('lms.test.faceMissingPauseBody')}</p>
+            <h3 className="mb-2 text-xl font-bold text-amber-950">
+              {facePauseKind === 'bad_pose'
+                ? t('lms.test.faceBadPosePauseTitle')
+                : t('lms.test.faceMissingPauseTitle')}
+            </h3>
+            <p className="text-sm leading-relaxed text-amber-950/90">
+              {facePauseKind === 'bad_pose'
+                ? t('lms.test.faceBadPosePauseBody')
+                : t('lms.test.faceMissingPauseBody')}
+            </p>
             <p className="mt-5 text-xs font-medium text-amber-800/90">{t('lms.test.faceMissingPauseHint')}</p>
           </div>
         </div>
@@ -1245,6 +1278,7 @@ export function TestInterface({
                   {currentQuestionIndex === questions.length - 1 ? (
                     <button
                       onClick={() => setShowConfirmSubmit(true)}
+                      disabled={wasForceTerminated || isTerminating}
                       className="flex items-center gap-2 px-8 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors"
                     >
                       <Flag className="w-4 h-4" />
@@ -1300,6 +1334,7 @@ export function TestInterface({
               </button>
               <button
                 onClick={handleSubmit}
+                disabled={wasForceTerminated || isTerminating}
                 className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors"
               >
                 Завершить

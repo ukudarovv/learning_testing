@@ -2,6 +2,22 @@ import { apiClient, downloadBlob } from './api';
 import { Course, CourseEnrollment, CourseEnrollmentRequest } from '../types/lms';
 import { PaginatedResponse, PaginationParams } from '../types/pagination';
 
+/**
+ * ID финального теста для API. Нельзя писать `x || y || null`: при явном `final_test_id: null`
+ * (сброс в форме) оператор || подставил бы `finalTestId` и финальный тест не очистился бы в БД.
+ */
+function pickFinalTestIdForApi(course: Partial<Course>): number | null {
+  if (Object.prototype.hasOwnProperty.call(course, 'final_test_id')) {
+    const v = course.final_test_id;
+    return v === null || v === undefined ? null : v;
+  }
+  if (Object.prototype.hasOwnProperty.call(course, 'finalTestId')) {
+    const v = course.finalTestId;
+    return v === null || v === undefined ? null : v;
+  }
+  return null;
+}
+
 const coursesService = {
   async getCourses(params?: { 
     status?: string; 
@@ -171,7 +187,7 @@ const coursesService = {
       has_timer: course.hasTimer || course.has_timer,
       timer_minutes: course.timerMinutes || course.timer_minutes,
       pdek_commission: course.pdekCommission || course.pdek_commission,
-      final_test: course.final_test_id || course.finalTestId || null,
+      final_test: pickFinalTestIdForApi(course),
     };
     
     // Process modules and lessons for nested creation
@@ -259,7 +275,7 @@ const coursesService = {
       has_timer: course.hasTimer || course.has_timer,
       timer_minutes: course.timerMinutes || course.timer_minutes,
       pdek_commission: course.pdekCommission || course.pdek_commission,
-      final_test: course.final_test_id || course.finalTestId || null,
+      final_test: pickFinalTestIdForApi(course),
     };
     
     // Process modules and lessons for nested update
@@ -384,6 +400,10 @@ const coursesService = {
     return apiClient.post<{ message: string; protocol_id: number }>(`/courses/${courseId}/verify_completion_otp/`, {
       otp_code: otpCode
     });
+  },
+
+  async finalizeCourseCompletion(courseId: string): Promise<{ message: string; protocol_id: number }> {
+    return apiClient.post<{ message: string; protocol_id: number }>(`/courses/${courseId}/finalize_completion/`, {});
   },
 
   async createEnrollmentRequest(courseId: string): Promise<CourseEnrollmentRequest> {

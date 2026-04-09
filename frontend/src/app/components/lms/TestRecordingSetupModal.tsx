@@ -87,10 +87,30 @@ export function TestRecordingSetupModal({
     setIsRequesting(true);
     setError(null);
     try {
+      // Browser decides what user shares; we can only hint.
+      // In Chromium, preferCurrentTab increases chance the user picks current tab.
       const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: true,
+        video: { displaySurface: 'browser' } as any,
         audio: false,
-      });
+        preferCurrentTab: true as any,
+      } as any);
+
+      const track = stream.getVideoTracks()[0];
+      const displaySurface = (track?.getSettings?.() as any)?.displaySurface as
+        | 'browser'
+        | 'window'
+        | 'monitor'
+        | undefined;
+
+      // We want the tab with the test; if user shared whole screen/window, ask to reselect.
+      if (displaySurface && displaySurface !== 'browser') {
+        stream.getTracks().forEach((t) => t.stop());
+        setError(
+          t('lms.test.recordingSetup.screenPickBrowserTab') ||
+            'Пожалуйста, выберите «Вкладка браузера» с тестом (не «Весь экран» и не «Окно»).'
+        );
+        return;
+      }
       if (requiresVideoRecording) {
         onComplete({ video: pendingVideoStream ?? undefined, screen: stream });
       } else {
