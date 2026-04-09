@@ -1,10 +1,14 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, CheckCircle, Circle, AlertTriangle, ArrowLeft, ArrowRight, Flag, X, Camera, RefreshCw, PauseCircle } from 'lucide-react';
+import { Clock, CheckCircle, Circle, AlertTriangle, ArrowLeft, ArrowRight, Flag, X, Camera, Monitor, RefreshCw, PauseCircle } from 'lucide-react';
 import { Question, Answer } from '../../types/lms';
 import { examsService } from '../../services/exams';
-import { TestRecordingSetupModal } from './TestRecordingSetupModal';
 import { useVideoRecorder } from '../../hooks/useVideoRecorder';
+import {
+  acquireCameraStream,
+  acquireTabScreenStream,
+  PICK_BROWSER_TAB_ERROR,
+} from '../../utils/testRecordingSetup';
 import { useTestProtection, requestTestFullscreen } from '../../hooks/useTestProtection';
 import { useFaceProctoring } from '../../hooks/useFaceProctoring';
 import { useTranslation } from 'react-i18next';
@@ -44,18 +48,19 @@ export function TestInterface({
   const navigate = useNavigate();
   const { user, refreshUser } = useUser();
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [showVideoModal, setShowVideoModal] = useState(false);
-  const [videoModalClosed, setVideoModalClosed] = useState(false); // Флаг, что пользователь закрыл модальное окно
+  const [recordingSetupBusy, setRecordingSetupBusy] = useState(false);
+  const [recordingSetupError, setRecordingSetupError] = useState<string | null>(null);
   const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
   const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
-  const { isRecording, startRecording, stopRecording, error: videoError, recordingTime } = useVideoRecorder();
+  const { isRecording, startRecording, stopRecording, error: videoError, recordingTime } =
+    useVideoRecorder('camera');
   const {
     isRecording: isScreenRecording,
     startRecording: startScreenRecording,
     stopRecording: stopScreenRecording,
     error: screenError,
     recordingTime: screenRecordingTime,
-  } = useVideoRecorder();
+  } = useVideoRecorder('screen');
 
   const needsRecording = requiresVideoRecording || requiresScreenRecording;
   const needsProfilePhoto = Boolean(requiresVideoRecording && !user?.profile_photo_url);
@@ -174,71 +179,66 @@ export function TestInterface({
   }, [testStarted]);
   
   useEffect(() => {
-    if (
-      needsRecording &&
-      !testStarted &&
-      !showVideoModal &&
-      !videoModalClosed &&
-      !needsProfilePhoto
-    ) {
-      setShowVideoModal(true);
-    }
-  }, [needsRecording, testStarted, showVideoModal, videoModalClosed, needsProfilePhoto]);
-
-  useEffect(() => {
     if (!needsRecording) {
       setTestStarted(true);
     }
   }, [needsRecording]);
 
-  const recordingRequiredToast = () => {
-    toast.error(
-      t('lms.test.recordingRequired') ||
-        'Для прохождения этого теста требуется запись (камера и/или экран). Без этого тест недоступен.'
-    );
+  const stopStreamTracks = (stream: MediaStream | null | undefined) => {
+    stream?.getTracks().forEach((tr) => tr.stop());
   };
 
-  const handleRecordingSetupComplete = async (streams: { video?: MediaStream | null; screen?: MediaStream | null }) => {
-    if (streams.video) {
-      setVideoStream(streams.video);
-    }
-    if (streams.screen) {
-      setScreenStream(streams.screen);
-    }
-    setShowVideoModal(false);
-    setVideoModalClosed(false);
-
+  const handleStartRecordingSetup = async () => {
+    setRecordingSetupBusy(true);
+    setRecordingSetupError(null);
+    let vStream: MediaStream | null = null;
+    let sStream: MediaStream | null = null;
     try {
-      if (streams.video) {
-        await startRecording(streams.video);
+      if (requiresVideoRecording) {
+        vStream = await acquireCameraStream();
+        setVideoStream(vStream);
       }
-      if (streams.screen) {
-        await startScreenRecording(streams.screen);
+      if (requiresScreenRecording) {
+        sStream = await acquireTabScreenStream();
+        setScreenStream(sStream);
       }
-    } catch (error) {
-      console.error('Error starting recording:', error);
+      if (vStream) {
+        await startRecording(vStream);
+      }
+      if (sStream) {
+        await startScreenRecording(sStream);
+      }
+      setTestStarted(true);
+    } catch (err: unknown) {
+      stopStreamTracks(vStream);
+      stopStreamTracks(sStream);
+      setVideoStream(null);
+      setScreenStream(null);
+      const e = err as { message?: string; name?: string };
+      if (e.message === PICK_BROWSER_TAB_ERROR) {
+        setRecordingSetupError(
+          t('lms.test.recordingSetup.screenPickBrowserTab') ||
+            'Пожалуйста, выберите «Вкладка браузера» с тестом (не «Весь экран» и не «Окно»).'
+        );
+        return;
+      }
+      if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
+        setRecordingSetupError(
+          t('lms.test.recordingSetup.permissionDenied') ||
+            'Доступ к камере или экрану отклонён. Разрешите запись в настройках браузера.'
+        );
+        return;
+      }
+      if (e.message) {
+        setRecordingSetupError(e.message);
+        return;
+      }
+      setRecordingSetupError(
+        t('lms.test.recordingSetup.startError') || 'Не удалось начать запись. Попробуйте ещё раз.'
+      );
+    } finally {
+      setRecordingSetupBusy(false);
     }
-
-    setTestStarted(true);
-  };
-
-  const handleRecordingSetupDenied = () => {
-    setShowVideoModal(false);
-    if (needsRecording) {
-      recordingRequiredToast();
-      return;
-    }
-    setTestStarted(true);
-  };
-
-  const handleModalClose = () => {
-    setShowVideoModal(false);
-    setVideoModalClosed(true);
-    if (needsRecording) {
-      recordingRequiredToast();
-      return;
-    }
-    setTestStarted(true);
   };
 
   const currentQuestion = questions[currentQuestionIndex];
@@ -744,16 +744,71 @@ export function TestInterface({
         </div>
       )}
 
-      {/* Модальное окно с запросом разрешения на камеру */}
+      {/* Старт записи: один шаг по кнопке (камера без отдельного модального окна) */}
       {needsRecording && !testStarted && !needsProfilePhoto && (
-        <TestRecordingSetupModal
-          isOpen={showVideoModal}
-          requiresVideoRecording={requiresVideoRecording}
-          requiresScreenRecording={requiresScreenRecording}
-          onClose={handleModalClose}
-          onDenied={handleRecordingSetupDenied}
-          onComplete={handleRecordingSetupComplete}
-        />
+        <div className="fixed inset-0 z-[65] flex items-center justify-center bg-slate-900/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-xl bg-white p-8 shadow-2xl ring-1 ring-gray-200">
+            <div className="mb-6 flex justify-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-50 ring-4 ring-red-100">
+                {requiresVideoRecording && requiresScreenRecording ? (
+                  <div className="flex gap-1">
+                    <Camera className="h-8 w-8 text-red-600" />
+                    <Monitor className="h-8 w-8 text-red-600" />
+                  </div>
+                ) : requiresScreenRecording ? (
+                  <Monitor className="h-10 w-10 text-red-600" />
+                ) : (
+                  <Camera className="h-10 w-10 text-red-600" />
+                )}
+              </div>
+            </div>
+            <h2 className="mb-2 text-center text-xl font-bold text-gray-900">
+              {t('lms.test.recordingSetup.inlineTitle') || 'Запись экзамена'}
+            </h2>
+            <p className="mb-6 text-center text-sm leading-relaxed text-gray-600">
+              {requiresVideoRecording && requiresScreenRecording
+                ? t('lms.test.recordingSetup.inlineBodyBoth') ||
+                  'Нажмите кнопку ниже: браузер запросит доступ к камере и микрофону, затем — демонстрацию вкладки с тестом. Выберите именно вкладку браузера, не весь экран.'
+                : requiresScreenRecording
+                  ? t('lms.test.recordingSetup.inlineBodyScreen') ||
+                    'Нажмите кнопку ниже и в окне выбора укажите вкладку браузера с этим тестом (не «Весь экран» и не «Окно»).'
+                  : t('lms.test.recordingSetup.inlineBodyCamera') ||
+                    'Нажмите кнопку ниже и разрешите доступ к камере и микрофону для записи.'}
+            </p>
+            {recordingSetupError && (
+              <div className="mb-6 rounded-lg border-2 border-red-200 bg-red-50 p-4">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-600" />
+                  <p className="text-sm text-red-800">{recordingSetupError}</p>
+                </div>
+              </div>
+            )}
+            <div className="flex flex-col gap-3">
+              <button
+                type="button"
+                onClick={() => void handleStartRecordingSetup()}
+                disabled={recordingSetupBusy}
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 py-3.5 font-medium text-white shadow-md transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {recordingSetupBusy ? (
+                  <>
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    {t('lms.test.recordingSetup.requesting') || 'Запрос...'}
+                  </>
+                ) : (
+                  t('lms.test.recordingSetup.inlineStart') || 'Начать с записью'
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={onCancel}
+                className="w-full rounded-lg py-2 text-sm text-gray-600 hover:text-gray-900"
+              >
+                {t('common.back') || 'Назад'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       
       {/* Модальное окно предупреждения о нарушениях */}
@@ -845,29 +900,15 @@ export function TestInterface({
         }}
       >
         {requiresVideoRecording && videoStream && testStarted && (
-          <div
-            className={`fixed bottom-4 right-4 w-44 overflow-hidden rounded-xl border-2 border-red-500/70 bg-slate-900 shadow-2xl ring-2 ring-red-500/20 sm:bottom-6 sm:right-6 sm:w-52 ${
-              faceMissingPaused ? 'z-[70]' : 'z-[48]'
-            }`}
-            role="region"
-            aria-label={t('lms.test.cameraPreviewAria')}
-          >
-            <div className="relative aspect-video w-full bg-black">
-              <video
-                ref={proctorVideoRef}
-                muted
-                playsInline
-                autoPlay
-                className="h-full w-full scale-x-[-1] object-cover"
-              />
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent px-2 pb-2 pt-6">
-                <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-white sm:text-xs">
-                  <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" />
-                  {t('lms.test.cameraPreviewLabel')}
-                </p>
-              </div>
-            </div>
-          </div>
+          <video
+            ref={proctorVideoRef}
+            muted
+            playsInline
+            autoPlay
+            className="pointer-events-none fixed left-0 top-0 h-px w-px opacity-0"
+            aria-hidden
+            tabIndex={-1}
+          />
         )}
         {testStarted && (
           <div

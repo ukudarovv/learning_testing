@@ -2,6 +2,19 @@ import { apiClient } from './api';
 
 export type SMSPurpose = 'protocol_sign' | 'registration' | 'password_reset' | 'verification' | 'profile_update';
 
+/** Номер для SMS: только цифры, страна KZ/RU — префикс +7 (11 цифр). */
+export function normalizePhoneE164Kz(phone: string): string {
+  const digits = String(phone).replace(/\D/g, '');
+  let d = digits;
+  if (d.startsWith('8')) {
+    d = '7' + d.slice(1);
+  }
+  if (!d.startsWith('7')) {
+    d = '7' + d;
+  }
+  return `+${d}`;
+}
+
 export interface SendSMSResponse {
   message: string;
   expires_at: string;
@@ -28,7 +41,7 @@ export const smsService = {
   ): Promise<SendSMSResponse> {
     try {
       const response = await apiClient.post<SendSMSResponse>('/auth/sms/send/', {
-        phone,
+        phone: normalizePhoneE164Kz(phone),
         purpose,
       });
       return response;
@@ -54,7 +67,7 @@ export const smsService = {
   ): Promise<VerifySMSResponse> {
     try {
       const response = await apiClient.post<VerifySMSResponse>('/auth/sms/verify/', {
-        phone,
+        phone: normalizePhoneE164Kz(phone),
         code,
         purpose,
       });

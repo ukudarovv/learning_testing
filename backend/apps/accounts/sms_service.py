@@ -21,29 +21,22 @@ class SMSCService:
         self.api_url = getattr(settings, 'SMSC_API_URL', 'https://smsc.kz/sys/send.php')
         
     def _normalize_phone(self, phone: str) -> str:
-        """Normalize phone number to format 77001234567"""
+        """Normalize phone to 11 digits: 7XXXXXXXXXX (Kazakhstan / RU mobile)."""
         original_phone = str(phone)
-        
-        # Remove all non-digit characters
+
         phone = ''.join(filter(str.isdigit, original_phone))
-        
+
         logger.info(f"Normalizing phone: {original_phone} -> digits only: {phone}")
-        
-        # If starts with 8, replace with 7 (Kazakhstan format: 8XXXXXXXXX -> 7XXXXXXXXX)
+
         if phone.startswith('8'):
             phone = '7' + phone[1:]
             logger.info(f"Replaced 8 with 7: {phone}")
-        
-        # If starts with +7, remove + (shouldn't happen after digit filter, but just in case)
-        if phone.startswith('+7'):
-            phone = phone[2:]
-        
-        # If doesn't start with 7, add 7
+
         if not phone.startswith('7'):
             phone = '7' + phone
             logger.info(f"Added 7 prefix: {phone}")
-        
-        logger.info(f"Final normalized phone: {phone} (from {original_phone})")
+
+        logger.info(f"Final normalized phone digits: {phone} (from {original_phone})")
         
         # Validate phone length (should be 11 digits for Kazakhstan: 7XXXXXXXXXX)
         if len(phone) != 11:
@@ -83,9 +76,11 @@ class SMSCService:
                 'message': 'SMS service credentials are missing'
             }
         
-        # Normalize phone number
+        # Normalize phone number (digits only for cache/DB consistency)
         normalized_phone = self._normalize_phone(phone)
-        
+        # SMSC.kz international format: leading +
+        phones_param = f'+{normalized_phone}'
+
         # Check rate limit
         if not self._check_rate_limit(normalized_phone):
             return {
@@ -106,7 +101,7 @@ class SMSCService:
         params = {
             'login': self.login,
             'psw': self.password,
-            'phones': normalized_phone,
+            'phones': phones_param,
             'mes': message,  # Will be properly encoded by requests
             'charset': 'utf-8',  # UTF-8 encoding for Cyrillic characters
             'coding': '8',  # 8 = UCS-2 (Unicode) for Cyrillic support
@@ -122,9 +117,9 @@ class SMSCService:
         logger.debug(f"Message length: {len(message)} characters")
         
         try:
-            logger.info(f"Sending SMS to {normalized_phone} via SMSC.kz")
+            logger.info(f"Sending SMS to {phones_param} via SMSC.kz")
             logger.info(f"Original phone: {phone}")
-            logger.info(f"Normalized phone: {normalized_phone}")
+            logger.info(f"Normalized digits: {normalized_phone}")
             logger.info(f"Message: {message[:50]}...")
             logger.info(f"API URL: {self.api_url}")
             logger.info(f"Login: {self.login}")

@@ -1524,7 +1524,14 @@
         "cameraNotFound": "Camera not found.",
         "screenError": "Could not start screen sharing.",
         "screenDenied": "Screen sharing was denied.",
-        "screenPickBrowserTab": "Please select the browser tab with the test (not the entire screen and not a window)."
+        "screenPickBrowserTab": "Please select the browser tab with the test (not the entire screen and not a window).",
+        "permissionDenied": "Camera or screen access was denied. Allow recording in your browser settings.",
+        "startError": "Could not start recording. Please try again.",
+        "inlineTitle": "Exam recording",
+        "inlineBodyBoth": "Click below: the browser will ask for camera and microphone, then for sharing the test tab. Choose the browser tab, not the full screen.",
+        "inlineBodyScreen": "Click below and in the picker choose the browser tab with this test (not full screen or a window).",
+        "inlineBodyCamera": "Click below and allow access to the camera and microphone for recording.",
+        "inlineStart": "Start with recording"
       },
       "terminationError": "Error terminating test"
     }
