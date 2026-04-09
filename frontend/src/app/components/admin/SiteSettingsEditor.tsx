@@ -12,7 +12,7 @@ export function SiteSettingsEditor() {
   const [requireSmsOnRegistration, setRequireSmsOnRegistration] = useState(true);
   const [requireCourseEnrollmentRequest, setRequireCourseEnrollmentRequest] = useState(true);
   const [requireTestEnrollmentRequest, setRequireTestEnrollmentRequest] = useState(true);
-  const [defaultProtocolSignMethod, setDefaultProtocolSignMethod] = useState<'both' | 'sms' | 'eds'>('both');
+  const [defaultProtocolSignMethod, setDefaultProtocolSignMethod] = useState<'both' | 'sms' | 'eds' | 'none'>('both');
   const [requireSmsForCourseCompletion, setRequireSmsForCourseCompletion] = useState(true);
   const [requireSmsForTestCompletion, setRequireSmsForTestCompletion] = useState(true);
 
@@ -23,7 +23,7 @@ export function SiteSettingsEditor() {
         setRequireSmsOnRegistration(data.require_sms_on_registration);
         setRequireCourseEnrollmentRequest(data.require_course_enrollment_request ?? true);
         setRequireTestEnrollmentRequest(data.require_test_enrollment_request ?? true);
-        setDefaultProtocolSignMethod((data.default_protocol_sign_method as 'both' | 'sms' | 'eds') || 'both');
+        setDefaultProtocolSignMethod((data.default_protocol_sign_method as 'both' | 'sms' | 'eds' | 'none') || 'both');
         setRequireSmsForCourseCompletion(data.require_sms_for_course_completion ?? true);
         setRequireSmsForTestCompletion(data.require_sms_for_test_completion ?? true);
       })
@@ -175,12 +175,13 @@ export function SiteSettingsEditor() {
           </label>
           <select
             value={defaultProtocolSignMethod}
-            onChange={(e) => setDefaultProtocolSignMethod(e.target.value as 'both' | 'sms' | 'eds')}
+            onChange={(e) => setDefaultProtocolSignMethod(e.target.value as 'both' | 'sms' | 'eds' | 'none')}
             className="w-full max-w-xs px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="both">{t('admin.settings.protocolSignBoth') || 'SMS и ЭЦП'}</option>
             <option value="sms">{t('admin.settings.protocolSignSms') || 'Только SMS'}</option>
             <option value="eds">{t('admin.settings.protocolSignEds') || 'Только ЭЦП'}</option>
+            <option value="none">{t('admin.settings.protocolSignNone') || 'Без SMS и ЭЦП'}</option>
           </select>
           <p className="text-sm text-gray-500">
             {t('admin.settings.defaultProtocolSignMethodHint') || 'Способ подписания протоколов для членов ЭК'}

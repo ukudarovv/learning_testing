@@ -89,7 +89,7 @@ export interface User {
   is_active?: boolean; // Backend format
   isActive?: boolean; // Frontend format (for compatibility)
   language: 'ru' | 'kz' | 'en';
-  protocol_sign_method?: 'sms' | 'eds' | 'both'; // EC: preferred signing method
+  protocol_sign_method?: 'sms' | 'eds' | 'both' | 'none'; // EC: preferred signing method
   created_at?: string;
   updated_at?: string;
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FileText, CheckCircle, Clock, AlertTriangle, Phone, Video, Monitor, ChevronDown, ChevronUp, XCircle, Shield } from 'lucide-react';
+import { FileText, CheckCircle, Clock, AlertTriangle, Phone, Video, Monitor, ChevronDown, ChevronUp, XCircle, Shield, FileCheck } from 'lucide-react';
 import { Protocol, TestAttempt } from '../../types/lms';
 import { SMSVerification } from './SMSVerification';
 import { EDSSignModal } from './EDSSignModal';
@@ -22,15 +22,18 @@ export function PDEKDashboard() {
   const [testAttempt, setTestAttempt] = useState<TestAttempt | null>(null);
   const [loadingAttempt, setLoadingAttempt] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
-  const [signMethod, setSignMethod] = useState<'sms' | 'eds' | 'both'>('both');
+  const [signMethod, setSignMethod] = useState<'sms' | 'eds' | 'both' | 'none'>('both');
 
   const isChairman = currentUser?.role === 'pdek_chairman';
 
   useEffect(() => {
     settingsService.getSettings()
-      .then((data) => setSignMethod((data.default_protocol_sign_method as 'sms' | 'eds' | 'both') || 'both'))
+      .then((data) =>
+        setSignMethod((data.default_protocol_sign_method as 'sms' | 'eds' | 'both' | 'none') || 'both')
+      )
       .catch(() => setSignMethod('both'));
   }, []);
+  const showSimpleSignButton = signMethod === 'none';
   const showSmsButton = signMethod === 'both' || signMethod === 'sms';
   const showEdsButton = signMethod === 'both' || signMethod === 'eds';
   
@@ -117,6 +120,20 @@ export function PDEKDashboard() {
     setProtocolToSign(null);
     toast.success(t('lms.pdek.signSuccess'));
     setTimeout(() => refetch(), 500);
+  };
+
+  const handleSignSimple = async (protocol: Protocol) => {
+    try {
+      setLoading(true);
+      await protocolsService.signProtocolSimple(protocol.id);
+      toast.success(t('lms.pdek.signSuccess'));
+      setTimeout(() => refetch(), 500);
+    } catch (error: unknown) {
+      const err = error as { message?: string };
+      toast.error(err.message || t('lms.pdek.signError'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -226,6 +243,9 @@ export function PDEKDashboard() {
                               <span className="text-sm">
                                 {sig.userName} ({sig.role === 'chairman' ? t('lms.pdek.chairmanRole') : t('lms.pdek.memberRole')})
                                 {sig.signType === 'eds' && <span className="text-emerald-600 ml-1">ЭЦП</span>}
+                                {sig.signType === 'confirm' && (
+                                  <span className="text-slate-600 ml-1">{t('lms.pdek.signTypeConfirm')}</span>
+                                )}
                               </span>
                             </div>
                             {sig.otpVerified && sig.signedAt && (
@@ -273,6 +293,17 @@ export function PDEKDashboard() {
                     >
                       {t('lms.pdek.details')}
                     </button>
+                      {showSimpleSignButton && (
+                        <button
+                          type="button"
+                          disabled={loading}
+                          onClick={() => void handleSignSimple(protocol)}
+                          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium disabled:opacity-50"
+                        >
+                          <FileCheck className="w-4 h-4" />
+                          {t('lms.pdek.signSimple')}
+                        </button>
+                      )}
                       {showSmsButton && (
                         <button
                           onClick={() => handleSignRequest(protocol)}
@@ -633,6 +664,22 @@ export function PDEKDashboard() {
               >
                 {t('common.close')}
               </button>
+                {showSimpleSignButton && selectedProtocol && (
+                  <button
+                    type="button"
+                    disabled={loading}
+                    onClick={() => {
+                      void handleSignSimple(selectedProtocol);
+                      setSelectedProtocol(null);
+                      setTestAttempt(null);
+                      setShowDetails(false);
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                  >
+                    <FileCheck className="w-4 h-4" />
+                    {t('lms.pdek.signSimple')}
+                  </button>
+                )}
                 {showSmsButton && (
                   <button
                     onClick={() => {

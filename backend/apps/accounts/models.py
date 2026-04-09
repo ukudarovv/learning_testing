@@ -70,6 +70,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         ('both', 'SMS и ЭЦП'),
         ('sms', 'Только SMS'),
         ('eds', 'Только ЭЦП'),
+        ('none', 'Без SMS и ЭЦП'),
     ]
     protocol_sign_method = models.CharField(
         max_length=10, choices=PROTOCOL_SIGN_CHOICES, default='both',

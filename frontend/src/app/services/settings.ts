@@ -5,7 +5,7 @@ export interface SiteConfig {
   require_sms_on_registration: boolean;
   require_course_enrollment_request: boolean;
   require_test_enrollment_request: boolean;
-  default_protocol_sign_method?: 'both' | 'sms' | 'eds';
+  default_protocol_sign_method?: 'both' | 'sms' | 'eds' | 'none';
   require_sms_for_course_completion?: boolean;
   require_sms_for_test_completion?: boolean;
   created_at: string;

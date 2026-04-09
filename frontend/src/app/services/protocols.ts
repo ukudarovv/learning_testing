@@ -47,6 +47,12 @@ const protocolsService = {
     return adaptProtocol(data);
   },
 
+  /** Подписать без SMS и ЭЦП (режим в настройках сайта) */
+  async signProtocolSimple(protocolId: string): Promise<Protocol> {
+    const data = await apiClient.post<any>(`/protocols/${protocolId}/sign_confirm/`);
+    return adaptProtocol(data);
+  },
+
   /** Подписать протокол ЭЦП через NCALayer */
   async signProtocolEDS(protocolId: string, signatureBase64: string): Promise<Protocol> {
     const data = await apiClient.post<any>(`/protocols/${protocolId}/sign_eds/`, {

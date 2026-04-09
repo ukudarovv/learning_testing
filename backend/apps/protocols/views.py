@@ -21,6 +21,7 @@ from .serializers import (
 )
 from apps.accounts.permissions import IsAdmin, IsAdminOrReadOnly, IsAdminOrPdekOrReadOnly
 from apps.accounts.models import User
+from apps.core.models import get_site_config
 
 
 class ProtocolViewSet(viewsets.ModelViewSet):
@@ -47,7 +48,7 @@ class ProtocolViewSet(viewsets.ModelViewSet):
     
     def get_permissions(self):
         """Allow EC members to list, retrieve, request signature and sign protocols"""
-        if self.action in ['request_signature', 'sign', 'sign_eds']:
+        if self.action in ['request_signature', 'sign', 'sign_eds', 'sign_confirm']:
             return [permissions.IsAuthenticated()]
         return [IsAdminOrPdekOrReadOnly()]
     
@@ -242,7 +243,51 @@ class ProtocolViewSet(viewsets.ModelViewSet):
             ProtocolSerializer(protocol).data,
             status=status.HTTP_200_OK
         )
-    
+
+    @action(detail=True, methods=['post'])
+    def sign_confirm(self, request, pk=None):
+        """Подпись без SMS и ЭЦП (если в настройках сайта выбрано «Без SMS и ЭЦП»)."""
+        protocol = self.get_object()
+
+        if request.user.role not in ['pdek_member', 'pdek_chairman']:
+            return Response(
+                {'error': 'Only EC members can sign protocols'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        site = get_site_config()
+        if site.default_protocol_sign_method != 'none':
+            return Response(
+                {
+                    'error': 'Simple signing is disabled',
+                    'message': 'Простая подпись отключена. Включите режим «Без SMS и ЭЦП» в настройках сайта.',
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        signature, _ = ProtocolSignature.objects.get_or_create(
+            protocol=protocol,
+            signer=request.user,
+            defaults={'role': 'chairman' if request.user.role == 'pdek_chairman' else 'member'},
+        )
+
+        if signature.otp_verified:
+            return Response(
+                {'error': 'Вы уже подписали этот протокол.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        signature.sign_type = 'confirm'
+        signature.otp_verified = True
+        signature.signed_at = timezone.now()
+        signature.otp_code = ''
+        signature.otp_expires_at = None
+        signature.save()
+
+        self._apply_signature_and_update_protocol(protocol, signature)
+
+        return Response(ProtocolSerializer(protocol).data, status=status.HTTP_200_OK)
+
     def _apply_signature_and_update_protocol(self, protocol, signature):
         """Update protocol status and create certificate if chairman signed."""
         protocol.refresh_from_db()

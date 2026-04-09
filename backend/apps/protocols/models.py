@@ -74,6 +74,7 @@ class ProtocolSignature(models.Model):
     SIGN_TYPE_CHOICES = [
         ('otp', 'OTP (SMS)'),
         ('eds', 'EDS (ЭЦП)'),
+        ('confirm', 'Подтверждение в системе'),
     ]
     
     ROLE_CHOICES = [

@@ -54,7 +54,12 @@ class SiteConfig(models.Model):
     )
     default_protocol_sign_method = models.CharField(
         max_length=10,
-        choices=[('both', 'SMS и ЭЦП'), ('sms', 'Только SMS'), ('eds', 'Только ЭЦП')],
+        choices=[
+            ('both', 'SMS и ЭЦП'),
+            ('sms', 'Только SMS'),
+            ('eds', 'Только ЭЦП'),
+            ('none', 'Без SMS и ЭЦП'),
+        ],
         default='both',
         verbose_name='Способ подписания протоколов по умолчанию'
     )
