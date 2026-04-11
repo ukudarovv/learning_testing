@@ -1,9 +1,10 @@
 """
 SMS Service for SMSC.kz integration
 """
+import json
 import logging
 import requests
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 from django.conf import settings
 from django.utils import timezone
 from django.core.cache import cache
@@ -17,7 +18,7 @@ class SMSCService:
     def __init__(self):
         self.login = getattr(settings, 'SMSC_LOGIN', '')
         self.password = getattr(settings, 'SMSC_PASSWORD', '')
-        self.sender = getattr(settings, 'SMSC_SENDER', 'AQLANT')
+        self.sender = (getattr(settings, 'SMSC_SENDER', '') or '').strip()
         self.api_url = getattr(settings, 'SMSC_API_URL', 'https://smsc.kz/sys/send.php')
         
     def _normalize_phone(self, phone: str) -> str:
@@ -56,6 +57,84 @@ class SMSCService:
         # Increment counter and set expiration to 60 seconds
         cache.set(cache_key, request_count + 1, 60)
         return True
+
+    def _parse_smsc_body(self, body: str) -> Optional[Dict[str, Any]]:
+        """Разбор ответа SMSC.kz (fmt=3 — JSON; иначе текстовые форматы)."""
+        if not body:
+            return {
+                'success': False,
+                'error': 'Пустой ответ SMSC',
+                'message': 'Failed to send SMS',
+            }
+        text = body.strip()
+        if text.startswith('{'):
+            try:
+                data = json.loads(text)
+            except json.JSONDecodeError:
+                return None
+            if not isinstance(data, dict):
+                return None
+            err_text = data.get('error')
+            if err_text:
+                code = data.get('error_code', '')
+                return {
+                    'success': False,
+                    'error': f'SMSC.kz: {err_text}' + (f' (код {code})' if code != '' else ''),
+                    'message': 'Failed to send SMS',
+                    'raw_response': text,
+                    'smsc': data,
+                }
+            if data.get('id') is not None:
+                return {
+                    'success': True,
+                    'message': 'SMS sent successfully',
+                    'sms_id': str(data.get('id')),
+                    'smsc': data,
+                }
+            return {
+                'success': False,
+                'error': f'SMSC.kz: неожиданный JSON: {text[:300]}',
+                'message': 'Failed to send SMS',
+                'raw_response': text,
+            }
+
+        low = text.lower()
+        if text.startswith('error') or ('error' in low and '=' in text):
+            return {
+                'success': False,
+                'error': f'SMSC.kz: {text}',
+                'message': 'Failed to send SMS',
+                'raw_response': text,
+            }
+        if text == 'OK' or low == 'ok':
+            return {'success': True, 'message': 'SMS sent successfully', 'sms_id': None}
+        if text.startswith('ID='):
+            return {
+                'success': True,
+                'message': 'SMS sent successfully',
+                'sms_id': text.replace('ID=', '').strip(),
+            }
+        if text.isdigit():
+            return {'success': True, 'message': 'SMS sent successfully', 'sms_id': text}
+        parts = text.split(',')
+        if len(parts) == 2:
+            a, b = parts[0].strip(), parts[1].strip()
+            # fmt=1: ошибка вида 0,-N (код N)
+            if a == '0' and b.startswith('-'):
+                return {
+                    'success': False,
+                    'error': f'SMSC.kz error code {b}',
+                    'message': 'Failed to send SMS',
+                    'raw_response': text,
+                }
+            if a.isdigit() and b.isdigit():
+                return {
+                    'success': True,
+                    'message': 'SMS sent successfully',
+                    'sms_id': b,
+                    'count': a,
+                }
+        return None
     
     def send_sms(self, phone: str, message: str) -> Dict[str, any]:
         """
@@ -78,8 +157,7 @@ class SMSCService:
         
         # Normalize phone number (digits only for cache/DB consistency)
         normalized_phone = self._normalize_phone(phone)
-        # SMSC.kz international format: leading +
-        phones_param = f'+{normalized_phone}'
+        # Документация SMSC.kz: phones=79999999999 (11 цифр, без +) — надёжнее, чем + в form-urlencoded
 
         # Check rate limit
         if not self._check_rate_limit(normalized_phone):
@@ -89,26 +167,18 @@ class SMSCService:
                 'message': 'Too many requests. Please try again later.'
             }
         
-        # Prepare request parameters
-        # SMSC.kz API format: https://smsc.kz/sys/send.php?login=LOGIN&psw=PASSWORD&phones=PHONE&mes=MESSAGE
-        # For Cyrillic characters, SMSC.kz requires UTF-8 encoding
-        # We'll use requests library which handles UTF-8 encoding correctly
-        
-        # SMSC.kz API parameters
-        # For Cyrillic characters, SMSC.kz requires proper encoding
-        # Parameter 'coding': 0=default, 1=Latin, 8=UCS-2 (Unicode) - use 8 for Cyrillic
-        # charset=utf-8 ensures UTF-8 encoding in URL
-        params = {
+        # https://smsc.kz/api/http/send/sms/ — fmt=3 возвращает JSON с полями id / error
+        params: Dict[str, Any] = {
             'login': self.login,
             'psw': self.password,
-            'phones': phones_param,
-            'mes': message,  # Will be properly encoded by requests
-            'charset': 'utf-8',  # UTF-8 encoding for Cyrillic characters
-            'coding': '8',  # 8 = UCS-2 (Unicode) for Cyrillic support
-            'fmt': '1'  # Text format (1 = text, 2 = XML, 3 = JSON)
+            'phones': normalized_phone,
+            'mes': message,
+            'charset': 'utf-8',
+            'fmt': '3',
         }
-        
-        # Add sender if configured
+        # UCS-2 для кириллицы; без этого часть шлюзов режет текст
+        params['coding'] = '8'
+
         if self.sender:
             params['sender'] = self.sender
         
@@ -117,7 +187,7 @@ class SMSCService:
         logger.debug(f"Message length: {len(message)} characters")
         
         try:
-            logger.info(f"Sending SMS to {phones_param} via SMSC.kz")
+            logger.info(f"Sending SMS to {normalized_phone} via SMSC.kz")
             logger.info(f"Original phone: {phone}")
             logger.info(f"Normalized digits: {normalized_phone}")
             logger.info(f"Message: {message[:50]}...")
@@ -154,11 +224,9 @@ class SMSCService:
             logger.info(f"Response status: {response.status_code}")
             logger.info(f"Response headers: {dict(response.headers)}")
             
-            # Get response text
             result = response.text.strip()
-            logger.info(f"SMSC.kz response: {result}")
+            logger.info(f"SMSC.kz response: {result[:500]}")
             
-            # Check HTTP status
             if response.status_code != 200:
                 error_msg = f"HTTP {response.status_code}: {result}"
                 logger.error(f"Failed to send SMS: {error_msg}")
@@ -167,105 +235,17 @@ class SMSCService:
                     'error': error_msg,
                     'message': 'Failed to send SMS'
                 }
-            
-            # Parse response - SMSC.kz returns different formats:
-            # Success formats:
-            #   - "ID=123456" - message ID
-            #   - "1,1" - count,message_id (format: количество_отправленных,ID_сообщения)
-            #   - "OK" - success confirmation
-            #   - Numeric ID - message ID
-            #   - Empty string - sometimes means success
-            # Error formats:
-            #   - "ERROR = код ошибки" or "ERROR=код" - error code
-            #   - Error description text
-            
-            result_lower = result.lower().strip()
-            
-            # Check for error indicators (common error formats from SMSC.kz)
-            error_patterns = [
-                'error',
-                'ошибка',
-                'неверный',
-                'недостаточно',
-                'отказано',
-                'denied',
-                'invalid',
-                'insufficient',
-                'balance',
-                'баланс'
-            ]
-            
-            if any(pattern in result_lower for pattern in error_patterns):
-                error_msg = f"SMSC.kz error: {result}"
-                logger.error(f"Failed to send SMS: {error_msg}")
-                return {
-                    'success': False,
-                    'error': error_msg,
-                    'message': 'Failed to send SMS',
-                    'raw_response': result
-                }
-            
-            # Check for success indicators
-            
-            # Format: "1,1" or "count,message_id" - success with count and message ID
-            if ',' in result and result.replace(',', '').replace('-', '').isdigit():
-                parts = result.split(',')
-                if len(parts) == 2:
-                    count = parts[0].strip()
-                    sms_id = parts[1].strip()
-                    logger.info(f"SMS sent successfully. Count: {count}, ID: {sms_id}")
-                    return {
-                        'success': True,
-                        'message': 'SMS sent successfully',
-                        'sms_id': sms_id,
-                        'count': count
-                    }
-            
-            # Format: "ID=123456" - message ID
-            if result.startswith('ID='):
-                sms_id = result.replace('ID=', '').strip()
-                logger.info(f"SMS sent successfully. ID: {sms_id}")
-                return {
-                    'success': True,
-                    'message': 'SMS sent successfully',
-                    'sms_id': sms_id
-                }
-            
-            # Format: "OK" - success confirmation
-            if result == 'OK' or result.lower() == 'ok':
-                logger.info("SMS sent successfully (OK response)")
-                return {
-                    'success': True,
-                    'message': 'SMS sent successfully',
-                    'sms_id': None
-                }
-            
-            # Format: Numeric ID only
-            if result.isdigit():
-                logger.info(f"SMS sent successfully. ID: {result}")
-                return {
-                    'success': True,
-                    'message': 'SMS sent successfully',
-                    'sms_id': result
-                }
-            
-            # Format: Empty string - sometimes means success
-            if not result or result == '':
-                logger.warning("Empty response from SMSC.kz - assuming success")
-                return {
-                    'success': True,
-                    'message': 'SMS sent (empty response, assuming success)',
-                    'sms_id': None,
-                    'warning': 'Empty response from SMSC.kz'
-                }
-            
-            # Unknown response format - but no error patterns found, assume success
-            logger.info(f"Response from SMSC.kz: {result} (assuming success)")
+
+            parsed = self._parse_smsc_body(result)
+            if parsed is not None:
+                return parsed
+
+            logger.error(f"SMSC.kz: unrecognized response: {result}")
             return {
-                'success': True,
-                'message': 'SMS sent successfully',
-                'sms_id': result if result else None,
-                'raw_response': result
+                'success': False,
+                'error': result or 'Empty response from SMSC',
+                'message': 'Failed to send SMS',
+                'raw_response': result,
             }
                 
         except requests.exceptions.Timeout:
@@ -317,6 +297,7 @@ class SMSCService:
             'registration': f'Ваш код подтверждения регистрации: {code}. Код действителен 10 минут.',
             'password_reset': f'Ваш код для восстановления пароля: {code}. Код действителен 10 минут.',
             'verification': f'Ваш код подтверждения: {code}. Код действителен 10 минут.',
+            'profile_update': f'Ваш код подтверждения: {code}. Код действителен 10 минут.',
         }
         
         message = purpose_messages.get(purpose, f'Ваш код подтверждения: {code}. Код действителен 10 минут.')

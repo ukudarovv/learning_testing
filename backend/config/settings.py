@@ -267,7 +267,8 @@ TWILIO_PHONE_NUMBER = os.getenv('TWILIO_PHONE_NUMBER', '')
 # SMS Settings (SMSC.kz)
 SMSC_LOGIN = os.getenv('SMSC_LOGIN', '')
 SMSC_PASSWORD = os.getenv('SMSC_PASSWORD', '')
-SMSC_SENDER = os.getenv('SMSC_SENDER', 'AQLANT')
+# Имя отправителя только если зарегистрировано в кабинете SMSC.kz; иначе оставьте пустым
+SMSC_SENDER = os.getenv('SMSC_SENDER', '').strip()
 SMSC_API_URL = os.getenv('SMSC_API_URL', 'https://smsc.kz/sys/send.php')
 
 # Email Settings
