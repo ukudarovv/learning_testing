@@ -312,16 +312,23 @@ def send_protocol_pdek_notification(protocol, fail_silently: bool = True) -> int
     Returns:
         Количество отправленных писем
     """
-    pdek_users = User.objects.filter(
+    signer_ids = list(protocol.signatures.values_list('signer_id', flat=True))
+    base_ec = User.objects.filter(
         role__in=['pdek_member', 'pdek_chairman'],
-        email__isnull=False
+        email__isnull=False,
     ).exclude(email='')
+    if signer_ids:
+        pdek_users = base_ec.filter(pk__in=signer_ids)
+    else:
+        pdek_users = base_ec
 
     recipient_list = list(pdek_users.values_list('email', flat=True))
     
-    # Логируем, кто получит письмо и кто пропущен (нет email)
-    all_pdek = User.objects.filter(role__in=['pdek_member', 'pdek_chairman'])
-    skipped = [u for u in all_pdek if not (u.email and str(u.email).strip())]
+    # Логируем подписантов протокола без email
+    signers_for_log = User.objects.filter(pk__in=signer_ids) if signer_ids else User.objects.filter(
+        role__in=['pdek_member', 'pdek_chairman']
+    )
+    skipped = [u for u in signers_for_log if not (u.email and str(u.email).strip())]
     if skipped:
         logger.warning(
             f"Protocol {protocol.number}: EC users without email (no notification sent): "

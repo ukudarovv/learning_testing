@@ -163,7 +163,7 @@ export interface Lesson {
   descriptionKz?: string; // Frontend format (for compatibility)
   description_en?: string; // Backend format (legacy, for backward compatibility)
   descriptionEn?: string; // Frontend format (for compatibility)
-  type: 'text' | 'video' | 'pdf' | 'ppt' | 'quiz';
+  type: 'text' | 'video' | 'pdf' | 'combined' | 'ppt' | 'quiz';
   content?: string;
   content_kz?: string; // Backend format (legacy, for backward compatibility)
   contentKz?: string; // Frontend format (for compatibility)
@@ -353,6 +353,9 @@ export interface Protocol {
   signatures?: Signature[];
   rejection_reason?: string; // Backend format
   rejectionReason?: string; // Frontend format (for compatibility)
+  /** Протокол по курсу без итогового теста (зачёт за уроки), с бэкенда lessons_only_completion */
+  lessons_only_completion?: boolean;
+  lessonsOnlyCompletion?: boolean;
   file?: string; // Uploaded file path/URL
   uploaded_by?: { id: string; full_name?: string };
   uploaded_at?: string;

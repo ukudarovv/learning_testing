@@ -22,6 +22,11 @@ from .serializers import (
 from apps.accounts.permissions import IsAdmin, IsAdminOrReadOnly, IsAdminOrPdekOrReadOnly
 from apps.accounts.models import User
 from apps.core.models import get_site_config
+from apps.courses.utils import (
+    get_category_for_protocol,
+    get_ec_signers_for_category,
+    create_protocol_ec_signatures,
+)
 
 
 class ProtocolViewSet(viewsets.ModelViewSet):
@@ -36,14 +41,15 @@ class ProtocolViewSet(viewsets.ModelViewSet):
     ordering = ['-created_at']
     
     def get_queryset(self):
-        """Students see only their protocols; admin and EC see all"""
+        """Students: own protocols; EC: protocols where they are signers; admins: all."""
         queryset = super().get_queryset()
         user = self.request.user
         if not user.is_authenticated:
             return queryset.none()
         if user.role == 'student' and not user.is_admin:
             queryset = queryset.filter(student=user)
-        # Admin и ЭК видят все протоколы
+        elif user.role in ('pdek_member', 'pdek_chairman') and not user.is_admin:
+            queryset = queryset.filter(signatures__signer=user).distinct()
         return queryset
     
     def get_permissions(self):
@@ -94,15 +100,14 @@ class ProtocolViewSet(viewsets.ModelViewSet):
                     passing_score=serializer.validated_data['passing_score'],
                     result=serializer.validated_data['result'],
                 )
-                
-                # Create signatures for EC members
-                pdek_members = User.objects.filter(role__in=['pdek_member', 'pdek_chairman'])
-                for member in pdek_members:
-                    ProtocolSignature.objects.create(
-                        protocol=protocol,
-                        signer=member,
-                        role='chairman' if member.role == 'pdek_chairman' else 'member'
-                    )
+
+                category = get_category_for_protocol(
+                    course=serializer.validated_data.get('course'),
+                    test=serializer.validated_data.get('test'),
+                    attempt=attempt,
+                )
+                signers = list(get_ec_signers_for_category(category))
+                create_protocol_ec_signatures(protocol, signers)
 
                 # Уведомление членов ЭК по email
                 from apps.notifications.utils import send_protocol_pdek_notification
@@ -113,7 +118,14 @@ class ProtocolViewSet(viewsets.ModelViewSet):
                 pass
         
         protocol = serializer.save()
-        # Уведомление членов ЭК по email
+        if not protocol.signatures.exists():
+            category = get_category_for_protocol(
+                course=protocol.course,
+                test=protocol.test,
+                attempt=protocol.attempt,
+            )
+            signers = list(get_ec_signers_for_category(category))
+            create_protocol_ec_signatures(protocol, signers)
         from apps.notifications.utils import send_protocol_pdek_notification
         send_protocol_pdek_notification(protocol)
         return Response(ProtocolSerializer(protocol).data, status=status.HTTP_201_CREATED)

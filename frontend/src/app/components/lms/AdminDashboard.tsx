@@ -1524,6 +1524,9 @@ function CategoryEditorModal({
     order: 0,
     is_active: true,
   });
+  const [ecReviewerIds, setEcReviewerIds] = useState<(string | number)[]>([]);
+  const [ecCandidates, setEcCandidates] = useState<User[]>([]);
+  const [loadingEc, setLoadingEc] = useState(false);
 
   useEffect(() => {
     if (category) {
@@ -1535,8 +1538,61 @@ function CategoryEditorModal({
         order: category.order || 0,
         is_active: category.is_active !== undefined ? category.is_active : true,
       });
+      const ids =
+        category.ec_reviewers?.map((u) => u.id) ??
+        category.ec_reviewer_ids ??
+        [];
+      setEcReviewerIds(ids.map((id) => String(id)));
+    } else {
+      setFormData({
+        name: '',
+        name_kz: '',
+        name_en: '',
+        description: '',
+        order: 0,
+        is_active: true,
+      });
+      setEcReviewerIds([]);
     }
   }, [category?.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoadingEc(true);
+      try {
+        const [members, chairs] = await Promise.all([
+          usersService.getUsers({ role: 'pdek_member', is_active: true, page_size: 500 }),
+          usersService.getUsers({ role: 'pdek_chairman', is_active: true, page_size: 500 }),
+        ]);
+        const byId = new Map<string, User>();
+        for (const u of [...members.results, ...chairs.results]) {
+          const key = String(u.id);
+          if (!byId.has(key)) byId.set(key, u);
+        }
+        const sorted = Array.from(byId.values()).sort((a, b) => {
+          const na = (a.full_name || a.fullName || a.phone || '').toString();
+          const nb = (b.full_name || b.fullName || b.phone || '').toString();
+          return na.localeCompare(nb, 'ru');
+        });
+        if (!cancelled) setEcCandidates(sorted);
+      } catch {
+        if (!cancelled) setEcCandidates([]);
+      } finally {
+        if (!cancelled) setLoadingEc(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const toggleEcReviewer = (userId: string | number) => {
+    const s = String(userId);
+    setEcReviewerIds((prev) =>
+      prev.includes(s) ? prev.filter((x) => String(x) !== s) : [...prev, s],
+    );
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1544,7 +1600,8 @@ function CategoryEditorModal({
       toast.error(t('admin.dashboard.categories.editor.nameRequired'));
       return;
     }
-    onSave(formData);
+    const ec_reviewer_ids = ecReviewerIds.map((id) => Number(id));
+    onSave({ ...formData, ec_reviewer_ids });
   };
 
   return (
@@ -1641,6 +1698,48 @@ function CategoryEditorModal({
                 />
                 <span className="text-sm text-gray-700">{t('admin.dashboard.categories.editor.active')}</span>
               </label>
+            </div>
+
+            <div className="border-t border-gray-200 pt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {t('admin.dashboard.categories.editor.ecReviewersTitle')}
+              </label>
+              <p className="text-xs text-gray-500 mb-3">
+                {t('admin.dashboard.categories.editor.ecReviewersHint')}
+              </p>
+              {loadingEc ? (
+                <p className="text-sm text-gray-500">{t('admin.dashboard.categories.editor.ecReviewersLoading')}</p>
+              ) : ecCandidates.length === 0 ? (
+                <p className="text-sm text-amber-700">{t('admin.dashboard.categories.editor.ecReviewersEmpty')}</p>
+              ) : (
+                <div className="max-h-48 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-gray-100">
+                  {ecCandidates.map((u) => {
+                    const uid = String(u.id);
+                    const checked = ecReviewerIds.includes(uid);
+                    const label = u.full_name || u.fullName || u.phone || uid;
+                    const isChair = u.role === 'pdek_chairman';
+                    return (
+                      <label
+                        key={uid}
+                        className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 cursor-pointer text-sm"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleEcReviewer(u.id)}
+                          className="rounded border-gray-300"
+                        />
+                        <span className="flex-1 text-gray-900">{label}</span>
+                        <span className="text-xs text-gray-500 shrink-0">
+                          {isChair
+                            ? t('admin.dashboard.categories.editor.chairmanShort')
+                            : t('admin.dashboard.categories.editor.memberShort')}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             <div className="flex gap-4 pt-4">

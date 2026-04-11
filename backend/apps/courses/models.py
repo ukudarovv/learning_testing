@@ -12,6 +12,12 @@ class Category(models.Model):
     icon = models.CharField(max_length=50, blank=True, help_text='Icon name or class')
     order = models.IntegerField(default=0, help_text='Display order')
     is_active = models.BooleanField(default=True)
+    ec_reviewers = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        related_name='ec_review_categories',
+        help_text='If empty, all EC members (pdek_member / pdek_chairman) review protocols for this category.',
+    )
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -123,6 +129,7 @@ class Lesson(models.Model):
         ('text', 'Text'),
         ('video', 'Video'),
         ('pdf', 'PDF'),
+        ('combined', 'Combined'),
         ('ppt', 'PPT'),
         ('quiz', 'Quiz'),
     ]

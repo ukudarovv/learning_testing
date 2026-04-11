@@ -5,6 +5,7 @@ import { protocolsService } from '../../services/protocols';
 import { examsService } from '../../services/exams';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
+import { RecordingVideoPlayer } from '../common/RecordingVideoPlayer';
 
 export function ProtocolManagement() {
   const { t } = useTranslation();
@@ -617,16 +618,12 @@ export function ProtocolManagement() {
                             {t('admin.protocols.videoRecording') || 'Видеозапись попытки'}
                           </h4>
                         </div>
-                        <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden">
-                          <video
-                            src={testAttempt.video_recording || testAttempt.videoRecording || ''}
-                            controls
-                            className="w-full h-full"
-                            style={{ maxHeight: '400px' }}
-                          >
-                            {t('admin.protocols.videoNotSupported') || 'Ваш браузер не поддерживает воспроизведение видео.'}
-                          </video>
-                        </div>
+                        <RecordingVideoPlayer
+                          src={testAttempt.video_recording || testAttempt.videoRecording || ''}
+                          videoMaxHeight="400px"
+                        >
+                          {t('admin.protocols.videoNotSupported') || 'Ваш браузер не поддерживает воспроизведение видео.'}
+                        </RecordingVideoPlayer>
                       </div>
                     </div>
                   )}
@@ -640,16 +637,12 @@ export function ProtocolManagement() {
                             {t('admin.protocols.screenRecording') || 'Запись экрана'}
                           </h4>
                         </div>
-                        <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden">
-                          <video
-                            src={testAttempt.screen_recording || testAttempt.screenRecording || ''}
-                            controls
-                            className="w-full h-full"
-                            style={{ maxHeight: '400px' }}
-                          >
-                            {t('admin.protocols.videoNotSupported') || 'Ваш браузер не поддерживает воспроизведение видео.'}
-                          </video>
-                        </div>
+                        <RecordingVideoPlayer
+                          src={testAttempt.screen_recording || testAttempt.screenRecording || ''}
+                          videoMaxHeight="400px"
+                        >
+                          {t('admin.protocols.videoNotSupported') || 'Ваш браузер не поддерживает воспроизведение видео.'}
+                        </RecordingVideoPlayer>
                       </div>
                     </div>
                   )}

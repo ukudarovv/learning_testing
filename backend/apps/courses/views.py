@@ -73,7 +73,7 @@ def _course_completion_eligibility(user, course):
 
 def _finalize_course_protocol_creation(request, course, enrollment):
     """Create protocol after course completion (after OTP or when SMS not required)."""
-    from apps.protocols.models import Protocol, ProtocolSignature
+    from apps.protocols.models import Protocol
     from apps.notifications.models import Notification
     from apps.notifications.utils import send_protocol_pdek_notification
 
@@ -109,10 +109,17 @@ def _finalize_course_protocol_creation(request, course, enrollment):
         exam_date = final_test_attempt.completed_at or timezone.now()
         score = final_test_attempt.score or 0
         passing_score = course.final_test.passing_score
+        # Соответствует флагу попытки (попытка уже с passed=True из фильтра выше)
+        protocol_result = 'passed' if final_test_attempt.passed else 'failed'
     else:
+        # Курс без финального теста: зачёт по факту завершения всех уроков — протокол «сдан», нужна подпись ЭК
         exam_date = timezone.now()
-        score = 0
-        passing_score = course.passing_score
+        try:
+            passing_score = float(course.passing_score or 80)
+        except (TypeError, ValueError):
+            passing_score = 80.0
+        score = passing_score
+        protocol_result = 'passed'
 
     protocol = Protocol.objects.create(
         student=request.user,
@@ -122,22 +129,19 @@ def _finalize_course_protocol_creation(request, course, enrollment):
         exam_date=exam_date,
         score=score,
         passing_score=passing_score,
-        result='passed',
+        result=protocol_result,
         status='pending_pdek',
     )
 
-    pdek_members = User.objects.filter(role__in=['pdek_member', 'pdek_chairman'])
-    for member in pdek_members:
-        ProtocolSignature.objects.create(
-            protocol=protocol,
-            signer=member,
-            role='chairman' if member.role == 'pdek_chairman' else 'member',
-        )
+    from apps.courses.utils import get_ec_signers_for_category, create_protocol_ec_signatures
+
+    signers = list(get_ec_signers_for_category(course.category))
+    create_protocol_ec_signatures(protocol, signers)
 
     enrollment.status = 'pending_pdek'
     enrollment.save()
 
-    for member in pdek_members:
+    for member in signers:
         Notification.objects.create(
             user=member,
             type='protocol_ready',
@@ -158,7 +162,7 @@ def _finalize_course_protocol_creation(request, course, enrollment):
 
 class CategoryViewSet(viewsets.ModelViewSet):
     """Category ViewSet"""
-    queryset = Category.objects.all()
+    queryset = Category.objects.prefetch_related('ec_reviewers').all()
     serializer_class = CategorySerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]

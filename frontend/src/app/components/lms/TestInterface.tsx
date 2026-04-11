@@ -118,8 +118,15 @@ export function TestInterface({
   });
   
   // Защита от скриншотов и нарушений (после объявления testStarted)
-  const { violationCount, violationType, resetViolations, reportViolation } = useTestProtection(testStarted, {
+  const { violationCount, violationType, resetViolations, reportViolation } = useTestProtection(true, {
     fullscreenContainerRef: testRootRef,
+    /**
+     * До фактического старта теста (камера/экран настроены): без слушателей blur/visibility и т.д.
+     * Иначе штраф «tab_switch» при системном диалоге getDisplayMedia / выборе источника.
+     */
+    documentGuardsEnabled: testStarted,
+    /** Подмена getDisplayMedia только после старта теста — иначе первый захват экрана для записи не сработает */
+    blockExtraScreenCapture: testStarted,
   });
 
   /** Лицо не в кадре: только напоминание и пауза — не вызываем reportViolation, штрафы не начисляются */
@@ -905,7 +912,7 @@ export function TestInterface({
             muted
             playsInline
             autoPlay
-            className="pointer-events-none fixed left-0 top-0 h-px w-px opacity-0"
+            className="pointer-events-none fixed left-[-9999px] top-0 h-[480px] w-[640px] max-w-none opacity-0"
             aria-hidden
             tabIndex={-1}
           />

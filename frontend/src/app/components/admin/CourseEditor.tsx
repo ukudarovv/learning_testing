@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { ArrowLeft, X, Save, Plus, Trash2, GripVertical, Edit2, Video, FileText, CheckCircle, Upload } from 'lucide-react';
+import { ArrowLeft, X, Save, Plus, Trash2, GripVertical, Edit2, Video, FileText, CheckCircle, Upload, Layers } from 'lucide-react';
 import { Course, Module, Lesson } from '../../types/lms';
 import { testsService } from '../../services/tests';
 import { categoriesService, Category } from '../../services/categories';
@@ -139,6 +139,7 @@ export function CourseEditor({ course, onSave, onCancel }: CourseEditorProps) {
       'pdf': t('admin.courses.lessonTypes.pdf'),
       'ppt': t('admin.courses.lessonTypes.ppt'),
       'quiz': t('admin.courses.lessonTypes.quiz'),
+      'combined': t('admin.courses.lessonTypes.combined'),
     };
     return names[type] || type;
   };
@@ -521,6 +522,7 @@ export function CourseEditor({ course, onSave, onCancel }: CourseEditorProps) {
       {/* Lesson Editor Modal */}
       {editingLesson && (
         <LessonEditorModal
+          key={String(editingLesson.lesson?.id ?? 'new-lesson')}
           lesson={editingLesson.lesson}
           onSave={(lesson) => handleSaveLesson(editingLesson.moduleId, lesson)}
           onCancel={() => setEditingLesson(null)}
@@ -558,10 +560,37 @@ function LessonEditorModal({ lesson, onSave, onCancel, availableTests = [], load
     required: true,
   });
 
+  useEffect(() => {
+    if (!lesson) return;
+    const L = lesson as Lesson & {
+      video_url?: string;
+      pdf_url?: string;
+      thumbnail_url?: string;
+      test_id?: string;
+      passing_score?: number;
+      max_attempts?: number;
+      allow_download?: boolean;
+      track_progress?: boolean;
+    };
+    setFormData({
+      ...L,
+      language: L.language || 'ru',
+      videoUrl: L.videoUrl || L.video_url || '',
+      pdfUrl: L.pdfUrl || L.pdf_url || '',
+      thumbnailUrl: L.thumbnailUrl || L.thumbnail_url || '',
+      testId: L.testId || L.test_id || '',
+      passingScore: L.passingScore ?? L.passing_score ?? 80,
+      maxAttempts: L.maxAttempts ?? L.max_attempts ?? 3,
+      allowDownload: L.allowDownload ?? L.allow_download ?? false,
+      trackProgress: L.trackProgress ?? L.track_progress ?? false,
+    });
+  }, [lesson?.id]);
+
   const lessonTypes = [
     { value: 'text', label: t('admin.courses.lessonTypes.text'), icon: FileText },
     { value: 'video', label: t('admin.courses.lessonTypes.video'), icon: Video },
     { value: 'pdf', label: t('admin.courses.lessonTypes.pdf'), icon: FileText },
+    { value: 'combined', label: t('admin.courses.lessonTypes.combined'), icon: Layers },
     { value: 'quiz', label: t('admin.courses.lessonTypes.quiz'), icon: CheckCircle },
   ];
 
@@ -577,7 +606,7 @@ function LessonEditorModal({ lesson, onSave, onCancel, availableTests = [], load
     const isPdf = file.type === 'application/pdf' || fileName.endsWith('.pdf');
 
     // Проверяем тип файла в зависимости от типа урока
-    if (formData.type === 'pdf' && !isPdf) {
+    if ((formData.type === 'pdf' || formData.type === 'combined') && !isPdf) {
       alert(t('admin.courses.pdfOnly') || 'Пожалуйста, выберите PDF файл');
       return;
     }
@@ -604,7 +633,7 @@ function LessonEditorModal({ lesson, onSave, onCancel, availableTests = [], load
         }
         console.log('Setting file URL:', fullUrl);
         
-        if (formData.type === 'pdf') {
+        if (formData.type === 'pdf' || formData.type === 'combined') {
           setFormData({ ...formData, pdfUrl: fullUrl });
         }
         
@@ -767,28 +796,6 @@ function LessonEditorModal({ lesson, onSave, onCancel, availableTests = [], load
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      {t('admin.courses.videoThumbnail')}
-                    </label>
-                    <input
-                      type="url"
-                      value={formData.thumbnailUrl || ''}
-                      onChange={(e) => setFormData({ ...formData, thumbnailUrl: e.target.value })}
-                      placeholder="https://..."
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-
-                  <div className="flex gap-4">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={formData.allowDownload || false}
-                        onChange={(e) => setFormData({ ...formData, allowDownload: e.target.checked })}
-                        className="rounded"
-                      />
-                      <span className="text-sm text-gray-700">{t('admin.courses.allowDownload')}</span>
-                    </label>
                     <label className="flex items-center gap-2">
                       <input
                         type="checkbox"
@@ -845,6 +852,99 @@ function LessonEditorModal({ lesson, onSave, onCancel, availableTests = [], load
                         ✓ {t('admin.courses.fileUploaded') || 'Файл загружен'}
                       </p>
                     )}
+                  </div>
+                </div>
+              )}
+
+              {formData.type === 'combined' && (
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      {t('admin.courses.textContent')}
+                    </label>
+                    <textarea
+                      value={formData.content}
+                      onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                      placeholder={t('admin.courses.textContentPlaceholder')}
+                      rows={8}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                    />
+                    <p className="text-xs text-gray-500 mt-2">
+                      💡 {t('admin.courses.markdownTip')}
+                    </p>
+                  </div>
+
+                  <div className="space-y-4 border-t border-gray-200 pt-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        {t('admin.courses.videoUrl')}
+                      </label>
+                      <input
+                        type="url"
+                        value={formData.videoUrl || ''}
+                        onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
+                        placeholder={t('admin.courses.videoUrlPlaceholder')}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        {t('admin.courses.videoSupported')}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={formData.trackProgress || false}
+                          onChange={(e) => setFormData({ ...formData, trackProgress: e.target.checked })}
+                          className="rounded"
+                        />
+                        <span className="text-sm text-gray-700">{t('admin.courses.trackProgress')}</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 border-t border-gray-200 pt-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        {t('admin.courses.pdfUrl')}
+                      </label>
+                      <input
+                        type="url"
+                        value={formData.pdfUrl || ''}
+                        onChange={(e) => setFormData({ ...formData, pdfUrl: e.target.value })}
+                        placeholder="https://..."
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        {t('admin.courses.uploadPdf')}
+                      </label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept=".pdf,application/pdf"
+                          onChange={handleFileChange}
+                          className="hidden"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleFileSelect}
+                          disabled={uploading}
+                          className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <Upload className="w-4 h-4" />
+                          {uploading ? (t('admin.courses.uploading') || 'Загрузка...') : t('admin.courses.selectFile')}
+                        </button>
+                        <span className="text-sm text-gray-500">{t('admin.courses.orEnterUrl')}</span>
+                      </div>
+                      {formData.pdfUrl && (
+                        <p className="text-xs text-green-600 mt-2">
+                          ✓ {t('admin.courses.fileUploaded') || 'Файл загружен'}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
@@ -939,6 +1039,8 @@ function getLessonIcon(type: string) {
       return <FileText className={`${iconClass} text-orange-600`} />;
     case 'quiz':
       return <CheckCircle className={`${iconClass} text-green-600`} />;
+    case 'combined':
+      return <Layers className={`${iconClass} text-indigo-600`} />;
     default:
       return <FileText className={`${iconClass} text-blue-600`} />;
   }

@@ -1,19 +1,59 @@
 from rest_framework import serializers
 from .models import Category, Course, Module, Lesson, CourseEnrollment, LessonProgress, CourseCompletionVerification, CourseEnrollmentRequest
 from apps.accounts.serializers import UserSerializer
+from apps.accounts.models import User
+from .utils import PDEK_ROLES
 
 
 class CategorySerializer(serializers.ModelSerializer):
     """Category serializer"""
     courses_count = serializers.IntegerField(read_only=True, source='courses.count')
+    ec_reviewers = UserSerializer(many=True, read_only=True)
+    ec_reviewer_ids = serializers.ListField(
+        child=serializers.IntegerField(min_value=1),
+        write_only=True,
+        required=False,
+        allow_empty=True,
+    )
     
     class Meta:
         model = Category
         fields = [
             'id', 'name', 'name_kz', 'name_en', 'description', 'icon',
-            'order', 'is_active', 'courses_count', 'created_at', 'updated_at'
+            'order', 'is_active', 'courses_count', 'ec_reviewers', 'ec_reviewer_ids',
+            'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'courses_count']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'courses_count', 'ec_reviewers']
+
+    def validate_ec_reviewer_ids(self, value):
+        if not value:
+            return value
+        unique_ids = list({int(x) for x in value})
+        users = User.objects.filter(pk__in=unique_ids)
+        found = set(users.values_list('pk', flat=True))
+        missing = set(unique_ids) - found
+        if missing:
+            raise serializers.ValidationError(f'Unknown user id(s): {sorted(missing)}')
+        for u in users:
+            if u.role not in PDEK_ROLES:
+                raise serializers.ValidationError(
+                    f'User {u.pk} must have role pdek_member or pdek_chairman.'
+                )
+        return unique_ids
+
+    def create(self, validated_data):
+        ec_reviewer_ids = validated_data.pop('ec_reviewer_ids', None)
+        instance = Category.objects.create(**validated_data)
+        if ec_reviewer_ids is not None:
+            instance.ec_reviewers.set(ec_reviewer_ids)
+        return instance
+
+    def update(self, instance, validated_data):
+        ec_reviewer_ids = validated_data.pop('ec_reviewer_ids', serializers.empty)
+        instance = super().update(instance, validated_data)
+        if ec_reviewer_ids is not serializers.empty:
+            instance.ec_reviewers.set(ec_reviewer_ids)
+        return instance
 
 
 class LessonSerializer(serializers.ModelSerializer):

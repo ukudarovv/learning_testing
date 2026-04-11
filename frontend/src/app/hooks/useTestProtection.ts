@@ -11,6 +11,17 @@ export interface TestProtectionResult {
 export interface UseTestProtectionOptions {
   /** Элемент, переводимый в полноэкранный режим — для отслеживания выхода из fullscreen */
   fullscreenContainerRef?: RefObject<HTMLElement | null>;
+  /**
+   * Слушатели на document: клавиши, copy/cut/paste, контекстное меню, visibility, fullscreen и т.д.
+   * По умолчанию = первый аргумент `enabled`.
+   */
+  documentGuardsEnabled?: boolean;
+  /**
+   * Подмена getDisplayMedia (запрет повторного захвата экрана во время экзамена).
+   * Должна включаться только после успешного первого getDisplayMedia — иначе сломается старт записи.
+   * По умолчанию = первый аргумент `enabled`.
+   */
+  blockExtraScreenCapture?: boolean;
 }
 
 /** Запрос полноэкранного режима для контейнера теста (нужен пользовательский жест). Возвращает true при успехе. */
@@ -43,10 +54,15 @@ export function useTestProtection(
   options?: UseTestProtectionOptions
 ): TestProtectionResult {
   const fullscreenContainerRef = options?.fullscreenContainerRef;
+  const documentGuardsEnabled = options?.documentGuardsEnabled ?? enabled;
+  const blockExtraScreenCapture = options?.blockExtraScreenCapture ?? enabled;
+
   const [violationCount, setViolationCount] = useState(0);
   const [violationType, setViolationType] = useState<string | null>(null);
   const violationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wasInTestFullscreenRef = useRef(false);
+  /** Сброс фокуса с окна теста: blur + visibility склонны срабатывать почти одновременно — один штраф */
+  const lastFocusLossAtRef = useRef(0);
 
   const handleViolation = useCallback((type: string) => {
     if (violationTimeoutRef.current) {
@@ -72,7 +88,7 @@ export function useTestProtection(
   }, []);
 
   useEffect(() => {
-    if (!enabled) {
+    if (!documentGuardsEnabled) {
       wasInTestFullscreenRef.current = false;
       return;
     }
@@ -88,10 +104,22 @@ export function useTestProtection(
       return el === target || target.contains(el);
     };
 
+    const notifyFocusLoss = () => {
+      const now = Date.now();
+      if (now - lastFocusLossAtRef.current < 450) return;
+      lastFocusLossAtRef.current = now;
+      handleViolation('tab_switch');
+    };
+
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
-        handleViolation('tab_switch');
+        notifyFocusLoss();
       }
+    };
+
+    /** Второе окно / второй монитор / другое приложение: вкладка может оставаться visible — без blur не засчитывалось */
+    const handleWindowBlur = () => {
+      notifyFocusLoss();
     };
 
     const handleFullscreenChange = () => {
@@ -284,15 +312,8 @@ export function useTestProtection(
       }
     };
 
-    const originalGetDisplayMedia = navigator.mediaDevices?.getDisplayMedia;
-    if (originalGetDisplayMedia) {
-      navigator.mediaDevices.getDisplayMedia = function (..._args) {
-        handleViolation('screencast');
-        return Promise.reject(new Error('Screen capture is not allowed during test'));
-      };
-    }
-
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleWindowBlur);
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
     document.addEventListener('keydown', handleKeyDown, true);
@@ -307,6 +328,7 @@ export function useTestProtection(
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleWindowBlur);
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
       document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
       document.removeEventListener('keydown', handleKeyDown, true);
@@ -319,15 +341,31 @@ export function useTestProtection(
       document.removeEventListener('dragstart', handleDragStart, true);
       document.removeEventListener('wheel', handleWheel, { capture: true });
 
-      if (originalGetDisplayMedia && navigator.mediaDevices) {
-        navigator.mediaDevices.getDisplayMedia = originalGetDisplayMedia;
-      }
-
       if (violationTimeoutRef.current) {
         clearTimeout(violationTimeoutRef.current);
       }
     };
-  }, [enabled, handleViolation, fullscreenContainerRef]);
+  }, [documentGuardsEnabled, handleViolation, fullscreenContainerRef]);
+
+  useEffect(() => {
+    if (!blockExtraScreenCapture) {
+      return;
+    }
+
+    const originalGetDisplayMedia = navigator.mediaDevices?.getDisplayMedia;
+    if (originalGetDisplayMedia) {
+      navigator.mediaDevices.getDisplayMedia = function (..._args) {
+        handleViolation('screencast');
+        return Promise.reject(new Error('Screen capture is not allowed during test'));
+      };
+    }
+
+    return () => {
+      if (originalGetDisplayMedia && navigator.mediaDevices) {
+        navigator.mediaDevices.getDisplayMedia = originalGetDisplayMedia;
+      }
+    };
+  }, [blockExtraScreenCapture, handleViolation]);
 
   return {
     violationCount,

@@ -50,7 +50,7 @@ def _standalone_test_passed_attempt(user, test):
 
 def _finalize_standalone_test_protocol(request, test, test_attempt):
     """Create protocol after standalone test completion (OTP verified or SMS disabled)."""
-    from apps.protocols.models import Protocol, ProtocolSignature
+    from apps.protocols.models import Protocol
     from apps.notifications.models import Notification
     from apps.notifications.utils import send_protocol_pdek_notification
 
@@ -82,19 +82,16 @@ def _finalize_standalone_test_protocol(request, test, test_attempt):
         exam_date=exam_date,
         score=score,
         passing_score=passing_score,
-        result='passed',
+        result='passed' if test_attempt.passed else 'failed',
         status='pending_pdek',
     )
 
-    pdek_members = User.objects.filter(role__in=['pdek_member', 'pdek_chairman'])
-    for member in pdek_members:
-        ProtocolSignature.objects.create(
-            protocol=protocol,
-            signer=member,
-            role='chairman' if member.role == 'pdek_chairman' else 'member',
-        )
+    from apps.courses.utils import get_ec_signers_for_category, create_protocol_ec_signatures
 
-    for member in pdek_members:
+    signers = list(get_ec_signers_for_category(test.category))
+    create_protocol_ec_signatures(protocol, signers)
+
+    for member in signers:
         Notification.objects.create(
             user=member,
             type='protocol_ready',

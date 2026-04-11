@@ -10,6 +10,7 @@ import { protocolsService } from '../../services/protocols';
 import { examsService } from '../../services/exams';
 import { ExtraAttemptRequestModal } from './ExtraAttemptRequestModal';
 import { toast } from 'sonner';
+import { RecordingVideoPlayer } from '../common/RecordingVideoPlayer';
 
 interface TestResultPageProps {
   test: Test;
@@ -421,16 +422,9 @@ export function TestResultPage({
                       {t('lms.coursePlayer.testResultVideoRecording') || 'Видеозапись попытки'}
                     </h4>
                   </div>
-                  <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden">
-                    <video
-                      src={videoUrl}
-                      controls
-                      className="w-full h-full"
-                      style={{ maxHeight: '400px' }}
-                    >
-                      {t('lms.coursePlayer.testResultVideoNotSupported') || 'Ваш браузер не поддерживает воспроизведение видео.'}
-                    </video>
-                  </div>
+                  <RecordingVideoPlayer src={videoUrl} videoMaxHeight="400px">
+                    {t('lms.coursePlayer.testResultVideoNotSupported') || 'Ваш браузер не поддерживает воспроизведение видео.'}
+                  </RecordingVideoPlayer>
                 </div>
               </div>
             )}

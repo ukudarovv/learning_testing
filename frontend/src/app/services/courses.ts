@@ -220,6 +220,12 @@ const coursesService = {
               backendLesson.thumbnail_url = lesson.thumbnailUrl || lesson.thumbnail_url || '';
               backendLesson.allow_download = lesson.allowDownload || lesson.allow_download || false;
               backendLesson.track_progress = lesson.trackProgress || lesson.track_progress || false;
+            } else if (lesson.type === 'combined') {
+              backendLesson.video_url = lesson.videoUrl || lesson.video_url || '';
+              backendLesson.thumbnail_url = lesson.thumbnailUrl || lesson.thumbnail_url || '';
+              backendLesson.pdf_url = lesson.pdfUrl || lesson.pdf_url || '';
+              backendLesson.allow_download = lesson.allowDownload || lesson.allow_download || false;
+              backendLesson.track_progress = lesson.trackProgress || lesson.track_progress || false;
             } else if (lesson.type === 'pdf') {
               backendLesson.pdf_url = lesson.pdfUrl || lesson.pdf_url || '';
               backendLesson.allow_download = lesson.allowDownload || lesson.allow_download || false;
@@ -308,6 +314,12 @@ const coursesService = {
             if (lesson.type === 'video') {
               backendLesson.video_url = lesson.videoUrl || lesson.video_url || '';
               backendLesson.thumbnail_url = lesson.thumbnailUrl || lesson.thumbnail_url || '';
+              backendLesson.allow_download = lesson.allowDownload || lesson.allow_download || false;
+              backendLesson.track_progress = lesson.trackProgress || lesson.track_progress || false;
+            } else if (lesson.type === 'combined') {
+              backendLesson.video_url = lesson.videoUrl || lesson.video_url || '';
+              backendLesson.thumbnail_url = lesson.thumbnailUrl || lesson.thumbnail_url || '';
+              backendLesson.pdf_url = lesson.pdfUrl || lesson.pdf_url || '';
               backendLesson.allow_download = lesson.allowDownload || lesson.allow_download || false;
               backendLesson.track_progress = lesson.trackProgress || lesson.track_progress || false;
             } else if (lesson.type === 'pdf') {

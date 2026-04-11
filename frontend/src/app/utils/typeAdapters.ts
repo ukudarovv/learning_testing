@@ -73,6 +73,34 @@ export function adaptProtocol(backendProtocol: any): Protocol {
   // Для standalone тестов используем название теста в качестве courseName
   const displayCourseName = courseTitle || testTitle || null;
   
+  const rawScore = backendProtocol.score;
+  const scoreNum = rawScore === null || rawScore === undefined ? 0 : Number(rawScore);
+  const passingNum = Number(
+    backendProtocol.passing_score ?? backendProtocol.passingScore ?? 0
+  );
+  const inferredResult =
+    Number.isFinite(scoreNum) && Number.isFinite(passingNum) && scoreNum >= passingNum
+      ? 'passed'
+      : 'failed';
+  const resultFromApi = backendProtocol.result;
+  const lessonsOnly =
+    Boolean(backendProtocol.lessons_only_completion) ||
+    Boolean(backendProtocol.lessonsOnlyCompletion);
+  let normalizedResult: 'passed' | 'failed' =
+    resultFromApi === 'passed' || resultFromApi === 'failed'
+      ? resultFromApi
+      : inferredResult;
+  // Старые протоколы: на бэкенде могло быть result=passed при балле ниже проходного
+  if (
+    Number.isFinite(scoreNum) &&
+    Number.isFinite(passingNum) &&
+    scoreNum < passingNum &&
+    normalizedResult === 'passed' &&
+    !lessonsOnly
+  ) {
+    normalizedResult = 'failed';
+  }
+
   const adapted = {
     id: String(backendProtocol.id),
     number: backendProtocol.number,
@@ -92,15 +120,16 @@ export function adaptProtocol(backendProtocol: any): Protocol {
         ? String(backendProtocol.attemptId)
         : undefined,
     examDate: examDate,
-    score: backendProtocol.score || 0,
-    passingScore: backendProtocol.passing_score || backendProtocol.passingScore || 0,
-    result: backendProtocol.result || 'passed',
+    score: Number.isFinite(scoreNum) ? scoreNum : 0,
+    passingScore: Number.isFinite(passingNum) ? passingNum : 0,
+    result: normalizedResult,
     status: backendProtocol.status,
     signatures: (backendProtocol.signatures || []).map((sig: any) => adaptSignature(sig)),
     rejectionReason: backendProtocol.rejection_reason || backendProtocol.rejectionReason,
     file: backendProtocol.file || undefined,
     uploaded_by: backendProtocol.uploaded_by,
     uploaded_at: backendProtocol.uploaded_at,
+    lessonsOnlyCompletion: lessonsOnly,
   };
   
   return adapted;

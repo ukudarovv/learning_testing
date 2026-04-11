@@ -28,7 +28,12 @@ class ProtocolSerializer(serializers.ModelSerializer):
     signatures = ProtocolSignatureSerializer(many=True, read_only=True)
     uploaded_by = UserSerializer(read_only=True)
     file = serializers.FileField(read_only=True)
-    
+    lessons_only_completion = serializers.SerializerMethodField()
+
+    def get_lessons_only_completion(self, obj):
+        """True если протокол по курсу без итогового экзамена (только уроки), без попытки теста."""
+        return obj.course_id is not None and obj.attempt_id is None
+
     class Meta:
         model = Protocol
         fields = [
@@ -36,7 +41,7 @@ class ProtocolSerializer(serializers.ModelSerializer):
             'exam_date', 'score', 'passing_score', 'result',
             'status', 'rejection_reason', 'signatures',
             'file', 'uploaded_by', 'uploaded_at',
-            'created_at', 'updated_at'
+            'created_at', 'updated_at', 'lessons_only_completion',
         ]
         read_only_fields = ['id', 'number', 'created_at', 'updated_at']
 

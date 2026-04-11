@@ -10,6 +10,7 @@ import { examsService } from '../../services/exams';
 import { settingsService } from '../../services/settings';
 import { useUser } from '../../contexts/UserContext';
 import { toast } from 'sonner';
+import { RecordingVideoPlayer } from '../common/RecordingVideoPlayer';
 
 export function PDEKDashboard() {
   const { t, i18n } = useTranslation();
@@ -203,6 +204,11 @@ export function PDEKDashboard() {
                           }`}>
                             {protocol.status === 'pending_pdek' ? t('lms.pdek.pendingSignature') : t('lms.pdek.signedByMembers')}
                           </span>
+                          {protocol.lessonsOnlyCompletion && (
+                            <span className="px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
+                              {t('lms.pdek.lessonsOnlyShortBadge')}
+                            </span>
+                          )}
                         </div>
                         <p className="text-gray-600 mb-2">{protocol.courseName}</p>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
@@ -222,7 +228,16 @@ export function PDEKDashboard() {
                           </div>
                           <div>
                             <span className="text-gray-500">{t('lms.pdek.result')}</span>
-                            <p className="font-medium text-green-600">{Number(protocol.score || 0).toFixed(2)}% ({t('lms.pdek.passed')})</p>
+                            <p
+                              className={`font-medium ${
+                                protocol.result === 'passed' ? 'text-green-600' : 'text-red-600'
+                              }`}
+                            >
+                              {Number(protocol.score ?? 0).toFixed(2)}% —{' '}
+                              {protocol.result === 'passed'
+                                ? t('lms.pdek.passed')
+                                : t('lms.pdek.failed')}
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -457,7 +472,13 @@ export function PDEKDashboard() {
                   </div>
                   <div>
                     <span className="text-gray-500">{t('lms.pdek.score')}:</span>
-                    <p className="font-medium text-green-600">{Number(selectedProtocol.score || 0).toFixed(2)}%</p>
+                    <p
+                      className={`font-medium ${
+                        selectedProtocol.result === 'passed' ? 'text-green-600' : 'text-red-600'
+                      }`}
+                    >
+                      {Number(selectedProtocol.score ?? 0).toFixed(2)}%
+                    </p>
                   </div>
                   <div>
                     <span className="text-gray-500">{t('lms.pdek.passingScore')}:</span>
@@ -469,11 +490,25 @@ export function PDEKDashboard() {
                   </div>
                   <div>
                     <span className="text-gray-500">{t('lms.pdek.result')}:</span>
-                    <p className="font-medium text-green-600">
-                      {selectedProtocol.result === 'passed' ? t('lms.pdek.passed') : selectedProtocol.result === 'failed' ? t('lms.pdek.failed') : t('lms.pdek.notSpecified')}
+                    <p
+                      className={`font-medium ${
+                        selectedProtocol.result === 'passed' ? 'text-green-600' : 'text-red-600'
+                      }`}
+                    >
+                      {selectedProtocol.result === 'passed'
+                        ? t('lms.pdek.passed')
+                        : selectedProtocol.result === 'failed'
+                          ? t('lms.pdek.failed')
+                          : t('lms.pdek.notSpecified')}
                     </p>
                   </div>
                 </div>
+                {selectedProtocol.lessonsOnlyCompletion && (
+                  <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
+                    <p className="font-semibold mb-1">{t('lms.pdek.lessonsOnlyTitle')}</p>
+                    <p>{t('lms.pdek.lessonsOnlyDesc')}</p>
+                  </div>
+                )}
               </div>
 
               {/* Signatures */}
@@ -527,6 +562,16 @@ export function PDEKDashboard() {
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
                   <p className="mt-2 text-gray-600">{t('lms.pdek.loadingAttemptDetails') || 'Загрузка деталей попытки...'}</p>
                 </div>
+              ) : !testAttempt && !selectedProtocol.attemptId ? (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                  {selectedProtocol.lessonsOnlyCompletion
+                    ? t('lms.pdek.recordingsNotApplicableLessonsOnly')
+                    : t('lms.pdek.recordingsNoAttempt')}
+                </div>
+              ) : !testAttempt ? (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+                  {t('lms.pdek.recordingsLoadError')}
+                </div>
               ) : testAttempt && (
                 <>
                   {/* Video Recording Section */}
@@ -539,16 +584,12 @@ export function PDEKDashboard() {
                             {t('lms.pdek.videoRecording') || 'Видеозапись попытки'}
                           </h4>
                         </div>
-                        <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden">
-                          <video
-                            src={testAttempt.video_recording || testAttempt.videoRecording || ''}
-                            controls
-                            className="w-full h-full"
-                            style={{ maxHeight: '400px' }}
-                          >
-                            {t('lms.pdek.videoNotSupported') || 'Ваш браузер не поддерживает воспроизведение видео.'}
-                          </video>
-                        </div>
+                        <RecordingVideoPlayer
+                          src={testAttempt.video_recording || testAttempt.videoRecording || ''}
+                          videoMaxHeight="400px"
+                        >
+                          {t('lms.pdek.videoNotSupported') || 'Ваш браузер не поддерживает воспроизведение видео.'}
+                        </RecordingVideoPlayer>
                       </div>
                     </div>
                   )}
@@ -562,16 +603,12 @@ export function PDEKDashboard() {
                             {t('lms.pdek.screenRecording') || 'Запись экрана'}
                           </h4>
                         </div>
-                        <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden">
-                          <video
-                            src={testAttempt.screen_recording || testAttempt.screenRecording || ''}
-                            controls
-                            className="w-full h-full"
-                            style={{ maxHeight: '400px' }}
-                          >
-                            {t('lms.pdek.videoNotSupported') || 'Ваш браузер не поддерживает воспроизведение видео.'}
-                          </video>
-                        </div>
+                        <RecordingVideoPlayer
+                          src={testAttempt.screen_recording || testAttempt.screenRecording || ''}
+                          videoMaxHeight="400px"
+                        >
+                          {t('lms.pdek.videoNotSupported') || 'Ваш браузер не поддерживает воспроизведение видео.'}
+                        </RecordingVideoPlayer>
                       </div>
                     </div>
                   )}

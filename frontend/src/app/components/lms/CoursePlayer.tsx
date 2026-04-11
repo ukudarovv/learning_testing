@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { CheckCircle, Circle, PlayCircle, FileText, Video, Download, ChevronRight, ChevronDown, Lock, ArrowLeft, X, RotateCcw, AlertCircle, Clock, BookOpen, Award, Info, Send, Eye, Play, XCircle, FileCheck } from 'lucide-react';
+import { CheckCircle, Circle, PlayCircle, FileText, Video, Download, ChevronRight, ChevronDown, Lock, ArrowLeft, X, RotateCcw, AlertCircle, Clock, BookOpen, Award, Info, Send, Eye, Play, XCircle, FileCheck, Layers } from 'lucide-react';
 import { Course, Module, Lesson, Test, Answer, TestAttempt, ExtraAttemptRequest } from '../../types/lms';
 import { Link } from 'react-router-dom';
 import { testsService } from '../../services/tests';
@@ -15,6 +15,18 @@ import { settingsService } from '../../services/settings';
 import { useUser } from '../../contexts/UserContext';
 import { toast } from 'sonner';
 import { PdfViewer } from './PdfViewer';
+import { ApiError } from '../../services/api';
+
+/** После terminate попытка уже completed — save вернёт 400; это не ошибка для UI результатов */
+function isAttemptAlreadyCompletedError(error: unknown): boolean {
+  if (!(error instanceof ApiError)) return false;
+  if (error.status !== 400) return false;
+  const msg = String(error.message || '').toLowerCase();
+  if (msg.includes('already completed')) return true;
+  const errObj = error.data && typeof error.data === 'object' ? (error.data as { error?: string }) : null;
+  const e = errObj?.error;
+  return typeof e === 'string' && e.toLowerCase().includes('already completed');
+}
 
 interface CoursePlayerProps {
   course: Course;
@@ -24,6 +36,7 @@ interface CoursePlayerProps {
 
 export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: CoursePlayerProps) {
   const { t } = useTranslation();
+  const lessonTypeLabel = (type: string) => t(`lms.coursePlayer.lessonTypes.${type}`, { defaultValue: type });
   // Убеждаемся, что modules - это массив
   const courseModules = course.modules && Array.isArray(course.modules) 
     ? course.modules 
@@ -57,6 +70,13 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
   const [showFinalTestExtraAttemptModal, setShowFinalTestExtraAttemptModal] = useState(false);
   const [requireSmsForCourseCompletion, setRequireSmsForCourseCompletion] = useState(true);
   const { user } = useUser();
+
+  /** После завершения теста `test` обнуляется — для окна результатов берём вложенный test из попытки */
+  const testForResultModal: Test | null =
+    test ??
+    (testResult?.test && typeof testResult.test === 'object'
+      ? (testResult.test as Test)
+      : null);
 
   useEffect(() => {
     settingsService.getSettings()
@@ -341,7 +361,11 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
         answersData[answer.questionId] = answer.answer;
       });
 
-      await examsService.saveTestAttempt(String(testAttemptId), answersData);
+      try {
+        await examsService.saveTestAttempt(String(testAttemptId), answersData);
+      } catch (saveErr) {
+        if (!isAttemptAlreadyCompletedError(saveErr)) throw saveErr;
+      }
       const result = await examsService.submitTestAttempt(String(testAttemptId), {
         videoBlob,
         screenBlob,
@@ -414,7 +438,11 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
         }
       });
 
-      await examsService.saveAllAnswers(testAttemptId, answersData);
+      try {
+        await examsService.saveAllAnswers(testAttemptId, answersData);
+      } catch (saveErr) {
+        if (!isAttemptAlreadyCompletedError(saveErr)) throw saveErr;
+      }
       const result = await examsService.submitTestAttempt(String(testAttemptId), {
         videoBlob,
         screenBlob,
@@ -1021,6 +1049,7 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
                                           ${lesson.type === 'pdf' ? 'text-red-600' : ''}
                                           ${lesson.type === 'quiz' ? 'text-green-600' : ''}
                                           ${lesson.type === 'text' ? 'text-blue-600' : ''}
+                                          ${lesson.type === 'combined' ? 'text-indigo-600' : ''}
                                         `}>
                                           {getLessonIcon(lesson.type, 'w-4 h-4')}
                                         </div>
@@ -1274,7 +1303,11 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
                         <div className="flex-1">
                           <h3 className="text-lg font-bold text-gray-900 mb-2">{t('lms.coursePlayer.readyToComplete')}</h3>
                           <p className="text-gray-700 mb-4">
-                            {t('lms.coursePlayer.readyToCompleteDesc', { finalTest: course.final_test_id ? t('lms.coursePlayer.readyToCompleteDescWithTest') : '' })}
+                            {course.final_test_id
+                              ? t('lms.coursePlayer.readyToCompleteDesc', {
+                                  finalTest: t('lms.coursePlayer.readyToCompleteDescWithTest'),
+                                })
+                              : t('lms.coursePlayer.readyToCompleteDescNoFinalTest')}
                           </p>
                           <button
                             onClick={handleCourseCompleteClick}
@@ -1305,7 +1338,7 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
                   <div className="flex items-center gap-3 mb-2">
                     {getLessonIcon(selectedLesson.type, 'text-white')}
                     <span className="text-sm font-medium opacity-90">
-                      {getLessonTypeName(selectedLesson.type)}
+                      {lessonTypeLabel(selectedLesson.type)}
                     </span>
                   </div>
                   <h2 className="text-2xl font-bold mb-2">{selectedLesson.title}</h2>
@@ -1326,24 +1359,46 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
 
                   {selectedLesson.type === 'text' && (
                     <div className="prose max-w-none">
-                      <div className="text-gray-800 leading-relaxed space-y-4">
-                        <p>
-                          {selectedLesson.content || 
-                            'Законодательство Республики Казахстан в области промышленной безопасности основывается на Конституции РК и состоит из Закона РК «О гражданской защите» и иных нормативных правовых актов РК.'}
-                        </p>
-                        <h3 className="text-xl font-bold text-gray-900 mt-6">Основные принципы</h3>
-                        <ul className="list-disc list-inside space-y-2">
-                          <li>Приоритет жизни и здоровья работников</li>
-                          <li>Предупреждение и профилактика опасных ситуаций</li>
-                          <li>Постоянный контроль и мониторинг</li>
-                          <li>Ответственность работодателя</li>
-                        </ul>
-                        <p className="mt-6">
-                          Изучение данного материала является обязательным для всех специалистов, работающих на опасных производственных объектах.
-                        </p>
+                      <div className="text-gray-800 leading-relaxed whitespace-pre-wrap">
+                        {selectedLesson.content?.trim()
+                          ? selectedLesson.content
+                          : (
+                            <span className="text-gray-500">{t('lms.coursePlayer.noTextContent')}</span>
+                          )}
                       </div>
                     </div>
                   )}
+
+                  {selectedLesson.type === 'combined' && (() => {
+                    const content = (selectedLesson.content || '').trim();
+                    const videoUrl = selectedLesson.videoUrl || selectedLesson.video_url || '';
+                    const pdfUrl = selectedLesson.pdfUrl || selectedLesson.pdf_url || '';
+                    const hasAny = Boolean(content || videoUrl || pdfUrl);
+                    return (
+                      <div className="space-y-8">
+                        {content && (
+                          <div className="prose max-w-none">
+                            <div className="text-gray-800 leading-relaxed whitespace-pre-wrap">{selectedLesson.content}</div>
+                          </div>
+                        )}
+                        {videoUrl && (
+                          <div>{getVideoPlayer(selectedLesson)}</div>
+                        )}
+                        {pdfUrl && (
+                          <PdfViewer
+                            url={pdfUrl}
+                            title="PDF"
+                            allowDownload={Boolean(
+                              selectedLesson.allowDownload ?? selectedLesson.allow_download,
+                            )}
+                          />
+                        )}
+                        {!hasAny && (
+                          <p className="text-gray-500 text-center py-8">{t('lms.coursePlayer.combinedLessonEmpty')}</p>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   {selectedLesson.type === 'pdf' && (selectedLesson.pdfUrl || selectedLesson.pdf_url) && (
                     <PdfViewer 
@@ -1846,15 +1901,17 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
       )}
 
       {/* Test Result Modal */}
-      {showResultModal && test && testResult && (
+      {showResultModal && testForResultModal && testResult && (
         <TestResultModal
-          test={test}
+          test={testForResultModal}
           result={testResult}
           attemptsUsed={(() => {
-            const isFinalTest = course.final_test_id && String(test.id) === String(course.final_test_id);
+            const isFinalTest =
+              course.final_test_id &&
+              String(testForResultModal.id) === String(course.final_test_id);
             return isFinalTest ? finalTestAttempts.length : testAttempts.length;
           })()}
-          attemptsTotal={test.maxAttempts || test.max_attempts || 3}
+          attemptsTotal={testForResultModal.maxAttempts || testForResultModal.max_attempts || 3}
           timeSpent={testTimeSpent}
           onClose={() => {
             setShowResultModal(false);
@@ -1867,7 +1924,10 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
             setShowResultModal(false);
             setTestResult(null);
             setTestTimeSpent(0);
-            if (course.final_test_id && String(test.id) === String(course.final_test_id)) {
+            if (
+              course.final_test_id &&
+              String(testForResultModal.id) === String(course.final_test_id)
+            ) {
               handleStartFinalTest();
             } else {
             handleStartQuiz();
@@ -1942,20 +2002,11 @@ function getLessonIcon(type: string, className: string = 'w-4 h-4 text-gray-400'
       return <FileText className={className} />;
     case 'quiz':
       return <CheckCircle className={className} />;
+    case 'combined':
+      return <Layers className={className} />;
     default:
       return <FileText className={className} />;
   }
-}
-
-function getLessonTypeName(type: string): string {
-  const names: Record<string, string> = {
-    'text': 'Текстовый материал',
-    'video': 'Видео урок',
-    'pdf': 'PDF документ',
-    'ppt': 'PPT презентация',
-    'quiz': 'Проверочный тест',
-  };
-  return names[type] || type;
 }
 
 function getCategoryName(category: any): string {

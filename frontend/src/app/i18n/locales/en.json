@@ -594,8 +594,6 @@
       "videoUrl": "Video URL",
       "videoUrlPlaceholder": "https://www.youtube.com/watch?v=... or https://vimeo.com/...",
       "videoSupported": "Supported: YouTube, Vimeo, own server",
-      "videoThumbnail": "Video Thumbnail (URL)",
-      "allowDownload": "Allow Download",
       "trackProgress": "Track Viewing",
       "pdfUrl": "PDF Document URL",
       "uploadPdf": "Upload PDF File",
@@ -616,7 +614,8 @@
         "video": "Video",
         "pdf": "PDF",
         "ppt": "PPT",
-        "quiz": "Test"
+        "quiz": "Test",
+        "combined": "Text, video and PDF"
       },
       "pptUrl": "PPT URL",
       "uploadPpt": "Upload PPT file",
@@ -1041,7 +1040,13 @@
           "active": "Active",
           "cancel": "Cancel",
           "save": "Save",
-          "nameRequired": "Enter category name"
+          "nameRequired": "Enter category name",
+          "ecReviewersTitle": "EC members for protocols",
+          "ecReviewersHint": "If nobody is selected, protocols for courses and tests in this category go to all exam commission members. Otherwise only selected users with EC member or chairman role.",
+          "ecReviewersLoading": "Loading EC list…",
+          "ecReviewersEmpty": "No users with EC member or chairman role.",
+          "chairmanShort": "Chairman",
+          "memberShort": "EC member"
         },
         "deleteConfirm": "Are you sure you want to delete this category?\n\nThis action cannot be undone.",
         "updateSuccess": "Category successfully updated",
@@ -1095,6 +1100,9 @@
     }
   },
   "lms": {
+    "video": {
+      "playbackSpeed": "Playback speed"
+    },
     "student": {
       "dashboard": "Student Personal Cabinet",
       "dashboardWelcome": "Welcome! Here you can manage your learning",
@@ -1271,6 +1279,7 @@
       "readyToComplete": "Ready to Complete",
       "readyToCompleteDesc": "All lessons {{finalTest}}completed. Click the button below to complete the course.",
       "readyToCompleteDescWithTest": "and final test ",
+      "readyToCompleteDescNoFinalTest": "All lessons are completed. This course has no final exam — to officially finish training, a protocol will be sent to the examination commission for signing. Click the button below.",
       "completeCourse": "Complete Course",
       "testNotLinked": "Test is not linked to this lesson",
       "noQuestions": "Test has no questions",
@@ -1332,7 +1341,17 @@
       "requestExtraAttempts": "Request Extra Attempts",
       "extraAttemptRequestPending": "Your request for additional attempts is pending administrator review.",
       "excellentPassBlocked": "Test already passed excellently (90%+). No additional attempts allowed.",
-      "cannotRequestExcellent": "Cannot request extra attempts: test already passed excellently (90%+)."
+      "cannotRequestExcellent": "Cannot request extra attempts: test already passed excellently (90%+).",
+      "lessonTypes": {
+        "text": "Text lesson",
+        "video": "Video lesson",
+        "pdf": "PDF document",
+        "ppt": "PPT presentation",
+        "quiz": "Quiz",
+        "combined": "Text, video and PDF"
+      },
+      "combinedLessonEmpty": "This lesson has no content yet (add text, video URL, or PDF in the admin).",
+      "noTextContent": "No lesson text was provided."
     },
     "documents": {
       "title": "My Documents",
@@ -1419,6 +1438,13 @@
       "certIssuer": "Certification Authority",
       "signSuccess": "Protocol signed successfully",
       "signError": "Error signing protocol",
+      "loadingAttemptDetails": "Loading attempt details...",
+      "recordingsNoAttempt": "Exam recordings are unavailable: no test attempt is linked to this protocol (e.g. no final exam attempt on file).",
+      "recordingsNotApplicableLessonsOnly": "This protocol does not include a final exam with recording: the course was completed by lessons only. No exam video is produced — only EC protocol signatures are required.",
+      "recordingsLoadError": "Could not load the attempt to show recordings. Refresh the page or contact an administrator.",
+      "lessonsOnlyTitle": "Course without a final test",
+      "lessonsOnlyDesc": "Credit is given for completing all lessons. Issuing documents requires signatures from the examination commission.",
+      "lessonsOnlyShortBadge": "No final exam",
       "videoRecording": "Attempt video",
       "screenRecording": "Screen recording",
       "videoNotSupported": "Your browser does not support video playback."

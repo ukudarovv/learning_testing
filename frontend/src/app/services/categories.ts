@@ -1,5 +1,12 @@
 import { apiClient } from './api';
 
+export interface CategoryEcReviewer {
+  id: number | string;
+  full_name?: string;
+  phone?: string;
+  role?: string;
+}
+
 export interface Category {
   id: string;
   name: string;
@@ -10,6 +17,9 @@ export interface Category {
   order: number;
   is_active: boolean;
   courses_count?: number;
+  ec_reviewers?: CategoryEcReviewer[];
+  /** Send on create/update; empty = all EC members */
+  ec_reviewer_ids?: number[];
   created_at?: string;
   updated_at?: string;
 }

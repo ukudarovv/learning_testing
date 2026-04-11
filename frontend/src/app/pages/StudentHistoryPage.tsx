@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { useState, useEffect } from 'react';
 import { TestAttempt } from '../types/lms';
 import { examsService } from '../services/exams';
+import { RecordingVideoPlayer } from '../components/common/RecordingVideoPlayer';
 
 function getCategoryName(category: any, t: any): string {
   if (typeof category === 'object' && category !== null) {
@@ -359,16 +360,12 @@ export function StudentHistoryPage() {
                         <Video className="w-4 h-4" />
                         {t('lms.student.historyPage.cameraRecording') || 'Камера'}
                       </h4>
-                      <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden">
-                        <video
-                          src={selectedAttempt.video_recording || selectedAttempt.videoRecording || ''}
-                          controls
-                          className="w-full h-full"
-                          style={{ maxHeight: '600px' }}
-                        >
-                          {t('lms.student.historyPage.videoNotSupported') || 'Ваш браузер не поддерживает воспроизведение видео.'}
-                        </video>
-                      </div>
+                      <RecordingVideoPlayer
+                        src={selectedAttempt.video_recording || selectedAttempt.videoRecording || ''}
+                        videoMaxHeight="600px"
+                      >
+                        {t('lms.student.historyPage.videoNotSupported') || 'Ваш браузер не поддерживает воспроизведение видео.'}
+                      </RecordingVideoPlayer>
                     </div>
                   )}
                   {(selectedAttempt.screen_recording || selectedAttempt.screenRecording) && (
@@ -377,16 +374,12 @@ export function StudentHistoryPage() {
                         <Monitor className="w-4 h-4" />
                         {t('lms.student.historyPage.screenRecording') || 'Экран'}
                       </h4>
-                      <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden">
-                        <video
-                          src={selectedAttempt.screen_recording || selectedAttempt.screenRecording || ''}
-                          controls
-                          className="w-full h-full"
-                          style={{ maxHeight: '600px' }}
-                        >
-                          {t('lms.student.historyPage.videoNotSupported') || 'Ваш браузер не поддерживает воспроизведение видео.'}
-                        </video>
-                      </div>
+                      <RecordingVideoPlayer
+                        src={selectedAttempt.screen_recording || selectedAttempt.screenRecording || ''}
+                        videoMaxHeight="600px"
+                      >
+                        {t('lms.student.historyPage.videoNotSupported') || 'Ваш браузер не поддерживает воспроизведение видео.'}
+                      </RecordingVideoPlayer>
                     </div>
                   )}
                   <div className="flex items-center gap-4 flex-wrap">

@@ -8,6 +8,7 @@ import { ApiError } from '../../services/api';
 import { useTranslation } from 'react-i18next';
 import { SMSVerification } from '../lms/SMSVerification';
 import { useUser } from '../../contexts/UserContext';
+import { RecordingVideoPlayer } from '../common/RecordingVideoPlayer';
 
 export function TestAttemptsManagement() {
   const { t } = useTranslation();
@@ -549,16 +550,12 @@ export function TestAttemptsManagement() {
                         <Video className="w-4 h-4" />
                         {t('admin.testAttempts.cameraRecording') || 'Камера'}
                       </h4>
-                      <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden">
-                        <video
-                          src={getVideoUrl(selectedAttempt)!}
-                          controls
-                          className="w-full h-full"
-                          style={{ maxHeight: '600px' }}
-                        >
-                          {t('admin.testAttempts.videoNotSupported') || 'Ваш браузер не поддерживает воспроизведение видео.'}
-                        </video>
-                      </div>
+                      <RecordingVideoPlayer
+                        src={getVideoUrl(selectedAttempt)!}
+                        videoMaxHeight="600px"
+                      >
+                        {t('admin.testAttempts.videoNotSupported') || 'Ваш браузер не поддерживает воспроизведение видео.'}
+                      </RecordingVideoPlayer>
                       <a
                         href={getVideoUrl(selectedAttempt)!}
                         download
@@ -575,16 +572,12 @@ export function TestAttemptsManagement() {
                         <Monitor className="w-4 h-4" />
                         {t('admin.testAttempts.screenRecording') || 'Экран'}
                       </h4>
-                      <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden">
-                        <video
-                          src={getScreenUrl(selectedAttempt)!}
-                          controls
-                          className="w-full h-full"
-                          style={{ maxHeight: '600px' }}
-                        >
-                          {t('admin.testAttempts.videoNotSupported') || 'Ваш браузер не поддерживает воспроизведение видео.'}
-                        </video>
-                      </div>
+                      <RecordingVideoPlayer
+                        src={getScreenUrl(selectedAttempt)!}
+                        videoMaxHeight="600px"
+                      >
+                        {t('admin.testAttempts.videoNotSupported') || 'Ваш браузер не поддерживает воспроизведение видео.'}
+                      </RecordingVideoPlayer>
                       <a
                         href={getScreenUrl(selectedAttempt)!}
                         download
