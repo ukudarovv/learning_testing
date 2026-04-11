@@ -145,6 +145,12 @@ export function StudentCoursesPage() {
                           ? t('lms.student.coursesPage.viewStatus')
                           : t('lms.student.coursesPage.continueLearning')}
                       </Link>
+                      <Link
+                        to={`/student/course/${course.id}/info`}
+                        className="block w-full text-center mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        {t('lms.student.coursesPage.moreAbout')}
+                      </Link>
                     </div>
                   </div>
                 ))}
@@ -179,6 +185,12 @@ export function StudentCoursesPage() {
                         className="block w-full text-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors"
                       >
                         {t('lms.student.coursesPage.viewCourse')}
+                      </Link>
+                      <Link
+                        to={`/student/course/${course.id}/info`}
+                        className="block w-full text-center mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        {t('lms.student.coursesPage.moreAbout')}
                       </Link>
                     </div>
                   </div>

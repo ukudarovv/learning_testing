@@ -12,6 +12,7 @@ import { StudentSupportPage } from './pages/StudentSupportPage';
 import { PDEKDashboardPage } from './pages/PDEKDashboardPage';
 import { TestPage } from './pages/TestPage';
 import { CoursePage } from './pages/CoursePage';
+import { CourseInfoPage } from './pages/CourseInfoPage';
 import { DocumentsPage } from './pages/DocumentsPage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { AdminCertificatesPage } from './pages/AdminCertificatesPage';
@@ -77,6 +78,11 @@ export default function App() {
         <Route path="/student/support" element={
           <ProtectedRoute requiredRole="student">
             <StudentSupportPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/student/course/:courseId/info" element={
+          <ProtectedRoute requiredRole="student">
+            <CourseInfoPage />
           </ProtectedRoute>
         } />
         <Route path="/student/course/:courseId" element={

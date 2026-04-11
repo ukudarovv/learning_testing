@@ -73,6 +73,19 @@ export type QuestionType =
 
 // Интерфейсы
 
+/** Иерархические категории пользователей (accounts.UserCategory), не путать с Category курсов */
+export interface UserCategory {
+  id: string;
+  parent: string | number | null;
+  name: string;
+  name_kz?: string;
+  name_en?: string;
+  order: number;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface User {
   id: string;
   role: UserRole;
@@ -90,6 +103,8 @@ export interface User {
   isActive?: boolean; // Frontend format (for compatibility)
   language: 'ru' | 'kz' | 'en';
   protocol_sign_method?: 'sms' | 'eds' | 'both' | 'none'; // EC: preferred signing method
+  /** Категории пользователя (дерево на бэкенде) */
+  user_categories?: UserCategory[];
   created_at?: string;
   updated_at?: string;
 }

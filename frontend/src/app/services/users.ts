@@ -8,6 +8,8 @@ export type AdminUserPayload = Partial<
     verification_code?: string;
     profile_photo?: File | null;
     clear_profile_photo?: boolean;
+    /** ID категорий пользователя (accounts.UserCategory); пустой массив снимает все */
+    user_category_ids?: number[];
   }
 >;
 
@@ -28,6 +30,12 @@ function appendUserFieldsToFormData(form: FormData, user: AdminUserPayload): voi
   if (user.verification_code) form.append('verification_code', user.verification_code);
   const psm = (user as { protocol_sign_method?: string }).protocol_sign_method;
   if (psm !== undefined) form.append('protocol_sign_method', String(psm));
+  const catIds = user.user_category_ids;
+  if (catIds !== undefined && catIds.length > 0) {
+    for (const id of catIds) {
+      form.append('user_category_ids', String(id));
+    }
+  }
 }
 
 const usersService = {
@@ -38,6 +46,8 @@ const usersService = {
     search?: string;
     page?: number;
     page_size?: number;
+    /** Фильтр по категории пользователя и всем потомкам (backend) */
+    category?: string | number;
   }): Promise<PaginatedResponse<User>> {
     const data = await apiClient.get<any>('/users/', params);
     
@@ -106,6 +116,9 @@ const usersService = {
     if (user.company) {
       backendUser.organization = user.company;
     }
+    if (user.user_category_ids !== undefined) {
+      backendUser.user_category_ids = user.user_category_ids;
+    }
     const response = await apiClient.post<User & { generated_password?: string }>('/users/', backendUser);
     return response;
   },
@@ -114,10 +127,18 @@ const usersService = {
     const profile_photo = user.profile_photo;
     const clear_profile_photo = user.clear_profile_photo === true;
     const hasFile = profile_photo instanceof File;
+    const categoryIds = user.user_category_ids;
+    const needsCategoryPatch =
+      categoryIds !== undefined && (hasFile || clear_profile_photo);
+
+    if (needsCategoryPatch) {
+      await apiClient.patch<User>(`/users/${id}/`, { user_category_ids: categoryIds });
+    }
 
     if (hasFile || clear_profile_photo) {
       const form = new FormData();
-      appendUserFieldsToFormData(form, user);
+      const { user_category_ids: _omit, ...userForForm } = user;
+      appendUserFieldsToFormData(form, userForForm);
       if (hasFile && profile_photo) {
         form.append('profile_photo', profile_photo);
       }
@@ -143,6 +164,9 @@ const usersService = {
     }
     if (user.verification_code) {
       backendUser.verification_code = user.verification_code;
+    }
+    if (!needsCategoryPatch && categoryIds !== undefined) {
+      backendUser.user_category_ids = categoryIds;
     }
     return apiClient.put<User>(`/users/${id}/`, backendUser);
   },

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { CheckCircle, Circle, PlayCircle, FileText, Video, Download, ChevronRight, ChevronDown, Lock, ArrowLeft, X, RotateCcw, AlertCircle, Clock, BookOpen, Award, Info, Send, Eye, Play, XCircle, FileCheck, Layers } from 'lucide-react';
@@ -37,17 +37,50 @@ interface CoursePlayerProps {
 export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: CoursePlayerProps) {
   const { t } = useTranslation();
   const lessonTypeLabel = (type: string) => t(`lms.coursePlayer.lessonTypes.${type}`, { defaultValue: type });
-  // Убеждаемся, что modules - это массив
-  const courseModules = course.modules && Array.isArray(course.modules) 
-    ? course.modules 
-    : [];
-  
-  const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(
-    courseModules[0]?.lessons?.[0] || null
+  const finalTestIdForFilter = course.final_test_id ?? course.finalTestId;
+
+  /** Порядок модулей и уроков как в админке (поле order) */
+  const courseModules = useMemo(() => {
+    const raw = course.modules && Array.isArray(course.modules) ? course.modules : [];
+    const byOrder = (a: { order?: number }, b: { order?: number }) => (a.order ?? 0) - (b.order ?? 0);
+    return [...raw].sort(byOrder).map((m) => ({
+      ...m,
+      lessons: [...(m.lessons && Array.isArray(m.lessons) ? m.lessons : [])].sort(byOrder),
+    }));
+  }, [course.modules]);
+
+  /** Линейный список уроков курса (без урока с финальным тестом) — так задаётся «этапность» */
+  const flatLessonsInOrder = useMemo(() => {
+    const list: Lesson[] = [];
+    for (const m of courseModules) {
+      const ml = (m.lessons || []).filter((lesson) => {
+        const lessonTestId = lesson.test_id || lesson.testId;
+        return (
+          !finalTestIdForFilter ||
+          !lessonTestId ||
+          String(lessonTestId) !== String(finalTestIdForFilter)
+        );
+      });
+      for (const l of ml) list.push(l);
+    }
+    return list;
+  }, [courseModules, finalTestIdForFilter]);
+
+  const isLessonLocked = useCallback(
+    (lesson: Lesson | null | undefined) => {
+      if (!lesson) return true;
+      const idx = flatLessonsInOrder.findIndex((l) => String(l.id) === String(lesson.id));
+      if (idx <= 0) return false;
+      return !flatLessonsInOrder.slice(0, idx).every((l) => l.completed === true);
+    },
+    [flatLessonsInOrder]
   );
-  const [expandedModules, setExpandedModules] = useState<string[]>(
-    courseModules.map(m => m.id)
-  );
+
+  const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
+  const [expandedModules, setExpandedModules] = useState<string[]>(() => {
+    const raw = course.modules && Array.isArray(course.modules) ? course.modules : [];
+    return raw.map((m) => m.id);
+  });
   const [showTestModal, setShowTestModal] = useState(false);
   const [test, setTest] = useState<Test | null>(null);
   const [testAttemptId, setTestAttemptId] = useState<number | null>(null);
@@ -83,6 +116,26 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
       .then((s) => setRequireSmsForCourseCompletion(s.require_sms_for_course_completion ?? true))
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    setExpandedModules(courseModules.map((m) => m.id));
+  }, [course.id]);
+
+  /** Выбранный урок: только доступный по этапам */
+  useEffect(() => {
+    if (flatLessonsInOrder.length === 0) {
+      setSelectedLesson(null);
+      return;
+    }
+    setSelectedLesson((prev) => {
+      if (prev) {
+        const match = flatLessonsInOrder.find((l) => String(l.id) === String(prev.id));
+        if (match && !isLessonLocked(match)) return match;
+      }
+      const firstOpen = flatLessonsInOrder.find((l) => !isLessonLocked(l));
+      return firstOpen ?? flatLessonsInOrder[0];
+    });
+  }, [course.id, flatLessonsInOrder, isLessonLocked]);
 
   const toggleModule = (moduleId: string) => {
     setExpandedModules(prev =>
@@ -815,13 +868,21 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <Link
-            to="/student/dashboard"
-            className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-4"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Вернуться к курсам
-          </Link>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mb-4">
+            <Link
+              to="/student/courses"
+              className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm font-medium"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              {t('lms.courseInfo.backToCourses')}
+            </Link>
+            <Link
+              to={`/student/course/${course.id}/info`}
+              className="text-sm font-medium text-gray-600 hover:text-blue-600 underline underline-offset-2"
+            >
+              {t('lms.courseInfo.pageLink')}
+            </Link>
+          </div>
           
           <div className="flex items-start justify-between mb-4 flex-wrap gap-4">
             <div className="flex-1 min-w-0">
@@ -952,6 +1013,8 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
                   const moduleProgress = moduleLessons.length > 0 
                     ? Math.round((completedLessonsInModule / moduleLessons.length) * 100) 
                     : 0;
+                  const moduleLocked =
+                    moduleLessons.length > 0 && isLessonLocked(moduleLessons[0]);
                   
                   return (
                     <div key={module.id} className="border border-gray-200 rounded-lg overflow-hidden">
@@ -962,6 +1025,8 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                           {isModuleCompleted ? (
                             <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+                          ) : moduleLocked ? (
+                            <Lock className="w-5 h-5 text-amber-500 flex-shrink-0" />
                           ) : (
                             <Circle className="w-5 h-5 text-gray-400 flex-shrink-0" />
                           )}
@@ -1001,13 +1066,15 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
                       {expandedModules.includes(module.id) && (
                         <div className="border-t border-gray-100 bg-gray-50">
                           <div className="p-2 space-y-1">
-                            {moduleLessons.map((lesson, index) => {
-                            const isLocked = false; // TODO: Add logic for locked lessons
+                            {moduleLessons.map((lesson) => {
+                            const isLocked = isLessonLocked(lesson);
                               const isSelected = selectedLesson?.id === lesson.id;
                               
                             return (
                               <button
                                 key={lesson.id}
+                                type="button"
+                                title={isLocked ? (t('lms.coursePlayer.lessonLockedHint') || '') : undefined}
                                 onClick={() => !isLocked && setSelectedLesson(lesson)}
                                 disabled={isLocked}
                                   className={`w-full flex items-start gap-2 p-2.5 rounded-lg transition-colors text-left ${
@@ -1783,9 +1850,13 @@ export function CoursePlayer({ course, onLessonComplete, onCourseComplete }: Cou
                         </button>
                       )}
                       
-                      {getNextLesson() && (
+                      {selectedLesson.completed === true && getNextLesson() && (
                         <button
-                          onClick={() => setSelectedLesson(getNextLesson())}
+                          type="button"
+                          onClick={() => {
+                            const next = getNextLesson();
+                            if (next && !isLessonLocked(next)) setSelectedLesson(next);
+                          }}
                           className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                         >
                           Следующий урок

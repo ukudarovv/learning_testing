@@ -1,3 +1,4 @@
+from django.db import transaction
 from rest_framework import serializers
 from .models import Category, Course, Module, Lesson, CourseEnrollment, LessonProgress, CourseCompletionVerification, CourseEnrollmentRequest
 from apps.accounts.serializers import UserSerializer
@@ -157,52 +158,67 @@ class CourseCreateUpdateSerializer(serializers.ModelSerializer):
         instance.save()
         
         if modules_data is not None:
-            # Delete existing modules (or update if ID provided)
-            existing_module_ids = [m.id for m in instance.modules.all()]
+            # unique_together (course, order) on Module and (module, order) on Lesson:
+            # reordering in one pass causes IntegrityError (two rows swap onto same order).
+            # Two-phase update: assign large temporary orders, then compact to 1..n.
+            TEMP = 1_000_000
             new_module_ids = [m.get('id') for m in modules_data if m.get('id')]
             
-            # Delete modules not in new data
             for module in instance.modules.all():
                 if module.id not in new_module_ids:
                     module.delete()
             
-            # Update or create modules
-            for module_index, module_data in enumerate(modules_data):
-                module_id = module_data.pop('id', None)
-                lessons_data = module_data.pop('lessons', [])
-                # Remove order from module_data to avoid duplicate keyword argument
-                module_data.pop('order', None)
+            with transaction.atomic():
+                module_refs = []
                 
-                if module_id and Module.objects.filter(id=module_id, course=instance).exists():
-                    module = Module.objects.get(id=module_id)
-                    for attr, value in module_data.items():
-                        setattr(module, attr, value)
+                for module_index, raw_module in enumerate(modules_data):
+                    module_data = dict(raw_module)
+                    module_id = module_data.pop('id', None)
+                    lessons_data = module_data.pop('lessons', [])
+                    module_data.pop('order', None)
+                    
+                    if module_id and Module.objects.filter(id=module_id, course=instance).exists():
+                        module = Module.objects.get(id=module_id)
+                        for attr, value in module_data.items():
+                            setattr(module, attr, value)
+                        module.order = TEMP + module_index
+                        module.save()
+                    else:
+                        module = Module.objects.create(
+                            course=instance, order=TEMP + module_index, **module_data
+                        )
+                    
+                    new_lesson_ids = [l.get('id') for l in lessons_data if l.get('id')]
+                    for lesson in list(module.lessons.all()):
+                        if lesson.id not in new_lesson_ids:
+                            lesson.delete()
+                    
+                    for lesson_index, raw_lesson in enumerate(lessons_data):
+                        lesson_data = dict(raw_lesson)
+                        lesson_id = lesson_data.pop('id', None)
+                        lesson_data.pop('order', None)
+                        
+                        if lesson_id and Lesson.objects.filter(id=lesson_id, module=module).exists():
+                            lesson = Lesson.objects.get(id=lesson_id)
+                            for attr, value in lesson_data.items():
+                                setattr(lesson, attr, value)
+                            lesson.order = TEMP + lesson_index
+                            lesson.save()
+                        else:
+                            Lesson.objects.create(
+                                module=module, order=TEMP + lesson_index, **lesson_data
+                            )
+                    
+                    module_refs.append(module)
+                
+                for module_index, module in enumerate(module_refs):
                     module.order = module_index + 1
                     module.save()
-                else:
-                    module = Module.objects.create(course=instance, order=module_index + 1, **module_data)
                 
-                # Update or create lessons
-                existing_lesson_ids = [l.id for l in module.lessons.all()]
-                new_lesson_ids = [l.get('id') for l in lessons_data if l.get('id')]
-                
-                for lesson in module.lessons.all():
-                    if lesson.id not in new_lesson_ids:
-                        lesson.delete()
-                
-                for lesson_index, lesson_data in enumerate(lessons_data):
-                    lesson_id = lesson_data.pop('id', None)
-                    # Remove order from lesson_data to avoid duplicate keyword argument
-                    lesson_data.pop('order', None)
-                    
-                    if lesson_id and Lesson.objects.filter(id=lesson_id, module=module).exists():
-                        lesson = Lesson.objects.get(id=lesson_id)
-                        for attr, value in lesson_data.items():
-                            setattr(lesson, attr, value)
-                        lesson.order = lesson_index + 1
+                for module in module_refs:
+                    for j, lesson in enumerate(module.lessons.order_by('order')):
+                        lesson.order = j + 1
                         lesson.save()
-                    else:
-                        Lesson.objects.create(module=module, order=lesson_index + 1, **lesson_data)
         
         return instance
 

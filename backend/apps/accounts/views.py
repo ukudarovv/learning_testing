@@ -11,8 +11,9 @@ from io import BytesIO
 from django.http import HttpResponse
 from django.db.models import Q
 
-from .models import User, SMSVerificationCode
+from .models import User, UserCategory, SMSVerificationCode
 from .serializers import (
+    UserCategorySerializer,
     UserSerializer,
     UserCreateSerializer,
     UserUpdateSerializer,
@@ -137,8 +138,59 @@ class MeView(APIView):
         return Response(UserSerializer(user, context={'request': request}).data, status=status.HTTP_200_OK)
 
 
+def _user_category_descendant_ids(root_id: int) -> list:
+    """
+    Все id категории root_id и её потомков (поддерево вниз).
+    Используется для фильтра ?category=<id> по M2M пользователей.
+    """
+    ids = [root_id]
+    frontier = [root_id]
+    while frontier:
+        children = list(
+            UserCategory.objects.filter(parent_id__in=frontier).values_list('id', flat=True)
+        )
+        ids.extend(children)
+        frontier = children
+    return ids
+
+
+class UserCategoryViewSet(viewsets.ModelViewSet):
+    """
+    CRUD иерархии категорий пользователей (только админ).
+
+    GET список: плоский (по умолчанию) или ?nested=1 — дерево с полем children.
+    """
+
+    queryset = UserCategory.objects.all()
+    serializer_class = UserCategorySerializer
+    permission_classes = [IsAdmin]
+    ordering = ['order', 'id']
+    pagination_class = None
+
+    def list(self, request, *args, **kwargs):
+        nested = request.query_params.get('nested', '').lower()
+        if nested in ('1', 'true', 'yes'):
+            rows = list(UserCategory.objects.all().order_by('order', 'id'))
+            by_parent = {}
+            for c in rows:
+                by_parent.setdefault(c.parent_id, []).append(c)
+
+            def to_node(cat):
+                data = UserCategorySerializer(cat, context={'request': request}).data
+                data['children'] = [to_node(ch) for ch in by_parent.get(cat.id, [])]
+                return data
+
+            roots = by_parent.get(None, [])
+            return Response([to_node(r) for r in roots])
+        return super().list(request, *args, **kwargs)
+
+
 class UserViewSet(viewsets.ModelViewSet):
-    """User management ViewSet"""
+    """User management ViewSet
+
+    Фильтр по категории (поддерево): ?category=<user_category_id> —
+    пользователи, у которых в user_categories есть эта категория или любой её потомок.
+    """
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [IsAdmin]
@@ -147,6 +199,23 @@ class UserViewSet(viewsets.ModelViewSet):
     search_fields = ['phone', 'email', 'full_name', 'iin']
     ordering_fields = ['created_at', 'full_name']
     ordering = ['-created_at']
+
+    def get_queryset(self):
+        return User.objects.all().prefetch_related('user_categories')
+
+    def filter_queryset(self, queryset):
+        queryset = super().filter_queryset(queryset)
+        raw = self.request.query_params.get('category')
+        if raw is not None and str(raw).strip() != '':
+            try:
+                root_id = int(raw)
+            except (TypeError, ValueError):
+                return queryset.none()
+            desc = _user_category_descendant_ids(root_id)
+            if not desc:
+                return queryset.none()
+            return queryset.filter(user_categories__id__in=desc).distinct()
+        return queryset
     
     def get_serializer_class(self):
         if self.action == 'create':
@@ -193,17 +262,33 @@ class UserViewSet(viewsets.ModelViewSet):
     def export(self, request):
         """Export users to Excel"""
         users = self.filter_queryset(self.get_queryset())
-        
+        by_cat_id = {c.id: c for c in UserCategory.objects.all()}
+
+        def category_path(cat):
+            parts = []
+            cur = cat
+            for _ in range(128):
+                if not cur:
+                    break
+                parts.append(cur.name)
+                cur = by_cat_id.get(cur.parent_id) if cur.parent_id else None
+            return ' / '.join(reversed(parts))
+
         wb = Workbook()
         ws = wb.active
         ws.title = "Users"
         
         # Headers
-        headers = ['ID', 'Phone', 'Full Name', 'Email', 'IIN', 'Role', 'Verified', 'City', 'Organization', 'Created At']
+        headers = [
+            'ID', 'Phone', 'Full Name', 'Email', 'IIN', 'Role', 'Verified',
+            'City', 'Organization', 'Categories', 'Created At',
+        ]
         ws.append(headers)
         
         # Data
         for user in users:
+            cats = list(user.user_categories.all())
+            cat_str = '; '.join(category_path(c) for c in sorted(cats, key=lambda x: x.id))
             ws.append([
                 user.id,
                 user.phone,
@@ -214,6 +299,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 'Yes' if user.verified else 'No',
                 user.city or '',
                 user.organization or '',
+                cat_str,
                 user.created_at.strftime('%Y-%m-%d %H:%M:%S') if user.created_at else '',
             ])
         

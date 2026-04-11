@@ -39,6 +39,21 @@ from apps.core.models import get_site_config
 from apps.core.export_utils import export_to_excel, create_excel_response
 
 
+def _linear_course_lesson_ids(course):
+    """
+    Порядок уроков как в LMS (модули и уроки по order).
+    Урок с test_id = финальному тесту курса не входит в цепочку — он проходит отдельно.
+    """
+    ft_id = getattr(course, 'final_test_id', None)
+    ordered = []
+    for mod in course.modules.order_by('order', 'id'):
+        for les in mod.lessons.order_by('order', 'id'):
+            if ft_id and les.test_id and str(les.test_id) == str(ft_id):
+                continue
+            ordered.append(les.id)
+    return ordered
+
+
 def _course_completion_eligibility(user, course):
     """Returns (enrollment, None) or (None, Response)."""
     enrollment = CourseEnrollment.objects.filter(user=user, course=course).first()
@@ -849,6 +864,27 @@ class LessonViewSet(viewsets.ReadOnlyModelViewSet):
                 {'error': 'You are not enrolled in this course'},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+        course = lesson.module.course
+        linear = _linear_course_lesson_ids(course)
+        try:
+            pos = linear.index(lesson.id)
+        except ValueError:
+            pos = None
+        if pos is not None and pos > 0:
+            for prior_id in linear[:pos]:
+                prior = LessonProgress.objects.filter(
+                    enrollment=enrollment,
+                    lesson_id=prior_id,
+                ).first()
+                if not prior or not prior.completed:
+                    return Response(
+                        {
+                            'error': 'Complete previous lessons in order before marking this lesson as completed.',
+                            'code': 'sequential_progression_required',
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
         
         # Create or update lesson progress
         progress, created = LessonProgress.objects.get_or_create(

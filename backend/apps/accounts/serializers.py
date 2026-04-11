@@ -1,10 +1,46 @@
 from django.core.validators import FileExtensionValidator
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import User, SMSVerificationCode
+from .models import User, UserCategory, SMSVerificationCode
 
 PROFILE_PHOTO_MAX_BYTES = 5 * 1024 * 1024  # 5 MB
 PROFILE_PHOTO_VALIDATORS = [FileExtensionValidator(['jpg', 'jpeg', 'png', 'webp'])]
+
+
+def normalize_kz_phone(value) -> str:
+    """Единый формат 7XXXXXXXXXX для сравнения и сохранения (KZ/RU)."""
+    if value is None:
+        return ''
+    digits = ''.join(filter(str.isdigit, str(value)))
+    if not digits:
+        return ''
+    if digits.startswith('8'):
+        digits = '7' + digits[1:]
+    if not digits.startswith('7'):
+        digits = '7' + digits
+    return digits
+
+
+class UserCategorySerializer(serializers.ModelSerializer):
+    """Плоский CRUD категорий пользователей (parent_id для дерева)."""
+
+    class Meta:
+        model = UserCategory
+        fields = [
+            'id', 'parent', 'name', 'name_kz', 'name_en',
+            'order', 'is_active', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class UserCategoryBriefSerializer(serializers.ModelSerializer):
+    """Вложение в User: id, имена, родитель как id."""
+
+    parent = serializers.IntegerField(source='parent_id', allow_null=True)
+
+    class Meta:
+        model = UserCategory
+        fields = ['id', 'name', 'name_kz', 'name_en', 'parent']
 
 
 def validate_profile_photo_size(value):
@@ -16,6 +52,7 @@ def validate_profile_photo_size(value):
 class UserSerializer(serializers.ModelSerializer):
     """User serializer"""
     profile_photo_url = serializers.SerializerMethodField()
+    user_categories = UserCategoryBriefSerializer(many=True, read_only=True)
 
     def get_profile_photo_url(self, obj):
         request = self.context.get('request')
@@ -33,15 +70,24 @@ class UserSerializer(serializers.ModelSerializer):
             'verified', 'is_active', 'language', 'city', 'organization',
             'protocol_sign_method',
             'profile_photo_url',
+            'user_categories',
             'created_at', 'updated_at', 'date_joined'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'date_joined', 'profile_photo_url']
+        read_only_fields = [
+            'id', 'created_at', 'updated_at', 'date_joined', 'profile_photo_url',
+            'user_categories',
+        ]
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
     """Serializer for user registration"""
     password = serializers.CharField(write_only=True, required=False, allow_blank=True, min_length=8)
     verification_code = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    user_category_ids = serializers.ListField(
+        child=serializers.IntegerField(min_value=1),
+        write_only=True,
+        required=False,
+    )
     email = serializers.EmailField(required=True)
     iin = serializers.CharField(required=False, allow_blank=True, max_length=12, default='')
     profile_photo = serializers.ImageField(
@@ -55,6 +101,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
         fields = [
             'phone', 'password', 'full_name', 'email', 'iin', 'role', 'city', 'organization',
             'language', 'verified', 'is_active', 'verification_code', 'profile_photo',
+            'user_category_ids',
         ]
 
     def validate_iin(self, value):
@@ -116,7 +163,8 @@ class UserCreateSerializer(serializers.ModelSerializer):
         
         password = validated_data.pop('password', None)
         validated_data.pop('verification_code', None)  # Remove verification_code, it's not a model field
-        
+        category_ids = validated_data.pop('user_category_ids', None)
+
         # Если роль не указана, устанавливаем 'student' по умолчанию
         if 'role' not in validated_data or not validated_data.get('role'):
             validated_data['role'] = 'student'
@@ -132,6 +180,9 @@ class UserCreateSerializer(serializers.ModelSerializer):
             password = ''.join(secrets.choice(alphabet) for _ in range(12))
         
         user = User.objects.create_user(password=password, **validated_data)
+
+        if category_ids is not None:
+            user.user_categories.set(UserCategory.objects.filter(id__in=category_ids))
         
         # Сохраняем пароль в объекте user для возврата (не сохраняется в БД, только для ответа)
         user._generated_password = password
@@ -150,6 +201,11 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         validators=PROFILE_PHOTO_VALIDATORS,
     )
     clear_profile_photo = serializers.BooleanField(required=False, write_only=True)
+    user_category_ids = serializers.ListField(
+        child=serializers.IntegerField(min_value=1),
+        write_only=True,
+        required=False,
+    )
 
     class Meta:
         model = User
@@ -157,6 +213,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             'phone', 'full_name', 'email', 'iin', 'language', 'city', 'organization',
             'role', 'verified', 'is_active', 'password', 'verification_code',
             'protocol_sign_method', 'profile_photo', 'clear_profile_photo',
+            'user_category_ids',
         ]
     
     def validate_password(self, value):
@@ -173,18 +230,18 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         verification_code = data.get('verification_code')
         new_phone = data.get('phone')
         instance = self.instance
-        
-        # If phone is being changed and verification code is provided
-        if new_phone and instance and instance.phone != new_phone:
+
+        # Сравниваем нормализованные номера: с формы может прийти +7 / пробелы, в БД — уже 7...
+        phone_really_changed = False
+        if new_phone is not None and str(new_phone).strip() != '' and instance is not None:
+            if normalize_kz_phone(new_phone) != normalize_kz_phone(instance.phone or ''):
+                phone_really_changed = True
+
+        if phone_really_changed:
             if not verification_code:
                 raise serializers.ValidationError({'verification_code': 'Verification code is required when changing phone number'})
-            
-            # Normalize phone number
-            normalized_phone = ''.join(filter(str.isdigit, str(new_phone)))
-            if normalized_phone.startswith('8'):
-                normalized_phone = '7' + normalized_phone[1:]
-            if not normalized_phone.startswith('7'):
-                normalized_phone = '7' + normalized_phone
+
+            normalized_phone = normalize_kz_phone(new_phone)
             
             # Find the most recent unverified code for this phone and verification/profile_update purpose
             verification_obj = SMSVerificationCode.objects.filter(
@@ -218,23 +275,23 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         
         # Normalize phone if it's being changed
         if 'phone' in validated_data and validated_data['phone']:
-            new_phone = validated_data['phone']
-            normalized_phone = ''.join(filter(str.isdigit, str(new_phone)))
-            if normalized_phone.startswith('8'):
-                normalized_phone = '7' + normalized_phone[1:]
-            if not normalized_phone.startswith('7'):
-                normalized_phone = '7' + normalized_phone
-            validated_data['phone'] = normalized_phone
+            validated_data['phone'] = normalize_kz_phone(validated_data['phone'])
 
         new_photo = validated_data.get('profile_photo')
         if new_photo and instance.profile_photo:
             instance.profile_photo.delete(save=False)
+
+        category_ids = validated_data.pop('user_category_ids', serializers.empty)
         
         # Update other fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         
         instance.save()
+
+        if category_ids is not serializers.empty:
+            instance.user_categories.set(UserCategory.objects.filter(id__in=category_ids))
+
         return instance
 
 

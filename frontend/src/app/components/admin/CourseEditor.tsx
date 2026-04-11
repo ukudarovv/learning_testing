@@ -1,10 +1,262 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { DndProvider, useDrag, useDrop } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 import { ArrowLeft, X, Save, Plus, Trash2, GripVertical, Edit2, Video, FileText, CheckCircle, Upload, Layers } from 'lucide-react';
 import { Course, Module, Lesson } from '../../types/lms';
 import { testsService } from '../../services/tests';
 import { categoriesService, Category } from '../../services/categories';
 import { useTranslation } from 'react-i18next';
 import { apiClient } from '../../services/api';
+
+const COURSE_MODULE = 'COURSE_MODULE';
+const COURSE_LESSON = 'COURSE_LESSON';
+
+interface DragLessonItem {
+  index: number;
+  moduleId: string;
+}
+
+interface DragModuleItem {
+  index: number;
+}
+
+function getLessonIcon(type: string) {
+  const iconClass = 'w-5 h-5 flex-shrink-0';
+  switch (type) {
+    case 'video':
+      return <Video className={`${iconClass} text-purple-600`} />;
+    case 'pdf':
+      return <FileText className={`${iconClass} text-red-600`} />;
+    case 'ppt':
+      return <FileText className={`${iconClass} text-orange-600`} />;
+    case 'quiz':
+      return <CheckCircle className={`${iconClass} text-green-600`} />;
+    case 'combined':
+      return <Layers className={`${iconClass} text-indigo-600`} />;
+    default:
+      return <FileText className={`${iconClass} text-blue-600`} />;
+  }
+}
+
+function SortableLessonRow({
+  moduleId,
+  lesson,
+  index,
+  moveLesson,
+  onEdit,
+  onDelete,
+  getLessonTypeName,
+}: {
+  moduleId: string;
+  lesson: Lesson;
+  index: number;
+  moveLesson: (mid: string, from: number, to: number) => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  getLessonTypeName: (type: string) => string;
+}) {
+  const { t } = useTranslation();
+
+  const [{ isDragging }, drag] = useDrag({
+    type: COURSE_LESSON,
+    item: { index, moduleId } as DragLessonItem,
+    collect: (monitor) => ({ isDragging: monitor.isDragging() }),
+  });
+
+  const [, drop] = useDrop({
+    accept: COURSE_LESSON,
+    hover(item: DragLessonItem) {
+      if (item.moduleId !== moduleId) return;
+      const dragIndex = item.index;
+      const hoverIndex = index;
+      if (dragIndex === hoverIndex) return;
+      moveLesson(moduleId, dragIndex, hoverIndex);
+      item.index = hoverIndex;
+    },
+  });
+
+  return (
+    <div
+      ref={drop}
+      className={`flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:shadow-sm transition-shadow ${isDragging ? 'opacity-50' : ''}`}
+    >
+      <div
+        ref={drag}
+        className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 flex-shrink-0 touch-none"
+        title={t('admin.courses.dragToReorder')}
+      >
+        <GripVertical className="w-4 h-4" />
+      </div>
+      {getLessonIcon(lesson.type)}
+      <div className="flex-1 min-w-0">
+        <p className="font-medium text-gray-900 truncate">{lesson.title || t('admin.courses.noTitle')}</p>
+        <p className="text-xs text-gray-500">
+          {getLessonTypeName(lesson.type)} • {lesson.duration || 0} {t('admin.courses.minutes')}
+        </p>
+      </div>
+      {lesson.required && (
+        <span className="px-2 py-1 bg-orange-100 text-orange-700 text-xs font-semibold rounded">
+          {t('admin.courses.required')}
+        </span>
+      )}
+      <div className="flex gap-1">
+        <button
+          type="button"
+          onClick={onEdit}
+          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+        >
+          <Edit2 className="w-4 h-4" />
+        </button>
+        <button
+          type="button"
+          onClick={onDelete}
+          className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SortableModuleCard({
+  module,
+  index,
+  moveModule,
+  expandedModule,
+  setExpandedModule,
+  handleUpdateModule,
+  handleDeleteModule,
+  handleAddLesson,
+  handleEditLesson,
+  handleDeleteLesson,
+  moveLesson,
+  getLessonTypeName,
+}: {
+  module: Module;
+  index: number;
+  moveModule: (from: number, to: number) => void;
+  expandedModule: string | null;
+  setExpandedModule: (id: string | null) => void;
+  handleUpdateModule: (moduleId: string, updates: Partial<Module>) => void;
+  handleDeleteModule: (moduleId: string) => void;
+  handleAddLesson: (moduleId: string) => void;
+  handleEditLesson: (moduleId: string, lesson: Lesson) => void;
+  handleDeleteLesson: (moduleId: string, lessonId: string) => void;
+  moveLesson: (moduleId: string, from: number, to: number) => void;
+  getLessonTypeName: (type: string) => string;
+}) {
+  const { t } = useTranslation();
+
+  const [{ isDragging }, drag] = useDrag({
+    type: COURSE_MODULE,
+    item: { index } as DragModuleItem,
+    collect: (monitor) => ({ isDragging: monitor.isDragging() }),
+  });
+
+  const [, drop] = useDrop({
+    accept: COURSE_MODULE,
+    hover(item: DragModuleItem) {
+      const dragIndex = item.index;
+      const hoverIndex = index;
+      if (dragIndex === hoverIndex) return;
+      moveModule(dragIndex, hoverIndex);
+      item.index = hoverIndex;
+    },
+  });
+
+  const lessons = module.lessons && Array.isArray(module.lessons) ? module.lessons : [];
+
+  return (
+    <div
+      ref={drop}
+      className={`border border-gray-300 rounded-lg ${isDragging ? 'opacity-60 shadow-md' : ''}`}
+    >
+      <div className="bg-gray-50 p-4">
+        <div className="flex items-start gap-3">
+          <div
+            ref={drag}
+            className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 mt-2 flex-shrink-0 touch-none"
+            title={t('admin.courses.dragToReorder')}
+          >
+            <GripVertical className="w-5 h-5" />
+          </div>
+          <div className="flex-1">
+            <input
+              type="text"
+              value={module.title}
+              onChange={(e) => handleUpdateModule(module.id, { title: e.target.value })}
+              placeholder={t('admin.courses.moduleTitlePlaceholder')}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-2 font-medium"
+            />
+            <textarea
+              value={module.description}
+              onChange={(e) => handleUpdateModule(module.id, { description: e.target.value })}
+              placeholder={t('admin.courses.moduleDescriptionPlaceholder')}
+              rows={2}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setExpandedModule(expandedModule === module.id ? null : module.id)}
+              className="px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-lg text-sm font-medium"
+            >
+              {expandedModule === module.id ? t('common.collapse') : t('admin.courses.expand')}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleDeleteModule(module.id)}
+              className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {expandedModule === module.id && (
+        <div className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-medium text-gray-700">
+              {t('admin.courses.lessons')} ({lessons.length})
+            </span>
+            <button
+              type="button"
+              onClick={() => handleAddLesson(module.id)}
+              className="flex items-center gap-2 px-3 py-1 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              <Plus className="w-3 h-3" />
+              {t('admin.courses.addLesson')}
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            {lessons.map((lesson, lessonIndex) => (
+              <SortableLessonRow
+                key={lesson.id}
+                moduleId={module.id}
+                lesson={lesson}
+                index={lessonIndex}
+                moveLesson={moveLesson}
+                onEdit={() => handleEditLesson(module.id, lesson)}
+                onDelete={() => handleDeleteLesson(module.id, lesson.id)}
+                getLessonTypeName={getLessonTypeName}
+              />
+            ))}
+
+            {lessons.length === 0 && (
+              <div className="text-center py-6 text-gray-500 text-sm">
+                {t('admin.courses.noLessons')}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface CourseEditorProps {
   course?: Course;
@@ -215,6 +467,30 @@ export function CourseEditor({ course, onSave, onCancel }: CourseEditorProps) {
     }));
   };
 
+  const moveModule = useCallback((dragIndex: number, hoverIndex: number) => {
+    setModules((prev) => {
+      const next = [...prev];
+      const [removed] = next.splice(dragIndex, 1);
+      next.splice(hoverIndex, 0, removed);
+      return next.map((m, i) => ({ ...m, order: i + 1 }));
+    });
+  }, []);
+
+  const moveLesson = useCallback((moduleId: string, dragIndex: number, hoverIndex: number) => {
+    setModules((prev) =>
+      prev.map((m) => {
+        if (m.id !== moduleId) return m;
+        const lessons = [...(m.lessons || [])];
+        const [removed] = lessons.splice(dragIndex, 1);
+        lessons.splice(hoverIndex, 0, removed);
+        return {
+          ...m,
+          lessons: lessons.map((l, i) => ({ ...l, order: i + 1 })),
+        };
+      })
+    );
+  }, []);
+
   const handleSave = () => {
     // Преобразуем isStandaloneTest в is_standalone_test для backend
     const saveData: any = {
@@ -231,6 +507,7 @@ export function CourseEditor({ course, onSave, onCancel }: CourseEditorProps) {
   };
 
   return (
+    <DndProvider backend={HTML5Backend}>
     <div className="bg-white rounded-lg shadow-lg">
       {/* Header */}
       <div className="flex items-center justify-between p-6 border-b border-gray-200">
@@ -395,102 +672,21 @@ export function CourseEditor({ course, onSave, onCancel }: CourseEditorProps) {
 
             <div className="space-y-4">
               {modules.map((module, moduleIndex) => (
-                <div key={module.id} className="border border-gray-300 rounded-lg">
-                  {/* Module Header */}
-                  <div className="bg-gray-50 p-4">
-                    <div className="flex items-start gap-3">
-                      <GripVertical className="w-5 h-5 text-gray-400 mt-2 cursor-move" />
-                      <div className="flex-1">
-                        <input
-                          type="text"
-                          value={module.title}
-                          onChange={(e) => handleUpdateModule(module.id, { title: e.target.value })}
-                          placeholder={t('admin.courses.moduleTitlePlaceholder')}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-2 font-medium"
-                        />
-                        <textarea
-                          value={module.description}
-                          onChange={(e) => handleUpdateModule(module.id, { description: e.target.value })}
-                          placeholder={t('admin.courses.moduleDescriptionPlaceholder')}
-                          rows={2}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setExpandedModule(expandedModule === module.id ? null : module.id)}
-                          className="px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-lg text-sm font-medium"
-                        >
-                          {expandedModule === module.id ? t('common.collapse') : t('admin.courses.expand')}
-                        </button>
-                        <button
-                          onClick={() => handleDeleteModule(module.id)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Lessons */}
-                  {expandedModule === module.id && (
-                    <div className="p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="text-sm font-medium text-gray-700">
-                          {t('admin.courses.lessons')} ({module.lessons && Array.isArray(module.lessons) ? module.lessons.length : 0})
-                        </span>
-                        <button
-                          onClick={() => handleAddLesson(module.id)}
-                          className="flex items-center gap-2 px-3 py-1 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                        >
-                          <Plus className="w-3 h-3" />
-                          {t('admin.courses.addLesson')}
-                        </button>
-                      </div>
-
-                      <div className="space-y-2">
-                        {(module.lessons && Array.isArray(module.lessons) ? module.lessons : []).map((lesson, lessonIndex) => (
-                          <div key={lesson.id} className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:shadow-sm transition-shadow">
-                            <GripVertical className="w-4 h-4 text-gray-400 cursor-move flex-shrink-0" />
-                            {getLessonIcon(lesson.type)}
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-gray-900 truncate">{lesson.title || t('admin.courses.noTitle')}</p>
-                              <p className="text-xs text-gray-500">
-                                {getLessonTypeName(lesson.type)} • {lesson.duration || 0} {t('admin.courses.minutes')}
-                              </p>
-                            </div>
-                            {lesson.required && (
-                              <span className="px-2 py-1 bg-orange-100 text-orange-700 text-xs font-semibold rounded">
-                                {t('admin.courses.required')}
-                              </span>
-                            )}
-                            <div className="flex gap-1">
-                              <button
-                                onClick={() => handleEditLesson(module.id, lesson)}
-                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
-                              >
-                                <Edit2 className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteLesson(module.id, lesson.id)}
-                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-
-                        {module.lessons.length === 0 && (
-                          <div className="text-center py-6 text-gray-500 text-sm">
-                            {t('admin.courses.noLessons')}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <SortableModuleCard
+                  key={module.id}
+                  module={module}
+                  index={moduleIndex}
+                  moveModule={moveModule}
+                  expandedModule={expandedModule}
+                  setExpandedModule={setExpandedModule}
+                  handleUpdateModule={handleUpdateModule}
+                  handleDeleteModule={handleDeleteModule}
+                  handleAddLesson={handleAddLesson}
+                  handleEditLesson={handleEditLesson}
+                  handleDeleteLesson={handleDeleteLesson}
+                  moveLesson={moveLesson}
+                  getLessonTypeName={getLessonTypeName}
+                />
               ))}
 
               {modules.length === 0 && (
@@ -531,6 +727,7 @@ export function CourseEditor({ course, onSave, onCancel }: CourseEditorProps) {
         />
       )}
     </div>
+    </DndProvider>
   );
 }
 
@@ -1026,22 +1223,4 @@ function LessonEditorModal({ lesson, onSave, onCancel, availableTests = [], load
       </div>
     </div>
   );
-}
-
-function getLessonIcon(type: string) {
-  const iconClass = "w-5 h-5 flex-shrink-0";
-  switch (type) {
-    case 'video':
-      return <Video className={`${iconClass} text-purple-600`} />;
-    case 'pdf':
-      return <FileText className={`${iconClass} text-red-600`} />;
-    case 'ppt':
-      return <FileText className={`${iconClass} text-orange-600`} />;
-    case 'quiz':
-      return <CheckCircle className={`${iconClass} text-green-600`} />;
-    case 'combined':
-      return <Layers className={`${iconClass} text-indigo-600`} />;
-    default:
-      return <FileText className={`${iconClass} text-blue-600`} />;
-  }
 }

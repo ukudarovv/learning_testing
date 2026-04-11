@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
+from django.db.models import Q
 from django.utils import timezone
 from datetime import timedelta
 import random
@@ -29,6 +30,49 @@ class UserManager(BaseUserManager):
             raise ValueError('Superuser must have is_superuser=True.')
         
         return self.create_user(phone, password, **extra_fields)
+
+
+class UserCategory(models.Model):
+    """
+    Иерархические категории пользователей (оргструктура / теги).
+    Отдельно от courses.Category (категории курсов).
+    """
+
+    parent = models.ForeignKey(
+        'self',
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name='children',
+    )
+    name = models.CharField(max_length=200)
+    name_kz = models.CharField(max_length=200, blank=True)
+    name_en = models.CharField(max_length=200, blank=True)
+    order = models.IntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'user_categories'
+        ordering = ['order', 'id']
+        verbose_name = 'User category'
+        verbose_name_plural = 'User categories'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['parent', 'name'],
+                condition=Q(parent__isnull=False),
+                name='uniq_user_category_parent_name',
+            ),
+            models.UniqueConstraint(
+                fields=['name'],
+                condition=Q(parent__isnull=True),
+                name='uniq_user_category_root_name',
+            ),
+        ]
+
+    def __str__(self):
+        return self.name
 
 
 class User(AbstractBaseUser, PermissionsMixin):
@@ -75,6 +119,13 @@ class User(AbstractBaseUser, PermissionsMixin):
     protocol_sign_method = models.CharField(
         max_length=10, choices=PROTOCOL_SIGN_CHOICES, default='both',
         help_text='Способ подписания протоколов для членов ЭК'
+    )
+
+    user_categories = models.ManyToManyField(
+        UserCategory,
+        blank=True,
+        related_name='users',
+        help_text='Категории пользователя (иерархия в UserCategory)',
     )
     
     is_staff = models.BooleanField(default=False)

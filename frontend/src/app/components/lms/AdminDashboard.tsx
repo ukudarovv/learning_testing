@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, BookOpen, FileQuestion, Award, Settings, TrendingUp, Plus, Search, Filter, Download, Edit, Trash2, Eye, X, CheckCircle, XCircle, UserPlus, Tag, FileText, Mail, RotateCcw, Ban, Video } from 'lucide-react';
+import { Users, BookOpen, FileQuestion, Award, Settings, TrendingUp, Plus, Search, Filter, Download, Edit, Trash2, Eye, X, CheckCircle, XCircle, UserPlus, Tag, FileText, Mail, RotateCcw, Ban, Video, GitBranch } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useTranslation } from 'react-i18next';
 import { UserEditor } from '../admin/UserEditor';
 import { UserManagement } from '../admin/UserManagement';
+import { UserCategoriesManagement } from '../admin/UserCategoriesManagement';
 import { ContactManagement } from '../admin/ContactManagement';
 import { ExtraAttemptRequests } from '../admin/ExtraAttemptRequests';
 import { TestAttemptsManagement } from '../admin/TestAttemptsManagement';
@@ -46,7 +47,7 @@ function getStatusText(status: string, t: (key: string) => string): string {
 export function AdminDashboard() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [activeSection, setActiveSection] = useState<'overview' | 'courses' | 'users' | 'tests' | 'reports' | 'categories' | 'contacts' | 'extra-attempts' | 'test-attempts' | 'enrollment-requests' | 'protocols' | 'certificates' | 'content-pages' | 'settings'>('overview');
+  const [activeSection, setActiveSection] = useState<'overview' | 'courses' | 'users' | 'user-categories' | 'tests' | 'reports' | 'categories' | 'contacts' | 'extra-attempts' | 'test-attempts' | 'enrollment-requests' | 'protocols' | 'certificates' | 'content-pages' | 'settings'>('overview');
   const [showUserEditor, setShowUserEditor] = useState(false);
   const [showContentPageEditor, setShowContentPageEditor] = useState(false);
   const [editingContentPageType, setEditingContentPageType] = useState<'terms' | 'privacy' | null>(null);
@@ -177,6 +178,19 @@ export function AdminDashboard() {
                 >
                   <Users className="w-5 h-5" />
                   <span className="font-medium">{t('admin.dashboard.navigation.users')}</span>
+                </button>
+                <button
+                  onClick={() => setActiveSection('user-categories')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                    activeSection === 'user-categories'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <GitBranch className="w-5 h-5 flex-shrink-0" />
+                  <span className="font-medium text-sm leading-tight">
+                    {t('admin.dashboard.navigation.userCategories')}
+                  </span>
                 </button>
                 <button
                   onClick={() => setActiveSection('tests')}
@@ -326,6 +340,7 @@ export function AdminDashboard() {
                 refreshTrigger={usersRefreshTrigger}
               />
             )}
+            {activeSection === 'user-categories' && <UserCategoriesManagement />}
             {activeSection === 'tests' && (
               <TestsSection 
                 onCreate={handleCreateTest}

@@ -4,6 +4,8 @@ import { User, TestAssignment } from '../../types/lms';
 import { AssignCoursesModal } from './AssignCoursesModal';
 import { AssignTestsModal } from './AssignTestsModal';
 import { usersService } from '../../services/users';
+import { userCategoriesService } from '../../services/userCategories';
+import type { UserCategory } from '../../types/lms';
 import { coursesService } from '../../services/courses';
 import { certificatesService } from '../../services/certificates';
 import { examsService } from '../../services/exams';
@@ -24,6 +26,8 @@ export function UserManagement({ onCreate, onEdit, refreshTrigger }: UserManagem
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRole, setFilterRole] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterUserCategory, setFilterUserCategory] = useState<string>('all');
+  const [userCategoryOptions, setUserCategoryOptions] = useState<UserCategory[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
@@ -64,6 +68,9 @@ export function UserManagement({ onCreate, onEdit, refreshTrigger }: UserManagem
       if (searchQuery) {
         params.search = searchQuery;
       }
+      if (filterUserCategory !== 'all') {
+        params.category = filterUserCategory;
+      }
       const data = await usersService.getUsers(params);
       setUsers(data.results);
       setPagination({
@@ -81,12 +88,19 @@ export function UserManagement({ onCreate, onEdit, refreshTrigger }: UserManagem
     } finally {
       setLoading(false);
     }
-  }, [currentPage, pageSize, filterRole, filterStatus, searchQuery]);
+  }, [currentPage, pageSize, filterRole, filterStatus, filterUserCategory, searchQuery]);
 
   // Сбрасываем страницу при изменении фильтров
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterRole, filterStatus, searchQuery]);
+  }, [filterRole, filterStatus, filterUserCategory, searchQuery]);
+
+  useEffect(() => {
+    userCategoriesService
+      .getList()
+      .then(setUserCategoryOptions)
+      .catch(() => setUserCategoryOptions([]));
+  }, []);
 
   useEffect(() => {
     fetchUsers();
@@ -274,7 +288,7 @@ export function UserManagement({ onCreate, onEdit, refreshTrigger }: UserManagem
           {/* Filter Panel */}
           {showFilters && (
             <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">{t('admin.users.role')}</label>
                   <select
@@ -306,11 +320,30 @@ export function UserManagement({ onCreate, onEdit, refreshTrigger }: UserManagem
                   </select>
                 </div>
 
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {t('admin.users.filterByCategory')}
+                  </label>
+                  <select
+                    value={filterUserCategory}
+                    onChange={(e) => setFilterUserCategory(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="all">{t('admin.users.allCategories')}</option>
+                    {userCategoryOptions.map((c) => (
+                      <option key={c.id} value={String(c.id)}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 <div className="flex items-end">
                   <button 
                     onClick={() => {
                       setFilterRole('all');
                       setFilterStatus('all');
+                      setFilterUserCategory('all');
                       setSearchQuery('');
                     }}
                     className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-white transition-colors"
@@ -397,6 +430,7 @@ export function UserManagement({ onCreate, onEdit, refreshTrigger }: UserManagem
                 <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">{t('admin.users.contacts')}</th>
                 <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">{t('admin.users.role')}</th>
                 <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">{t('admin.users.organization')}</th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">{t('admin.users.categoriesColumn')}</th>
                 <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">{t('admin.users.courses')}</th>
                 <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">{t('admin.users.progress')}</th>
                 <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">{t('common.status')}</th>
@@ -445,6 +479,13 @@ export function UserManagement({ onCreate, onEdit, refreshTrigger }: UserManagem
                   <td className="py-4 px-4">
                     <div className="text-sm">
                       <div className="font-medium text-gray-900">{user.organization || user.company || '—'}</div>
+                    </div>
+                  </td>
+                  <td className="py-4 px-4">
+                    <div className="text-sm text-gray-700 max-w-[14rem]">
+                      {user.user_categories && user.user_categories.length > 0
+                        ? user.user_categories.map((c) => c.name).join(', ')
+                        : '—'}
                     </div>
                   </td>
                   <td className="py-4 px-4">

@@ -5,6 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { smsService } from '../../services/smsService';
 import { SMSVerification } from '../lms/SMSVerification';
 import type { AdminUserPayload } from '../../services/users';
+import { userCategoriesService } from '../../services/userCategories';
+import type { UserCategory } from '../../types/lms';
 import { formatRuKzPhoneInput, normalizeRuKzPhoneDigits } from '../../utils/phoneInput';
 
 interface UserEditorProps {
@@ -39,6 +41,8 @@ export function UserEditor({ user, onSave, onCancel }: UserEditorProps) {
   const [clearServerPhoto, setClearServerPhoto] = useState(false);
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const [userCategoryOptions, setUserCategoryOptions] = useState<UserCategory[]>([]);
+  const [selectedUserCategoryIds, setSelectedUserCategoryIds] = useState<number[]>([]);
 
   useEffect(() => {
     return () => {
@@ -54,6 +58,13 @@ export function UserEditor({ user, onSave, onCancel }: UserEditorProps) {
 
   // Обновляем formData при изменении user (для редактирования)
   useEffect(() => {
+    userCategoriesService
+      .getList()
+      .then(setUserCategoryOptions)
+      .catch(() => setUserCategoryOptions([]));
+  }, []);
+
+  useEffect(() => {
     if (user) {
       setFormData({
         fullName: user.full_name || user.fullName || '',
@@ -67,6 +78,11 @@ export function UserEditor({ user, onSave, onCancel }: UserEditorProps) {
         is_active: user.is_active !== undefined ? user.is_active : true,
         language: user.language || 'ru',
       });
+      setSelectedUserCategoryIds(
+        (user.user_categories || []).map((c) => Number(c.id))
+      );
+    } else {
+      setSelectedUserCategoryIds([]);
     }
     setPendingPhotoFile(null);
     setClearServerPhoto(false);
@@ -93,6 +109,33 @@ export function UserEditor({ user, onSave, onCancel }: UserEditorProps) {
     { value: 'pdek_chairman', label: t('forms.login.pdekChairmanRole') },
     { value: 'admin', label: t('forms.login.adminRole') },
   ];
+
+  const userCategoriesSorted = useMemo(() => {
+    const byId = new Map(userCategoryOptions.map((c) => [String(c.id), c]));
+    const depth = (id: string): number => {
+      let d = 0;
+      let cur = byId.get(id);
+      let guard = 0;
+      while (cur && cur.parent != null && cur.parent !== '' && guard < 64) {
+        d += 1;
+        cur = byId.get(String(cur.parent));
+        guard += 1;
+      }
+      return d;
+    };
+    return [...userCategoryOptions].sort((a, b) => {
+      const da = depth(String(a.id));
+      const db = depth(String(b.id));
+      if (da !== db) return da - db;
+      return a.order - b.order || String(a.name).localeCompare(String(b.name));
+    });
+  }, [userCategoryOptions]);
+
+  const toggleUserCategory = (id: number) => {
+    setSelectedUserCategoryIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
 
   const languages = [
     { value: 'ru', label: t('header.russian') },
@@ -183,7 +226,11 @@ export function UserEditor({ user, onSave, onCancel }: UserEditorProps) {
     if (saving) return;
     setSaving(true);
     try {
-      await onSave({ ...formData, ...buildPhotoPayload() });
+      await onSave({
+        ...formData,
+        ...buildPhotoPayload(),
+        user_category_ids: selectedUserCategoryIds,
+      });
     } finally {
       setSaving(false);
     }
@@ -199,6 +246,7 @@ export function UserEditor({ user, onSave, onCancel }: UserEditorProps) {
         ...formData,
         verification_code: code,
         ...buildPhotoPayload(),
+        user_category_ids: selectedUserCategoryIds,
       };
       await onSave(userDataWithCode);
     } finally {
@@ -411,6 +459,45 @@ export function UserEditor({ user, onSave, onCancel }: UserEditorProps) {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-lg font-bold text-gray-900 mb-4">{t('admin.users.categoriesSection')}</h3>
+              <p className="text-sm text-gray-600 mb-3">{t('admin.users.categoriesHint')}</p>
+              <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-3 space-y-2 bg-gray-50/80">
+                {userCategoriesSorted.length === 0 ? (
+                  <p className="text-sm text-gray-500">{t('admin.users.categoriesEmpty')}</p>
+                ) : (
+                  userCategoriesSorted.map((c) => {
+                    const byId = new Map(userCategoryOptions.map((x) => [String(x.id), x]));
+                    let depth = 0;
+                    let cur: UserCategory | undefined = byId.get(String(c.id));
+                    let g = 0;
+                    while (cur && cur.parent != null && cur.parent !== '' && g < 64) {
+                      depth += 1;
+                      cur = byId.get(String(cur.parent));
+                      g += 1;
+                    }
+                    const pad = Math.min(depth, 8) * 14;
+                    const cid = Number(c.id);
+                    return (
+                      <label
+                        key={c.id}
+                        className="flex items-center gap-2 text-sm cursor-pointer"
+                        style={{ paddingLeft: pad }}
+                      >
+                        <input
+                          type="checkbox"
+                          className="rounded border-gray-300"
+                          checked={selectedUserCategoryIds.includes(cid)}
+                          onChange={() => toggleUserCategory(cid)}
+                        />
+                        <span className="text-gray-800">{c.name}</span>
+                      </label>
+                    );
+                  })
+                )}
               </div>
             </div>
 

@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import User, SMSVerificationCode
+from .models import User, UserCategory, SMSVerificationCode
 from apps.notifications.utils import send_registration_email
 import logging
 
@@ -16,7 +16,7 @@ class UserAdmin(BaseUserAdmin):
     
     fieldsets = (
         (None, {'fields': ('phone', 'password')}),
-        ('Personal info', {'fields': ('full_name', 'email', 'iin', 'city', 'organization', 'profile_photo')}),
+        ('Personal info', {'fields': ('full_name', 'email', 'iin', 'city', 'organization', 'profile_photo', 'user_categories')}),
         ('Permissions', {'fields': ('role', 'verified', 'is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
         ('Settings', {'fields': ('language',)}),
         ('Important dates', {'fields': ('last_login', 'date_joined', 'created_at', 'updated_at')}),
@@ -30,6 +30,7 @@ class UserAdmin(BaseUserAdmin):
     )
     
     readonly_fields = ('created_at', 'updated_at', 'date_joined', 'last_login')
+    filter_horizontal = ('user_categories',)
 
     def save_model(self, request, obj, form, change):
         """При создании студента отправляем письмо с данными для входа"""
@@ -41,6 +42,14 @@ class UserAdmin(BaseUserAdmin):
                     send_registration_email(obj, password, fail_silently=True)
                 except Exception as e:
                     logger.warning(f"Failed to send registration email to {obj.email}: {e}")
+
+
+@admin.register(UserCategory)
+class UserCategoryAdmin(admin.ModelAdmin):
+    list_display = ('name', 'parent', 'order', 'is_active', 'updated_at')
+    list_filter = ('is_active',)
+    search_fields = ('name', 'name_kz', 'name_en')
+    ordering = ('order', 'id')
 
 
 @admin.register(SMSVerificationCode)
