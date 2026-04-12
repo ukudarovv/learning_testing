@@ -39,7 +39,13 @@
     "download": "Download",
     "select": "Select",
     "required": "Required",
-    "optional": "Optional"
+    "optional": "Optional",
+    "photoEditorTitle": "Edit photo",
+    "photoEditorZoom": "Zoom",
+    "photoEditorRotate": "Rotate",
+    "photoEditorApply": "Apply",
+    "photoEditorHint": "Drag and zoom so your face fits the circle. You can rotate by 90°.",
+    "photoEditorError": "Could not process the image. Try another file."
   },
   "brand": {
     "name": "Learning & Testing",

@@ -8,6 +8,7 @@ import type { AdminUserPayload } from '../../services/users';
 import { userCategoriesService } from '../../services/userCategories';
 import type { UserCategory } from '../../types/lms';
 import { formatRuKzPhoneInput, normalizeRuKzPhoneDigits } from '../../utils/phoneInput';
+import { ProfilePhotoEditorModal } from '../shared/ProfilePhotoEditorModal';
 
 interface UserEditorProps {
   user?: User;
@@ -40,6 +41,8 @@ export function UserEditor({ user, onSave, onCancel }: UserEditorProps) {
   const [pendingPhotoFile, setPendingPhotoFile] = useState<File | null>(null);
   const [clearServerPhoto, setClearServerPhoto] = useState(false);
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
+  const [photoEditorSrc, setPhotoEditorSrc] = useState<string | null>(null);
+  const [photoEditorOriginalName, setPhotoEditorOriginalName] = useState('');
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [userCategoryOptions, setUserCategoryOptions] = useState<UserCategory[]>([]);
   const [selectedUserCategoryIds, setSelectedUserCategoryIds] = useState<number[]>([]);
@@ -49,6 +52,12 @@ export function UserEditor({ user, onSave, onCancel }: UserEditorProps) {
       if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
     };
   }, [photoPreviewUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (photoEditorSrc) URL.revokeObjectURL(photoEditorSrc);
+    };
+  }, [photoEditorSrc]);
 
   const displayPhotoUrl = useMemo(() => {
     if (photoPreviewUrl) return photoPreviewUrl;
@@ -90,6 +99,11 @@ export function UserEditor({ user, onSave, onCancel }: UserEditorProps) {
       if (prev) URL.revokeObjectURL(prev);
       return null;
     });
+    setPhotoEditorSrc((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+    setPhotoEditorOriginalName('');
   }, [user?.id]);
 
   // Отслеживаем изменение номера телефона
@@ -168,14 +182,37 @@ export function UserEditor({ user, onSave, onCancel }: UserEditorProps) {
     }
     setError('');
     setClearServerPhoto(false);
-    setPhotoPreviewUrl((prev) => {
+    setPhotoEditorOriginalName(file.name);
+    setPhotoEditorSrc((prev) => {
       if (prev) URL.revokeObjectURL(prev);
       return URL.createObjectURL(file);
     });
-    setPendingPhotoFile(file);
+  };
+
+  const handlePhotoEditorCancel = () => {
+    setPhotoEditorSrc((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+    setPhotoEditorOriginalName('');
+  };
+
+  const handlePhotoEditorApply = (editedFile: File) => {
+    setPhotoEditorSrc((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+    setPhotoEditorOriginalName('');
+    setClearServerPhoto(false);
+    setPhotoPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(editedFile);
+    });
+    setPendingPhotoFile(editedFile);
   };
 
   const handleRemovePhoto = () => {
+    handlePhotoEditorCancel();
     setPendingPhotoFile(null);
     setPhotoPreviewUrl((prev) => {
       if (prev) URL.revokeObjectURL(prev);
@@ -599,6 +636,15 @@ export function UserEditor({ user, onSave, onCancel }: UserEditorProps) {
           </button>
         </div>
       </div>
+
+      {photoEditorSrc && (
+        <ProfilePhotoEditorModal
+          imageSrc={photoEditorSrc}
+          originalFileName={photoEditorOriginalName || 'photo.jpg'}
+          onCancel={handlePhotoEditorCancel}
+          onApply={handlePhotoEditorApply}
+        />
+      )}
 
       {showSMSVerification && (
         <SMSVerification

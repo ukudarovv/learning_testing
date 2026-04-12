@@ -39,7 +39,13 @@
     "download": "Жүктеп алу",
     "select": "Таңдау",
     "required": "Міндетті",
-    "optional": "Міндетті емес"
+    "optional": "Міндетті емес",
+    "photoEditorTitle": "Фотоны өңдеу",
+    "photoEditorZoom": "Масштаб",
+    "photoEditorRotate": "Бұру",
+    "photoEditorApply": "Қолдану",
+    "photoEditorHint": "Бет шеңберге сыйғанша жылжытыңыз және масштабыңыз. 90° бұрауға болады.",
+    "photoEditorError": "Суретті өңдеу мүмкін болмады. Басқа файлды таңдаңыз."
   },
   "brand": {
     "name": "Оқу және тестілеу",
