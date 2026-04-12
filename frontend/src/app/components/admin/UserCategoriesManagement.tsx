@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Plus, Search, Pencil, Trash2, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, CheckCircle, XCircle, CornerDownRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { userCategoriesService, type UserCategoryPayload } from '../../services/userCategories';
@@ -47,6 +47,51 @@ function depthOf(id: string, byId: Map<string, UserCategory>): number {
     cur = byId.get(String(cur.parent));
   }
   return d;
+}
+
+/** Обход дерева в порядке «родитель → дети»; при поиске — только ветки к совпадениям (с предками). */
+function buildTreeRows(
+  childrenByParent: Map<string | null, UserCategory[]>,
+  byId: Map<string, UserCategory>,
+  rows: UserCategory[],
+  searchRaw: string
+): { node: UserCategory; depth: number }[] {
+  const q = searchRaw.trim().toLowerCase();
+  let visible: Set<string> | null = null;
+  if (q) {
+    visible = new Set<string>();
+    const matches: string[] = [];
+    for (const c of rows) {
+      if (
+        c.name.toLowerCase().includes(q) ||
+        (c.name_kz || '').toLowerCase().includes(q) ||
+        (c.name_en || '').toLowerCase().includes(q)
+      ) {
+        matches.push(String(c.id));
+      }
+    }
+    for (const mid of matches) {
+      let cur: UserCategory | undefined = byId.get(mid);
+      while (cur) {
+        visible.add(String(cur.id));
+        if (cur.parent == null || cur.parent === '') break;
+        cur = byId.get(String(cur.parent));
+      }
+    }
+  }
+
+  const out: { node: UserCategory; depth: number }[] = [];
+  const walk = (parentId: string | null, depth: number) => {
+    const kids = childrenByParent.get(parentId) ?? [];
+    for (const c of kids) {
+      const id = String(c.id);
+      if (visible && !visible.has(id)) continue;
+      out.push({ node: c, depth });
+      walk(id, depth + 1);
+    }
+  };
+  walk(null, 0);
+  return out;
 }
 
 export function UserCategoriesManagement() {
@@ -110,22 +155,10 @@ export function UserCategoriesManagement() {
       );
   }, [rows, byId, childrenByParent, editing]);
 
-  const flatRows = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    const list = [...rows].sort((a, b) => {
-      const da = depthOf(String(a.id), byId);
-      const db = depthOf(String(b.id), byId);
-      if (da !== db) return da - db;
-      return a.order - b.order || String(a.id).localeCompare(String(b.id));
-    });
-    if (!q) return list;
-    return list.filter(
-      (c) =>
-        c.name.toLowerCase().includes(q) ||
-        (c.name_kz || '').toLowerCase().includes(q) ||
-        (c.name_en || '').toLowerCase().includes(q)
-    );
-  }, [rows, byId, search]);
+  const treeRows = useMemo(
+    () => buildTreeRows(childrenByParent, byId, rows, search),
+    [childrenByParent, byId, rows, search]
+  );
 
   const openCreate = () => {
     setEditing(null);
@@ -250,9 +283,6 @@ export function UserCategoriesManagement() {
                   {t('admin.userCategories.name')}
                 </th>
                 <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
-                  {t('admin.userCategories.parent')}
-                </th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
                   {t('admin.userCategories.order')}
                 </th>
                 <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
@@ -264,26 +294,29 @@ export function UserCategoriesManagement() {
               </tr>
             </thead>
             <tbody>
-              {flatRows.length === 0 ? (
+              {treeRows.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-gray-500">
+                  <td colSpan={4} className="py-8 text-center text-gray-500">
                     {t('admin.userCategories.empty')}
                   </td>
                 </tr>
               ) : (
-                flatRows.map((c) => {
-                  const depth = depthOf(String(c.id), byId);
-                  const pad = Math.min(depth, 8) * 16;
-                  const parentName =
-                    c.parent == null ? '—' : byId.get(String(c.parent))?.name ?? `#${c.parent}`;
+                treeRows.map(({ node: c, depth }) => {
+                  const indent = Math.min(depth, 12) * 18;
+                  const hasChildren = (childrenByParent.get(String(c.id)) || []).length > 0;
                   return (
                     <tr key={c.id} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="py-3 px-4">
-                        <span style={{ paddingLeft: pad }} className="inline-block font-medium text-gray-900">
-                          {c.name}
+                        <span
+                          className="inline-flex items-center gap-1.5 font-medium text-gray-900"
+                          style={{ paddingLeft: indent }}
+                        >
+                          {depth > 0 && (
+                            <CornerDownRight className="w-4 h-4 shrink-0 text-gray-400" aria-hidden />
+                          )}
+                          <span className={hasChildren ? 'font-semibold' : undefined}>{c.name}</span>
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-sm text-gray-600">{parentName}</td>
                       <td className="py-3 px-4 text-sm">{c.order}</td>
                       <td className="py-3 px-4">
                         {c.is_active ? (
